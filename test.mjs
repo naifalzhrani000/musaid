@@ -746,3 +746,45 @@ assert.equal((await admin(`/admin/contact-messages/${m.id}/delete`,'POST')).s,20
 assert.ok(!(await admin('/admin/contact-messages')).j.find(x=>x.id===m.id),'تُحذف بعد الحذف');
 assert.notEqual((await cl()('/admin/contact-messages')).s,200,'الزائر لا يرى الرسائل');
 });
+
+test('إدارة الموقع: قائمة المستخدمين والأقسام وحذف كلمة مفتاحية',async()=>{
+const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
+const users=(await admin('/admin/users?q=admin')).j;assert.ok(users.find(u=>u.email==='admin@t.sa'),'البحث يجد المدير');
+const cats=(await admin('/admin/categories')).j;assert.equal(cats.length,42);assert.ok(Array.isArray(cats[0].words)&&cats[0].words.length>0);
+const cat=cats.find(c=>c.name==='النجارة والأثاث');const w=cat.words[0];
+assert.equal((await admin(`/admin/sections/${cat.id}/keywords/remove`,'POST',{word:w})).s,200);
+assert.ok(!(await admin('/admin/categories')).j.find(c=>c.id===cat.id).words.includes(w),'الكلمة حُذفت');
+assert.equal((await cl()('/admin/users')).s,401,'الزائر لا يرى المستخدمين');
+});
+
+test('المرحلة الثالثة: المحادثات المبلَّغ عنها والتقييمات، ومحمية من غير المدير',async()=>{
+const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
+assert.equal((await admin('/admin/reports/999999/conversation')).s,404);
+assert.equal((await admin('/admin/ratings')).s,200);
+assert.equal((await cl()('/admin/ratings')).s,401,'الزائر لا يرى التقييمات');
+assert.equal((await cl()('/admin/reports/1/conversation')).s,401,'الزائر لا يرى المحادثات');
+});
+
+test('المرحلة الرابعة: النقاط يدويًا مع منع الرصيد السالب، والنمو',async()=>{
+const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
+const u=(await admin('/admin/users?q=admin')).j.find(x=>x.email==='admin@t.sa');
+assert.equal((await admin(`/admin/users/${u.id}/points`,'POST',{delta:50,reason:'مكافأة تجريبية'})).s,200);
+assert.equal((await admin(`/admin/users/${u.id}/points`,'POST',{delta:-999999,reason:'خصم كبير'})).s,400);
+assert.equal((await admin(`/admin/users/${u.id}/points`,'POST',{delta:-40,reason:'تعديل'})).s,200);
+assert.equal((await admin('/admin/points?q=admin')).j.find(x=>x.id===u.id).balance,10,'الرصيد 50-40');
+assert.ok(Array.isArray((await admin('/admin/growth')).j.users));
+assert.equal((await cl()('/admin/points')).s,401);
+});
+
+test('الموظفون: صلاحيات محددة، والمالية والدعم لا تتداخلان، والإدارة للمدير فقط',async()=>{
+const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
+const st=cl();await st('/register','POST',{name:'موظف مالي',email:'stf1@t.sa',password:'12345678',terms:1,age:1,city:'جدة'});
+const sid=(await st('/me')).j.user.id;
+assert.equal((await admin('/admin/staff','POST',{email:'stf1@t.sa',perms:['finance']})).s,200);
+assert.equal((await st('/admin/commissions')).s,200,'المالية تصل للعمولات');
+assert.equal((await st('/admin/reports')).s,403,'المالية لا تصل للشكاوى');
+assert.equal((await st('/admin/stats')).s,403,'الإحصاءات للمدير فقط');
+assert.equal((await st('/admin/users/'+sid+'/role','POST',{role:'admin'})).s,403,'لا تغيير أدوار');
+assert.equal((await admin('/admin/staff','POST',{email:'stf1@t.sa',perms:[]})).s,200);
+assert.equal((await st('/admin/commissions')).s,403,'بعد إزالة الصلاحيات ينتهي الوصول');
+});
