@@ -9,7 +9,7 @@ import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, c
 
 route('GET','/requests',c=>{const q=c.q,w=['r.hidden=0'],a=[];
 if(q.q){w.push("(r.title LIKE ? ESCAPE '\\' OR r.description LIKE ? ESCAPE '\\' OR r.city LIKE ? ESCAPE '\\')");const l=`%${likeEsc(q.q)}%`;a.push(l,l,l)}
-if(!q.mine)w.push("r.status!='draft'");
+if(q.mine)need(c);else w.push("r.status!='draft'");
 if(q.category){w.push('r.category=?');a.push(q.category)}
 if(q.city){w.push("r.city LIKE ? ESCAPE '\\'");a.push(`%${likeEsc(q.city)}%`)}
 if(q.min){w.push('r.budget>=?');a.push(+q.min)}if(q.max){w.push('r.budget<=?');a.push(+q.max)}

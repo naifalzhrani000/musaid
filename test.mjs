@@ -788,3 +788,32 @@ assert.equal((await st('/admin/users/'+sid+'/role','POST',{role:'admin'})).s,403
 assert.equal((await admin('/admin/staff','POST',{email:'stf1@t.sa',perms:[]})).s,200);
 assert.equal((await st('/admin/commissions')).s,403,'بعد إزالة الصلاحيات ينتهي الوصول');
 });
+
+test('المسودات: لا تظهر لغير صاحبها ولا لزائر غير مسجل',async()=>{
+const o=cl();await o('/register','POST',{name:'مسودة خاصة',email:'dfx1@t.sa',password:'12345678',terms:1,age:1,city:'جدة'});
+const pf=await o('/profile','POST',{name:'مسودة خاصة',phone:'0500009123'});assert.equal(pf.s,200,'الملف: '+JSON.stringify(pf.j));{const dbx=new DatabaseSync(DBF);dbx.prepare("UPDATE users SET email_verified=1 WHERE email='dfx1@t.sa'").run();dbx.close();}
+const pl=await o('/pledge','POST',{accept:true,name:'مسودة خاصة'});assert.equal(pl.s,200,'التعهد: '+JSON.stringify(pl.j));
+const cr=await o('/requests','POST',{title:'مسودة سرية للاختبار',description:'وصف مسودة سرية لا يجب أن يراها أحد',draft:true});assert.equal(cr.s,200,'إنشاء المسودة: '+JSON.stringify(cr.j));
+const anon=(await cl()('/requests?mine=1'));assert.equal(anon.s,401,'الزائر لا يرى مهامه بلا دخول');
+const other=cl();await other('/register','POST',{name:'غريب',email:'dfx2@t.sa',password:'12345678',terms:1,age:1,city:'جدة'});
+const list=(await other('/requests')).j;assert.ok(!JSON.stringify(list).includes('مسودة سرية للاختبار'),'المسودة لا تظهر في القائمة العامة');
+const mine=(await o('/requests?mine=1')).j;assert.ok(JSON.stringify(mine).includes('مسودة سرية للاختبار'),'صاحبها يراها في مهامه');
+});
+
+test('ترحيل التصنيفات: لا يتعطل الخادم عند وجود طلب مصنّف',async()=>{
+const dbf='/tmp/migr'+Date.now()+'.db';
+const first=spawn('node',['server.js'],{env:{...process.env,RESEND_API_KEY:'',PORT:'3993',DB_FILE:dbf,ADMIN_EMAIL:'admin@t.sa',ADMIN_SETUP_TOKEN:'x'},stdio:'ignore'});
+await new Promise(r=>setTimeout(r,1200));first.kill();await new Promise(r=>setTimeout(r,300));
+const d=new DatabaseSync(dbf);
+d.prepare("INSERT INTO users(name,email,pass,city,created_at) VALUES('ترحيل','migr@t.sa','x','جدة',datetime('now'))").run();
+const uid=d.prepare("SELECT id FROM users WHERE email='migr@t.sa'").get().id;
+d.prepare("INSERT INTO requests(user_id,title,description,city,category,status) VALUES(?,?,?,?,?,?)").run(uid,'طلب مصنف','وصف طلب مصنف للاختبار','جدة','x','published');
+const rid=d.prepare('SELECT last_insert_rowid() i').get().i;
+const cat=d.prepare('SELECT id FROM skill_categories LIMIT 1').get().id;
+d.prepare('INSERT INTO request_categories(request_id,category_id) VALUES(?,?)').run(rid,cat);
+d.prepare("UPDATE settings SET value='2' WHERE key='catalog_version'").run();d.close();
+const again=spawn('node',['server.js'],{env:{...process.env,RESEND_API_KEY:'',PORT:'3994',DB_FILE:dbf,ADMIN_EMAIL:'admin@t.sa',ADMIN_SETUP_TOKEN:'x'},stdio:'ignore'});
+let code=null;again.on('exit',c=>{code=c});
+await new Promise(r=>setTimeout(r,1500));
+assert.equal(code,null,'الخادم يجب أن يبقى يعمل بعد إعادة الترحيل');again.kill();
+});

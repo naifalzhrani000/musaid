@@ -67,7 +67,7 @@ seedSections();
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name='perms'").get())db.exec("ALTER TABLE users ADD COLUMN perms TEXT NOT NULL DEFAULT ''");
 const CATALOG_VERSION='3';
 const applyCatalog=()=>{const v=get("SELECT value FROM settings WHERE key='catalog_version'");if(v&&v.value===CATALOG_VERSION)return;
-db.exec("DELETE FROM section_keywords;DELETE FROM user_sections;DELETE FROM user_skills;DELETE FROM request_skills;DELETE FROM skill_keywords;DELETE FROM skills;DELETE FROM skill_categories;");
+db.exec("DELETE FROM request_categories;DELETE FROM section_keywords;DELETE FROM user_sections;DELETE FROM user_skills;DELETE FROM request_skills;DELETE FROM skill_keywords;DELETE FROM skills;DELETE FROM skill_categories;");
 CATALOG.forEach((c,i)=>{const id=Number(run('INSERT INTO skill_categories(name,sort) VALUES(?,?)',c.name,i+1).lastInsertRowid);for(const w of [c.name,...c.words])run('INSERT OR IGNORE INTO section_keywords(category_id,word) VALUES(?,?)',id,normAr(w))});
 run("INSERT OR REPLACE INTO settings(key,value) VALUES('catalog_version',?)",CATALOG_VERSION)};
 applyCatalog();
