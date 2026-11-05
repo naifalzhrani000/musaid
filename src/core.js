@@ -83,7 +83,7 @@ const award=(u,key,ref)=>{const p=get('SELECT points FROM reward_rules WHERE key
 export const hooks={onPublished:()=>{}};
 const log=(id,st,by)=>{run('INSERT INTO status_log(request_id,status,by_id) VALUES(?,?,?)',id,st,by);if(st==='published')hooks.onPublished(id)};
 const audit=(a,act,d)=>run('INSERT INTO audit_log(admin_id,action,detail) VALUES(?,?,?)',a,act,d);
-const startSession=(res,uid)=>{const t=crypto.randomBytes(32).toString('hex');run('INSERT INTO sessions VALUES(?,?,?)',t,uid,Date.now()+6048e5);res.setHeader('Set-Cookie',`sid=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${res.req.headers['x-forwarded-proto']==='https'?'; Secure':''}`)};
+const startSession=(res,uid)=>{const t=crypto.randomBytes(32).toString('hex');run('INSERT INTO sessions VALUES(?,?,?)',t,uid,Date.now()+6048e5);res.setHeader('Set-Cookie',`sid=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${((process.env.APP_URL||'').startsWith('https')||res.req.headers['x-forwarded-proto']==='https')?'; Secure':''}`)};
 const userOf=t=>t?get('SELECT u.id,u.name,u.email,u.city,u.role,u.active,u.account_type,u.phone,u.address,u.email_verified,u.notify_email,u.perms FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.exp>? AND u.active=1',t,Date.now()):undefined;
 const need=c=>{if(!c.u)throw err(401,'سجّل الدخول أولًا');return c.u};
 const adm=c=>{if(need(c).role!=='admin')throw err(403,'غير مصرح');return c.u};
