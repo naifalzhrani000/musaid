@@ -65,6 +65,7 @@ const seedSections=()=>{if(get('SELECT COUNT(*) n FROM section_keywords').n>0)re
 seedSections();
 
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name='perms'").get())db.exec("ALTER TABLE users ADD COLUMN perms TEXT NOT NULL DEFAULT ''");
+for(const [col,def] of [['reason',"TEXT NOT NULL DEFAULT 'no_category'"],['city','TEXT'],['category_id','INT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('failed_searches') WHERE name=?").get(col))db.exec(`ALTER TABLE failed_searches ADD COLUMN ${col} ${def}`)}
 const CATALOG_VERSION='3';
 const applyCatalog=()=>{const v=get("SELECT value FROM settings WHERE key='catalog_version'");if(v&&v.value===CATALOG_VERSION)return;
 db.exec("DELETE FROM request_categories;DELETE FROM section_keywords;DELETE FROM user_sections;DELETE FROM user_skills;DELETE FROM request_skills;DELETE FROM skill_keywords;DELETE FROM skills;DELETE FROM skill_categories;");
@@ -138,7 +139,7 @@ else if(n>=c.warn)notify(uid,'تنبيه: تكرار الإلغاء بعد اخ�
 const pairCheck=(a,b)=>{const n=get("SELECT COUNT(*) n FROM cancellations WHERE ((by_id=? AND other_id=?) OR (by_id=? AND other_id=?)) AND created_at>datetime('now','-30 days')",a,b,b,a).n;
 if(n>=2)all("SELECT id FROM users WHERE role='admin'").forEach(x=>notify(x.id,`تكرار إلغاء بعد الاختيار بين طرفين (${n} مرات خلال 30 يومًا)`,'#/admin'))};
 const likeEsc=v=>String(v).replace(/[\\%_]/g,m=>'\\'+m);
-const cleanSearch=t=>String(t).replace(/\+?\d[\d\s-]{7,}\d/g,'[رقم]').replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g,'[بريد]').slice(0,200);
+const cleanSearch=t=>String(t).replace(/\+?[\d\u0660-\u0669][\d\u0660-\u0669\s-]{7,}[\d\u0660-\u0669]/g,'[\u0631\u0642\u0645]').replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g,'[\u0628\u0631\u064a\u062f]').trim().slice(0,200);
 const stripAl=w=>w.length>3&&w.startsWith('ال')?w.slice(2):w;
 const toksOf=t=>normAr(t).split(/[\s,،.!?؟:;()\-\/]+/).filter(Boolean);
 const matchSections=text=>{const toks=toksOf(text),padded=' '+toks.join(' ')+' ',set=new Set(toks.flatMap(x=>[x,stripAl(x)]));const hit=new Map();for(const r of all('SELECT c.id,c.name,k.word FROM skill_categories c JOIN section_keywords k ON k.category_id=c.id')){const w=r.word;if(!w||w.length<2)continue;const ok=w.includes(' ')?padded.includes(' '+w+' '):(set.has(w)||set.has(stripAl(w)));if(ok){const h=hit.get(r.id)||{id:r.id,name:r.name,score:0};h.score++;hit.set(r.id,h)}}return[...hit.values()].sort((a,b)=>b.score-a.score)};

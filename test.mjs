@@ -817,3 +817,45 @@ let code=null;again.on('exit',c=>{code=c});
 await new Promise(r=>setTimeout(r,1500));
 assert.equal(code,null,'الخادم يجب أن يبقى يعمل بعد إعادة الترحيل');again.kill();
 });
+
+test('مختبر الطلبات: يميّز عبارة بلا تخصص من عبارة بلا مساعد، ويجمع التكرار، ويحصر الوصول للمدير',async()=>{
+const cats=(await cl()('/skills')).j.categories;const cat=cats.find(c=>c.name==='النجارة والأثاث');
+const askc=cl();await askc('/register','POST',{name:'باحث مختبر',email:'askl1@t.sa',password:'12345678',terms:1,age:1,city:'جدة'});
+const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
+assert.equal((await askc('/assistant','POST',{message:'أبي زرنيخ بلورات كوكبية'})).j.noMatch,1,'بلا تخصص');
+await askc('/assistant','POST',{message:'أبي زرنيخ بلورات كوكبية'});
+await askc('/assistant','POST',{message:'أبي نجار مختلف في أبها'});
+const list=(await admin('/admin/failed-searches')).j;
+const none=list.find(x=>x.text.includes('زرنيخ بلورات'));
+assert.equal(none.reason,'no_category');assert.equal(none.n,2,'التكرار يُجمع');
+const np=list.find(x=>x.text.includes('نجار مختلف'));
+assert.equal(np.reason,'no_provider','تخصص مطابق بلا مساعد');assert.equal(np.category,'النجارة والأثاث');assert.equal(np.city,'أبها');
+assert.equal((await cl()('/admin/failed-searches')).s,401,'غير المدير لا يقرأ المختبر');
+});
+test('مختبر الطلبات: مساعد مناسب لا ينشئ سجلًا، وتنظيف الجوال والبريد',async()=>{
+const cats=(await cl()('/skills')).j.categories;const cat=cats.find(c=>c.name==='النجارة والأثاث');
+const askc=cl();await askc('/register','POST',{name:'باحث مختبر ٢',email:'askl2@t.sa',password:'12345678',terms:1,age:1,city:'جدة'});
+const hp=cl();await hp('/register','POST',{name:'نجار مختبر',email:'lab1@t.sa',password:'12345678',terms:1,age:1,city:'جدة',account_type:'helper',category_ids:[cat.id]});
+await hp('/profile','POST',{name:'نجار مختبر',phone:'0500007777'});await hp('/pledge','POST',{accept:true,name:'نجار مختبر'});
+const dbx=new DatabaseSync(DBF);dbx.prepare("UPDATE users SET email_verified=1 WHERE email='lab1@t.sa'").run();dbx.close();
+const cnt=()=>{const d=new DatabaseSync(DBF);const n=d.prepare("SELECT COUNT(*) n FROM failed_searches WHERE text LIKE '%باب مختبر%'").get().n;d.close();return n};
+const nb=cnt();
+const ok=(await askc('/assistant','POST',{message:'أبي نجار يصلح باب مختبر في جدة'})).j;
+assert.ok(ok.providers.length>0,'يجد المساعد المناسب');
+assert.equal(cnt(),nb,'لا سجل عند وجود مساعد');
+await askc('/assistant','POST',{message:'أبي زرنيخ 0501234567 و test@mail.com'});
+const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
+const scrub=(await admin('/admin/failed-searches')).j.find(x=>x.text.includes('زرنيخ'));
+assert.ok(scrub,'السجل موجود');assert.ok(!/\d{5}|@/.test(scrub.text),'لا أرقام ولا بريد: '+scrub.text);
+});
+test('مختبر الطلبات: إضافة كلمة بعد الموافقة تجعل المطابقة تعمل، بلا تكرار',async()=>{
+const cats=(await cl()('/skills')).j.categories;const cat=cats.find(c=>c.name==='النجارة والأثاث');
+const askc=cl();await askc('/register','POST',{name:'باحث مختبر ٣',email:'askl3@t.sa',password:'12345678',terms:1,age:1,city:'جدة'});
+const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
+const pre=(await askc('/assistant','POST',{message:'أبي زرنيخ بلورات كوكبية'})).j;assert.equal(pre.noMatch,1,'قبل الإضافة: '+JSON.stringify(pre));
+assert.equal((await admin(`/admin/sections/${cat.id}/keywords`,'POST',{keywords:'زرنيخ بلورات كوكبية'})).s,200);
+assert.equal((await askc('/assistant','POST',{message:'أبي زرنيخ بلورات كوكبية'})).j.category,'النجارة والأثاث','المطابقة تعمل بعد الإضافة');
+await admin(`/admin/sections/${cat.id}/keywords`,'POST',{keywords:'زرنيخ بلورات كوكبية'});
+const words=(await admin('/admin/categories')).j.find(c=>c.id===cat.id).words;
+assert.equal(words.filter(w=>w.startsWith('زرنيخ')).length,1,'لا تكرار للكلمة');
+});
