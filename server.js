@@ -77,7 +77,7 @@ for(const p of people){await sendMail(p.email,'طلب جديد يناسب خدم
 
 // ---- عنوان العميل: لا يُقرأ من الرأس إلا خلف وكيل موثوق (TRUST_PROXY=1) ----
 const TRUST_PROXY=process.env.TRUST_PROXY==='1';
-const clientIp=req=>{if(TRUST_PROXY){const x=String(req.headers['x-forwarded-for']||'').split(',').pop().trim();if(x)return x}return req.socket.remoteAddress||''};
+const clientIp=req=>{if(process.env.CF_PROXY==='1'&&req.headers['cf-connecting-ip']){const c=String(req.headers['cf-connecting-ip']).trim();if(c)return c}if(TRUST_PROXY){const x=String(req.headers['x-forwarded-for']||'').split(',').pop().trim();if(x)return x}return req.socket.remoteAddress||''};
 // ---- بريد عند وصول رسالة جديدة (مرة كل 15 دقيقة لكل محادثة) ----
 
 
@@ -102,6 +102,6 @@ if(!url.pathname.startsWith('/api')){res.setHeader('Content-Type','text/html;cha
 let raw='',bytes=0;const preTok=/sid=(\w+)/.exec(req.headers.cookie||'')?.[1];const preAdmin=url.pathname==='/api/admin/restore/preview'&&userOf(preTok)?.role==='admin';for await(const ch of req){bytes+=ch.length;if(bytes>(url.pathname==='/api/upload'?3e6:preAdmin?3e7:1e5))throw err(413,'الطلب كبير');raw+=ch}
 if(req.method!=='GET'&&req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)throw err(403,'مرفوض');
 const tok=/sid=(\w+)/.exec(req.headers.cookie||'')?.[1];
-for(const[m,re,f]of R){const x=m===req.method&&re.exec(url.pathname);if(x){const out=await f({u:userOf(tok),tok,b:raw?JSON.parse(raw):{},q:Object.fromEntries(url.searchParams),p:x.slice(1),res,ip:clientIp(req),ua:req.headers['user-agent']});if(out?.raw){res.setHeader('Content-Type',out.mime);res.setHeader('Cache-Control','no-store');return res.end(out.raw)}
+for(const[m,re,f]of R){const x=m===req.method&&re.exec(url.pathname);if(x){const out=await f({u:userOf(tok),tok,b:raw?JSON.parse(raw):{},q:Object.fromEntries(url.searchParams),p:x.slice(1),res,ip:clientIp(req),ua:req.headers['user-agent'],hdr:req.headers});if(out?.raw){res.setHeader('Content-Type',out.mime);res.setHeader('Cache-Control','no-store');return res.end(out.raw)}
 res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(out))}}
 throw err(404,'غير موجود')}catch(e){if(!e.s&&/UNIQUE constraint failed: users\.(national_id|phone)/.test(String(e.message)))Object.assign(e,{s:409,message:'هذه الهوية أو الجوال مسجّلة على حساب آخر'});const s=e.s||(e instanceof SyntaxError?400:500);if(s===500)console.error(e);res.statusCode=s;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({error:e.s?e.message:s===400?'بيانات غير صالحة':'خطأ في الخادم'}))}}).listen(PORT,()=>console.log('http://localhost:'+PORT));

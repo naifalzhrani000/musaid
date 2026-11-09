@@ -5,7 +5,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import {SKILL_SEED, ASSIST_CITIES, CANCEL_REASONS} from '../../data.js';
-import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, log, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hasOffer, hasThread, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, pairCheck, peerOk, send, stripAl, toksOf, hitOr429} from '../core.js';
+import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, log, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hasOffer, hasThread, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, pairCheck, peerOk, send, stripAl, toksOf, hitOr429, needsVat} from '../core.js';
 
 route('GET','/requests',c=>{const q=c.q,w=['r.hidden=0'],a=[];
 if(q.q){w.push("(r.title LIKE ? ESCAPE '\\' OR r.description LIKE ? ESCAPE '\\' OR r.city LIKE ? ESCAPE '\\')");const l=`%${likeEsc(q.q)}%`;a.push(l,l,l)}
@@ -32,7 +32,7 @@ if(u.account_type!=='helper')throw err(403,'التقدم للمهام متاح �
 if(r.user_id===u.id)throw err(400,'لا يمكنك التقدم لطلبك');if(!['published','negotiating'].includes(r.status))throw err(400,'الطلب لم يعد متاحًا');if(blocked(u.id,r.user_id))throw err(403,'لا يمكن التقدم لهذا الطلب');if(!get('SELECT 1 x FROM pledges WHERE user_id=? AND version=?',u.id,PV))throw err(403,'يجب تأكيد تعهد سداد العمولة أولًا');
 
 if(get("SELECT 1 x FROM commissions WHERE helper_id=? AND status IN ('due','rejected') AND created_at<=datetime('now',?)",u.id,`-${+(SET().commission_grace_days??3)} days`))throw err(403,'لديك عمولة مستحقة للمنصة؛ سدّدها لتتمكن من التقدم لمهام جديدة');
-const m=str(c.b.message,3,1000,'الرسالة'),p=num(c.b.price,'السعر');
+const m=str(c.b.message,3,1000,'الرسالة'),p=num(c.b.price,'السعر');if(needsVat(u))throw err(403,'المؤسسات والشركات تحتاج التسجيل الضريبي للتقديم على المهام');
 try{run('INSERT INTO offers(request_id,user_id,message,price) VALUES(?,?,?,?)',r.id,u.id,m,p)}catch{throw err(409,'تقدمت لهذا الطلب مسبقًا')}
 if(r.status==='published'){run("UPDATE requests SET status='negotiating' WHERE id=?",r.id);log(r.id,'negotiating',u.id)}
 notify(r.user_id,`${u.name} تقدّم لطلبك: ${r.title}`,'#/r/'+r.id);return{ok:1}});
@@ -88,7 +88,7 @@ if(!c.u)return{reply:'سجّل دخولك حتى أبحث لك عن المساع
 const hits=matchSections(t),city=ASSIST_CITIES.find(x=>t.includes(x))||null;
 if(!hits.length){run("INSERT INTO failed_searches(text,reason,city) VALUES(?,'no_category',?)",cleanSearch(t),city);return{reply:'لم أجد قسمًا مناسبًا لطلبك. جرّب وصف الخدمة بكلمات أخرى، أو اقترح قسمًا جديدًا إذا كانت خدمتك غير موجودة.',noMatch:1,providers:[],requests:[]}}
 const ids=hits.map(h=>h.id),ph=ids.map(()=>'?').join(','),names=hits.map(h=>h.name).join('، ');
-const providers=all(`SELECT u.id,u.name,u.city,(SELECT COUNT(*) FROM requests r WHERE r.helper_id=u.id AND r.status='completed') done,(SELECT ROUND(AVG(a.stars),1) FROM ratings a WHERE a.ratee_id=u.id AND a.hidden=0) avg,COUNT(DISTINCT us.category_id) matched FROM users u JOIN user_sections us ON us.user_id=u.id WHERE us.category_id IN (${ph}) AND u.active=1 AND u.flagged=0 AND (u.suspended_until IS NULL OR u.suspended_until<=datetime('now')) ${city?"AND u.city LIKE ? ESCAPE '\\'":''} GROUP BY u.id ORDER BY matched DESC,done DESC,avg DESC LIMIT 10`,...ids,...(city?[`%${likeEsc(city)}%`]:[]));
+const providers=all(`SELECT u.id,u.name,u.city,(SELECT COUNT(*) FROM requests r WHERE r.helper_id=u.id AND r.status='completed') done,(SELECT ROUND(AVG(a.stars),1) FROM ratings a WHERE a.ratee_id=u.id AND a.hidden=0) avg,COUNT(DISTINCT us.category_id) matched FROM users u JOIN user_sections us ON us.user_id=u.id WHERE us.category_id IN (${ph}) AND u.active=1 AND u.flagged=0 AND (u.vat_status IS NOT 'registered' OR u.vat_verified=1) AND (u.suspended_until IS NULL OR u.suspended_until<=datetime('now')) ${city?"AND u.city LIKE ? ESCAPE '\\'":''} GROUP BY u.id ORDER BY matched DESC,done DESC,avg DESC LIMIT 10`,...ids,...(city?[`%${likeEsc(city)}%`]:[]));
 if(!providers.length)run("INSERT INTO failed_searches(text,reason,city,category_id) VALUES(?,'no_provider',?,?)",cleanSearch(t),city,hits[0].id);
 const reply=providers.length?`وجدت ${providers.length} مساعدًا مسجلًا في: ${names}${city?' في '+city:''}.`:`لا يوجد مساعدون مسجلون في: ${names}${city?' في '+city:''} بعد.`+(city?'':' حدّد المدينة لنتائج أدق.');
 return{reply,category:hits[0].name,providers:providers.map(x=>({id:x.id,name:String(x.name).split(' ')[0],city:x.city,done:x.done,avg:x.avg})),requests:[]}});

@@ -10,6 +10,7 @@ import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, c
 route('POST','/register',c=>{hitOr429('reg|'+c.ip,+(process.env.REGISTER_PER_HOUR)||20);const b=c.b,name=str(b.name,2,60,'الاسم'),email=str(b.email,5,120,'البريد').toLowerCase(),city=str(b.city||'',0,60,'المدينة');
 if(!/^\S+@\S+\.\S+$/.test(email))throw err(400,'البريد غير صالح');str(b.password,8,100,'كلمة المرور');if(!/^[^\s@<>\"'`]+@[^\s@<>\"'`]+\.[^\s@<>\"'`]+$/.test(email))throw err(400,'البريد الإلكتروني غير صالح');if(!b.terms)throw err(400,'يجب قبول الشروط وسياسة الخصوصية');if(!b.age)throw err(400,'التسجيل متاح لمن عمره 18 سنة فأكثر');
 const acct=b.account_type==='helper'?'helper':'client',spec=b.skill_ids!==undefined?resolveSkills(b.skill_ids):null,secIds=spec?spec.catIds:cleanSections(b.category_ids);if(acct==='helper'&&!secIds.length)throw err(400,'اختر قسمًا واحدًا على الأقل لتقديم الخدمات');if(acct==='client'&&secIds.length)throw err(400,'الأقسام للمساعدين فقط');let id;try{id=Number(run('INSERT INTO users(name,email,pass,city,role,account_type,email_verified) VALUES(?,?,?,?,?,?,?)',name,email,hash(b.password),city,'user',acct,VERIFY_REQUIRED?0:1).lastInsertRowid)}catch{throw err(409,'البريد مسجّل مسبقًا')}
+if(acct==='helper'){const ht=['individual','establishment','company'].includes(b.helper_type)?b.helper_type:'individual';run('UPDATE users SET helper_type=? WHERE id=?',ht,id)}
 run("UPDATE users SET age_ok=1,terms_version=?,terms_at=datetime('now') WHERE id=?",TERMS_VERSION,id);if(spec)saveSpecialties(id,spec.skillIds,spec.catIds);else saveSections(id,secIds);if(VERIFY_REQUIRED)issueVerify(id,email).then(ok=>{if(!ok)console.error('verify: تعذّر إرسال رابط التفعيل عند التسجيل، المستخدم',id)}).catch(e=>console.error('verify:',e.message));startSession(c.res,id);return{ok:1}});
 route('POST','/login',c=>{const email=String(c.b.email||'').toLowerCase(),k=c.ip+'|'+email;let f=get('SELECT n,t FROM login_attempts WHERE k=?',k)||{n:0,t:Date.now()};if(Date.now()-f.t>9e5)f={n:0,t:Date.now()};
 if(f.n>=8)throw err(429,'محاولات كثيرة، حاول بعد قليل');const u=get('SELECT * FROM users WHERE email=?',email);
@@ -20,6 +21,8 @@ route('GET','/me',c=>c.u?{user:c.u,unread:get('SELECT COUNT(*) n FROM notificati
 route('POST','/profile',c=>{const u=need(c),ph=String(c.b.phone||'').replace(/[\s-]/g,'');
 let phone=null;if(ph){const m=/^(?:\+?966|0)(5\d{8})$/.exec(ph);if(!m)throw err(400,'رقم الجوال غير صالح (مثال: 05XXXXXXXX)');phone='0'+m[1]}
 const ad=str(c.b.address||'',0,200,'العنوان');
+const vs=['','registered','not_registered'].includes(c.b.vat_status)?c.b.vat_status:null;let vn=null;if(vs==='registered'){vn=String(c.b.vat_number||'').replace(/\s/g,'');if(!/^3\d{14}$/.test(vn))throw err(400,'الرقم الضريبي يتكون من 15 رقمًا ويبدأ بـ 3');}else if(vs==='not_registered'){vn='';}
+if(vs!==null&&u.account_type==='helper'){run('UPDATE users SET vat_status=?,vat_number=?,vat_verified=0 WHERE id=?',vs,vn,u.id)}
 run('UPDATE users SET name=?,city=COALESCE(?,city),phone=COALESCE(?,phone),address=COALESCE(?,address) WHERE id=?',str(c.b.name,2,60,'الاسم'),c.b.city===undefined?null:str(c.b.city,0,60,'المدينة'),phone,ad||null,u.id);return{ok:1}});
 route('GET','/pledge',c=>{const u=need(c),s=SET();return{ready:!!(s.org_name&&s.org_cr&&s.dispute_clause),accepted:!!get('SELECT 1 x FROM pledges WHERE user_id=? AND version=?',u.id,PV),org:s.org_name||'',org_cr:s.org_cr||'',body:pledgeBody(s)}});
 route('POST','/pledge',c=>{const u=need(c),s=SET();if(!(s.org_name&&s.org_cr&&s.dispute_clause))throw err(400,'التعهد غير مفعّل بعد، تواصل مع الإدارة');if(!c.b.accept)throw err(400,'يجب تحديد الموافقة');
@@ -91,3 +94,5 @@ if(!/^[^\s@<>"'`]+@[^\s@<>"'`]+\.[^\s@<>"'`]+$/.test(email))throw err(400,'ال�
 run('INSERT INTO contact_messages(name,email,body) VALUES(?,?,?)',name,email,body);
 const s=SET();if(s.support_email)sendMail(s.support_email,'رسالة جديدة من نموذج التواصل - المساعد',`<div dir="rtl"><p>من: ${hx(name)} (${hx(email)})</p><p>${hx(body)}</p></div>`).catch(()=>{});
 return{ok:1}});
+
+route('POST','/me/helper-type-request',c=>{const u=need(c);if(u.account_type!=='helper')throw err(400,'للمساعدين فقط');const ht=c.b.helper_type;if(!['individual','establishment','company'].includes(ht))throw err(400,'نوع غير صالح');if(ht===u.helper_type)throw err(400,'هذا هو نوعك الحالي');run('UPDATE users SET helper_type_request=? WHERE id=?',ht,u.id);return{ok:1,pending:ht}});

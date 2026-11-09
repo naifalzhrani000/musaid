@@ -66,6 +66,31 @@ seedSections();
 
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name='perms'").get())db.exec("ALTER TABLE users ADD COLUMN perms TEXT NOT NULL DEFAULT ''");
 for(const [col,def] of [['reason',"TEXT NOT NULL DEFAULT 'no_category'"],['city','TEXT'],['category_id','INT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('failed_searches') WHERE name=?").get(col))db.exec(`ALTER TABLE failed_searches ADD COLUMN ${col} ${def}`)}
+for(const [col,def] of [['completion_requested_at','TEXT'],['completion_by','INT'],['completed_at','TEXT'],['disputed_at','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
+for(const [col,def] of [['dispute_decision','TEXT'],['dispute_note','TEXT'],['dispute_by','INT'],['dispute_decided_at','TEXT'],['dispute_review_by','INT'],['dispute_final','INT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
+for(const [col,def] of [['vat_status',"TEXT NOT NULL DEFAULT ''"],['vat_number','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
+for(const [col,def] of [['paid_at','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
+for(const [col,def] of [['helper_type',"TEXT NOT NULL DEFAULT ''"],['vat_verified','INT NOT NULL DEFAULT 0'],['helper_type_request','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
+for(const [col,def] of [['vat_amount','REAL'],['total_amount','REAL'],['helper_net','REAL'],['payment_ref','TEXT'],['paid_via','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
+const needsVat=u=>!!u&&u.account_type==='helper'&&u.vat_status==='registered'&&u.vat_verified!==1;
+const helperOf=a=>{const h=get("SELECT id FROM users WHERE id=? AND account_type='helper'",a.a_id);return h?a.a_id:a.b_id};
+db.exec("CREATE TABLE IF NOT EXISTS invoices(id INTEGER PRIMARY KEY,kind TEXT NOT NULL,ref TEXT NOT NULL UNIQUE,seq INTEGER NOT NULL,agreement_id INT,issuer_name TEXT,issuer_vat TEXT,buyer_name TEXT,buyer_vat TEXT,description TEXT,subtotal REAL,vat_rate REAL,vat_amount REAL,total REAL,issued_at TEXT,qr TEXT,status TEXT NOT NULL DEFAULT 'pending_provider',provider_ref TEXT)");
+const tlv=(tag,val)=>{const b=Buffer.from(String(val),'utf8');return Buffer.concat([Buffer.from([tag,b.length]),b])};
+const qrOf=(seller,vat,ts,total,vatAmt)=>Buffer.concat([tlv(1,seller),tlv(2,vat),tlv(3,ts),tlv(4,total.toFixed(2)),tlv(5,vatAmt.toFixed(2))]).toString('base64');
+// one document per commission: a tax invoice when the platform is VAT-registered, otherwise a non-tax receipt
+const issueCommissionDoc=(agreementId)=>{const ref='C-'+agreementId;if(get('SELECT 1 x FROM invoices WHERE ref=?',ref))return;const com=get('SELECT amount,helper_id FROM agreement_commissions WHERE agreement_id=?',agreementId);if(!com||!(com.amount>0))return;
+const reg=SET().platform_vat_registered==='1',pvat=String(SET().platform_vat_number||''),name=SET().org_name||'مؤسسة المساعد';const h=get('SELECT name,vat_status,vat_number,vat_verified FROM users WHERE id=?',com.helper_id)||{};
+const rate=reg?0.15:0,vat=Math.round(com.amount*rate*100)/100,total=Math.round((com.amount+vat)*100)/100;const kind=!reg?'receipt':(h.vat_status==='registered'&&h.vat_verified===1?'tax_invoice':'simplified_tax_invoice');
+const seq=get('SELECT COALESCE(MAX(seq),0)+1 n FROM invoices').n;const ts=new Date().toISOString();
+const qr=reg?qrOf(name,pvat,ts,total,vat):null;
+run('INSERT INTO invoices(kind,ref,seq,agreement_id,issuer_name,issuer_vat,buyer_name,buyer_vat,description,subtotal,vat_rate,vat_amount,total,issued_at,qr,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',kind,ref,seq,agreementId,name,reg?pvat:'',h.name||'',h.vat_status==='registered'?String(h.vat_number||''):'','عمولة وساطة إلكترونية بنسبة 10% عن الاتفاق رقم '+agreementId,com.amount,rate,vat,total,ts,qr,'pending_provider');};
+// the link to the e-invoicing provider: nothing is sent until a provider contract is set up
+const issueSaleDoc=(agreementId)=>{const ref='S-'+agreementId;if(get('SELECT 1 x FROM invoices WHERE ref=?',ref))return;const a=get('SELECT amount FROM agreements WHERE id=?',agreementId);if(!a||!(a.amount>0))return;const reg=SET().platform_vat_registered==='1',pvat=String(SET().platform_vat_number||''),name=SET().org_name||'مؤسسة المساعد';const rate=reg?0.15:0;const vat=Math.round(a.amount*rate*100)/100,total=Math.round((a.amount+vat)*100)/100;const seq=get('SELECT COALESCE(MAX(seq),0)+1 n FROM invoices').n;const ts=new Date().toISOString();const qr=reg?qrOf(name,pvat,ts,total,vat):null;run('INSERT INTO invoices(kind,ref,seq,agreement_id,issuer_name,issuer_vat,buyer_name,buyer_vat,description,subtotal,vat_rate,vat_amount,total,issued_at,qr,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)','tax_invoice',ref,seq,agreementId,name,reg?pvat:'','العميل','','خدمة عبر منصة المساعد رقم '+agreementId,a.amount,rate,vat,total,ts,qr,'pending_provider')};
+const submitInvoice=async(inv)=>{if(!process.env.INVOICE_PROVIDER_URL)return{status:'pending_provider'};return{status:'not_implemented'}};
+
+const commissionPctFor=()=>Number(SET().commission_percent)||10;
+const ensureCommission=(id)=>{const a=get('SELECT * FROM agreements WHERE id=?',id);if(!a||a.status!=='completed'||!a.paid_at)return;const freeMonth=false;const pct=commissionPctFor(helperOf(a));run('INSERT OR IGNORE INTO agreement_commissions(agreement_id,helper_id,amount) VALUES(?,?,?)',id,helperOf(a),freeMonth?0:Math.round(a.amount*pct)/100);issueSaleDoc(id)};
+const clientOf=a=>helperOf(a)===a.a_id?a.b_id:a.a_id;
 const CATALOG_VERSION='3';
 const applyCatalog=()=>{const v=get("SELECT value FROM settings WHERE key='catalog_version'");if(v&&v.value===CATALOG_VERSION)return;
 db.exec("DELETE FROM request_categories;DELETE FROM section_keywords;DELETE FROM user_sections;DELETE FROM user_skills;DELETE FROM request_skills;DELETE FROM skill_keywords;DELETE FROM skills;DELETE FROM skill_categories;");
@@ -73,7 +98,7 @@ CATALOG.forEach((c,i)=>{const id=Number(run('INSERT INTO skill_categories(name,s
 run("INSERT OR REPLACE INTO settings(key,value) VALUES('catalog_version',?)",CATALOG_VERSION)};
 applyCatalog();
 db.exec("UPDATE users SET account_type='helper' WHERE account_type='client' AND id IN (SELECT user_id FROM user_sections)");
-db.exec("UPDATE users SET iban=NULL,address=NULL,national_id=NULL");
+db.exec("UPDATE users SET iban=NULL,national_id=NULL");
 const err=(s,m)=>Object.assign(new Error(m),{s});
 const tx=f=>{db.exec('BEGIN IMMEDIATE');try{const r=f();db.exec('COMMIT');return r}catch(e){db.exec('ROLLBACK');throw e}};
 const hash=p=>{const s=crypto.randomBytes(16).toString('hex');return s+':'+crypto.scryptSync(p,s,64).toString('hex')};
@@ -85,7 +110,7 @@ export const hooks={onPublished:()=>{}};
 const log=(id,st,by)=>{run('INSERT INTO status_log(request_id,status,by_id) VALUES(?,?,?)',id,st,by);if(st==='published')hooks.onPublished(id)};
 const audit=(a,act,d)=>run('INSERT INTO audit_log(admin_id,action,detail) VALUES(?,?,?)',a,act,d);
 const startSession=(res,uid)=>{const t=crypto.randomBytes(32).toString('hex');run('INSERT INTO sessions VALUES(?,?,?)',t,uid,Date.now()+6048e5);res.setHeader('Set-Cookie',`sid=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${((process.env.APP_URL||'').startsWith('https')||res.req.headers['x-forwarded-proto']==='https')?'; Secure':''}`)};
-const userOf=t=>t?get('SELECT u.id,u.name,u.email,u.city,u.role,u.active,u.account_type,u.phone,u.address,u.email_verified,u.notify_email,u.perms FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.exp>? AND u.active=1',t,Date.now()):undefined;
+const userOf=t=>t?get('SELECT u.id,u.name,u.email,u.city,u.role,u.active,u.account_type,u.phone,u.address,u.email_verified,u.notify_email,u.perms,u.vat_status,u.vat_number,u.helper_type,u.vat_verified FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.exp>? AND u.active=1',t,Date.now()):undefined;
 const need=c=>{if(!c.u)throw err(401,'سجّل الدخول أولًا');return c.u};
 const adm=c=>{if(need(c).role!=='admin')throw err(403,'غير مصرح');return c.u};
 const can=(c,area)=>{const u=need(c);if(u.role==='admin')return u;if(u.role==='staff'&&(u.perms||'').split(',').includes(area))return u;throw err(403,'لا تملك صلاحية لهذا القسم')};
@@ -99,12 +124,12 @@ const restricted=uid=>{const x=get("SELECT flagged,(suspended_until>datetime('no
 if(x?.flagged)throw err(403,'حسابك قيد مراجعة الإدارة بسبب تكرار الإلغاء بعد الاختيار');
 if(x?.on_hold)throw err(403,'حسابك موقوف مؤقتًا عن النشر والتقدم بسبب تكرار الإلغاء بعد الاختيار');};
 const own=(u,id)=>{if(!id)return null;if(!get('SELECT 1 x FROM attachments WHERE id=? AND user_id=?',+id,u.id))throw err(400,'المرفق غير صالح');return +id};
-const PV=2;
+const PV=3;
 const pledgeBody=s=>[
 `1. أقرّ بأنني اطلعت على شروط المنصة وسياسة الخصوصية، وأن هذا التعهد ملزم لي نظامًا.`,
 `2. ألتزم بسداد عمولة للمنصة قدرها ${s.commission_percent||0}% من السعر النهائي المتفق عليه في كل مهمة أو اتفاق يتم عبر المنصة (طلب أو محادثة)، سواء تم الدفع بالتحويل المباشر أو بأي وسيلة أخرى.`,
-`3. تستحق العمولة بمجرد إتمام المهمة أو اعتماد الاتفاق في المنصة، وأسددها خلال ${s.commission_grace_days??3} أيام بالتحويل إلى حساب المنصة المعلن فيها، وأرفع صورة الإثبات.`,
-`4. ألتزم بعدم التحايل على المنصة، فلا أتفق مع طالب المساعدة على إتمام المهمة أو الدفع خارجها لتفادي العمولة. وإذا ثبت ذلك استحقت المنصة العمولة كاملة، مع التعويض الذي يقدّره المحكم أو الجهة المختصة.`,
+`3. تستحق العمولة عند تأكيد العميل إنجاز المهمة في المنصة، ولا تستحق عند اعتماد الاتفاق وحده، ولا عن المهمة الملغاة أو المعترض عليها أو الجزء غير المنفَّذ. ولا تستحق عن المهام المنجزة خلال الثلاثين يومًا الأولى من تفعيل حسابي، وأسددها خلال ${s.commission_grace_days??3} أيام بالتحويل إلى حساب المنصة المعلن فيها، وأرفع صورة الإثبات.`,
+`4. ألتزم بعدم التحايل على المنصة، فلا أتفق مع طالب المساعدة على إتمام المهمة أو الدفع خارجها لتفادي العمولة. وإذا ثبت ذلك استحقت المنصة العمولة كاملة، مع حقها في المطالبة بالتعويض عما لحقها من ضرر أمام الجهة المختصة.`,
 `5. عند التأخر عن السداد يحق للمنصة: (أ) إيقاف حسابي أو منعي من التقدم لمهام جديدة، (ب) مطالبتي بالمبلغ المستحق، (ج) اللجوء إلى الجهات القضائية والتنفيذية والتحكيمية المختصة في المملكة لاستيفاء حقها.`,
 `6. أتحمل ما تتكبده المنصة في سبيل التحصيل من رسوم ومصاريف تقاضٍ أو تحكيم وتنفيذ وأتعاب محاماة، وفق ما يقرره المحكم أو الجهة المختصة.`,
 `7. تعد سجلات المنصة حجة عليّ، وهي: المحادثات، وصور التحويلات، والسعر المعتمد، وحالة المهمة، وسجلات الدخول والموافقة، ما لم أثبت خلاف ذلك.`,
@@ -151,4 +176,4 @@ const base=(process.env.APP_URL||'').replace(/\/$/,'');sendMail(u.email,'رسا�
 
 const RATE=new Map();
 const hitOr429=(key,limit,windowMs=3600e3)=>{if(RATE.size>50000)RATE.clear();const now=Date.now(),r=RATE.get(key)||{n:0,t:now};if(now-r.t>windowMs){r.n=0;r.t=now}r.n++;RATE.set(key,r);if(r.n>limit)throw err(429,'محاولات كثيرة، حاول بعد قليل')};
-export {DB_PATH, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, log, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hasOffer, hasThread, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, pairCheck, peerOk, send, stripAl, toksOf, hitOr429, can};
+export {DB_PATH, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, log, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hasOffer, hasThread, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, pairCheck, peerOk, send, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, issueCommissionDoc, submitInvoice, commissionPctFor, issueSaleDoc};

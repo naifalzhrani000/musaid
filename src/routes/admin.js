@@ -4,7 +4,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, log, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can} from '../core.js';
+import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, log, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission} from '../core.js';
 route('GET','/admin/payments',c=>{can(c,'finance');return all("SELECT p.*,r.title,r.agreed_price,a.name payer,b.name payee FROM payments p JOIN requests r ON r.id=p.request_id JOIN users a ON a.id=p.payer_id JOIN users b ON b.id=p.payee_id ORDER BY (p.status='pending') DESC,p.id DESC LIMIT 100")});
 route('POST','/admin/payments/(\\d+)/review',c=>{const a=can(c,'finance'),p=get('SELECT * FROM payments WHERE id=?',c.p[0]);if(!p||p.status==='verified')throw err(400,'لا يمكن مراجعة هذه الدفعة');const d=c.b.decision;if(!['verified','rejected'].includes(d))throw err(400,'قرار غير صالح');
 const note=str(c.b.note||'',d==='rejected'?3:0,300,'الملاحظة');run('UPDATE payments SET status=?,note=?,reviewed_by=?,reviewed_at=CURRENT_TIMESTAMP WHERE id=?',d,note,a.id,p.id);audit(a.id,'payment_'+d,`${p.id}:${p.amount}`);
@@ -103,3 +103,47 @@ route('GET','/admin/staff',c=>{adm(c);return all("SELECT id,name,email,perms FRO
 route('POST','/admin/staff',c=>{const a=adm(c),email=String(c.b.email||'').trim().toLowerCase();const t=email?get('SELECT id,role FROM users WHERE email=? AND active=1',email):null;if(!t)throw err(404,'لا يوجد حساب فعّال بهذا البريد');if(t.id===a.id)throw err(400,'لا يمكنك تغيير صلاحياتك');if(t.role==='admin')throw err(400,'هذا الحساب مدير بالفعل');
 const allowed=['finance','support'];const perms=[...new Set((Array.isArray(c.b.perms)?c.b.perms:[]).filter(p=>allowed.includes(p)))];
 run("UPDATE users SET role=?,perms=? WHERE id=?",perms.length?'staff':'user',perms.join(','),t.id);audit(a.id,'staff_perms',`${t.id}:${perms.join(',')||'none'}`);return{ok:1,perms}});
+
+const wdSince=ts=>{if(!ts)return 0;let d=new Date(String(ts).replace(' ','T')+'Z'),n=0;const now=new Date();for(let x=new Date(d);x<now;x.setUTCDate(x.getUTCDate()+1)){const w=x.getUTCDay();if(w!==5&&w!==6)n++}return n};
+route('GET','/admin/disputes',c=>{can(c,'support');const rows=all("SELECT g.id,g.amount,g.description,g.status,g.dispute_decision,g.dispute_note,g.dispute_by,g.dispute_review_by,g.dispute_final,g.disputed_at,g.dispute_decided_at,g.a_id,g.b_id FROM agreements g WHERE g.status='disputed' ORDER BY g.disputed_at");return rows.map(r=>{const open=!r.dispute_decision;const wd=open?wdSince(r.disputed_at):wdSince(r.dispute_decided_at);const limit=open?6:3;return{...r,wd_elapsed:wd,deadline_working_days:limit,overdue:wd>limit}})});
+route('POST','/admin/disputes/(\\d+)/decide',c=>tx(()=>{const u=can(c,'support'),id=+c.p[0];const g=get('SELECT * FROM agreements WHERE id=?',id);if(!g||g.status!=='disputed')throw err(404,'النزاع غير موجود أو مغلق');if(g.a_id===u.id||g.b_id===u.id)throw err(403,'لا يفصل في النزاع أحد طرفيه');if(g.dispute_decision)throw err(400,'سبق اتخاذ قرار أولي');
+const d=c.b.decision;if(!['completed','not_proven','partial'].includes(d))throw err(400,'قرار غير صالح');const note=str(c.b.note,3,300,'التعليل');
+run('UPDATE agreements SET dispute_decision=?,dispute_note=?,dispute_by=?,dispute_decided_at=datetime(\'now\') WHERE id=?',d,note,u.id,id);audit(u.id,'dispute_decide',id+':'+d);return{ok:1}}));
+route('POST','/admin/disputes/(\\d+)/review',c=>tx(()=>{const u=can(c,'support'),id=+c.p[0];const g=get('SELECT * FROM agreements WHERE id=?',id);if(!g||g.status!=='disputed'||!g.dispute_decision)throw err(404,'لا يوجد قرار أولي للمراجعة');if(g.dispute_by===u.id)throw err(403,'المراجعة من مسؤول آخر غير من اتخذ القرار الأول');if(g.a_id===u.id||g.b_id===u.id)throw err(403,'لا يراجع أحد طرفي الاتفاق');
+const d=c.b.decision;if(!['completed','not_proven','partial'].includes(d))throw err(400,'قرار غير صالح');const final=d;
+run('UPDATE agreements SET dispute_review_by=?,dispute_final=?,dispute_decision=?,status=? WHERE id=?',u.id,final==='completed'?1:0,final,final==='completed'?'completed':'closed_disputed',id);
+if(final==='completed'){ensureCommission(id)}
+if(final==='completed'){run("UPDATE agreement_commissions SET status='due' WHERE agreement_id=? AND status='on_hold' AND amount>0",id)}else{run("UPDATE agreement_commissions SET status='void' WHERE agreement_id=? AND status IN ('due','on_hold')",id)}
+audit(u.id,'dispute_final',id+':'+final);return{ok:1,status:final==='completed'?'completed':'closed_disputed'}}));
+
+route('GET','/admin/supply-report',c=>{adm(c);const thr=Number(SET().vat_threshold)||0;
+const months=[];const now=new Date();for(let i=11;i>=0;i--){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1));months.push(d.toISOString().slice(0,7))}
+const rows=months.map(m=>{
+const comm=get("SELECT COALESCE(SUM(c.amount),0) s FROM agreement_commissions c JOIN agreements g ON g.id=c.agreement_id WHERE c.amount>0 AND strftime('%Y-%m',g.completed_at)=?",m).s;
+const value=get("SELECT COALESCE(SUM(g.amount),0) s FROM agreements g WHERE g.status='completed' AND strftime('%Y-%m',g.completed_at)=?",m).s;
+const freeCount=get("SELECT COUNT(*) n FROM agreement_commissions c JOIN agreements g ON g.id=c.agreement_id WHERE c.amount=0 AND strftime('%Y-%m',g.completed_at)=?",m).n;
+const cancelled=get("SELECT COUNT(*) n FROM agreements WHERE status='cancelled' AND strftime('%Y-%m',updated_at)=?",m).n;
+const disputes=get("SELECT COUNT(*) n FROM agreements WHERE disputed_at IS NOT NULL AND strftime('%Y-%m',disputed_at)=?",m).n;
+return{month:m,platform_commission:Math.round(comm*100)/100,task_value:value,free_month_completions:freeCount,cancelled,disputes}});
+const total=rows.reduce((s,r)=>s+r.task_value,0);const last3=rows.slice(-3).reduce((s,r)=>s+r.task_value,0)/3;const projected=Math.round(last3*12);
+const status=thr<=0?'not_set':total>=thr?'exceeded':(total>=thr*0.8?'near':'below');
+const expectedStatus=thr<=0?'not_set':(total+projected>=thr||projected>=thr?'expected_to_exceed':'below');
+return{threshold:thr,trailing_12_months_value:total,projected_next_12_months_value:projected,status,expected_status:expectedStatus,warn_at:Math.round(thr*0.8),rows,note:'تقدير داخلي للمتابعة. الحد الإلزامي يحدده المحاسب، وطلب التسجيل يقدَّم خلال 30 يومًا من نهاية الشهر المعني عند التجاوز أو توقعه.'}});
+route('POST','/admin/supply-threshold',c=>{const u=adm(c);const v=Number(c.b.value);if(!Number.isFinite(v)||v<0)throw err(400,'قيمة غير صالحة');run("INSERT INTO settings(key,value) VALUES('vat_threshold',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(v));audit(u.id,'vat_threshold',String(v));return{ok:1}});
+
+route('POST','/admin/commission-reminders',c=>{const u=adm(c);const rows=all("SELECT c.helper_id,c.amount,g.id aid FROM agreement_commissions c JOIN agreements g ON g.id=c.agreement_id WHERE c.status='due' AND c.amount>0");rows.forEach(r=>run('INSERT INTO direct_messages(from_id,to_id,body) VALUES(?,?,?)',u.id,r.helper_id,'تذكير: عليك عمولة مستحقة قدرها '+r.amount+' ريال على الاتفاق رقم '+r.aid+'، يرجى سدادها للمنصة وفق الشروط.'));audit(u.id,'commission_reminders',String(rows.length));return{ok:1,sent:rows.length}});
+
+route('GET','/admin/verifications',c=>{adm(c);return{vat:all("SELECT id,name,email,helper_type,vat_number FROM users WHERE account_type='helper' AND helper_type IN ('establishment','company') AND vat_status='registered' AND vat_verified=0"),type_requests:all("SELECT id,name,email,helper_type,helper_type_request FROM users WHERE helper_type_request IS NOT NULL")}});
+route('POST','/admin/vat/(\\d+)/verify',c=>{const a=adm(c),id=+c.p[0];const u=get('SELECT id FROM users WHERE id=?',id);if(!u)throw err(404,'المستخدم غير موجود');const ok=c.b.decision==='approve';
+if(ok)run('UPDATE users SET vat_verified=1 WHERE id=?',id);else run("UPDATE users SET vat_status='not_registered',vat_number='',vat_verified=0 WHERE id=?",id);
+run('INSERT INTO direct_messages(from_id,to_id,body) VALUES(?,?,?)',a.id,id,ok?'تم التحقق من رقمك الضريبي، ويمكنك الآن استقبال الطلبات.':'لم يتم التحقق من الرقم الضريبي، يرجى مراجعة البيانات وإعادة الإرسال.');audit(a.id,'vat_verify',id+':'+(ok?'approve':'reject'));return{ok:1}});
+route('POST','/admin/helper-type/(\\d+)/decide',c=>{const a=adm(c),id=+c.p[0];const u=get('SELECT id,helper_type_request FROM users WHERE id=?',id);if(!u||!u.helper_type_request)throw err(404,'لا يوجد طلب تغيير');
+if(c.b.decision==='approve'){run("UPDATE users SET helper_type=?,helper_type_request=NULL,vat_verified=0 WHERE id=?",u.helper_type_request,id)}else{run('UPDATE users SET helper_type_request=NULL WHERE id=?',id)}
+run('INSERT INTO direct_messages(from_id,to_id,body) VALUES(?,?,?)',a.id,id,c.b.decision==='approve'?'تمت الموافقة على تغيير نوع حسابك.':'لم تتم الموافقة على تغيير نوع حسابك.');audit(a.id,'helper_type_decide',id+':'+c.b.decision);return{ok:1}});
+
+route('GET','/admin/invoices',c=>{adm(c);return all('SELECT id,kind,seq,ref,buyer_name,buyer_vat,subtotal,vat_rate,vat_amount,total,issued_at,qr,status FROM invoices ORDER BY id DESC LIMIT 100')});
+route('POST','/admin/invoicing',c=>{const a=adm(c);const reg=!!c.b.platform_vat_registered;const vat=String(c.b.platform_vat_number||'').replace(/\s/g,'');
+if(reg&&!/^3\d{14}$/.test(vat))throw err(400,'الرقم الضريبي للمنصة يتكون من 15 رقمًا ويبدأ بـ 3');
+run("INSERT INTO settings(key,value) VALUES('platform_vat_registered',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",reg?'1':'0');
+run("INSERT INTO settings(key,value) VALUES('platform_vat_number',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",reg?vat:'');
+audit(a.id,'invoicing_config',reg?'registered':'not_registered');return{ok:1}});
