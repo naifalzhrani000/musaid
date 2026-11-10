@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: almusaed
+    runtime: node
+    plan: starter
+    buildCommand: "true"
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - {key: NODE_VERSION, value: "22.13.0"}
+      - {key: DB_FILE, value: /var/data/data.db}
+      - {key: BACKUP_DIR, value: /var/data/backups}
+      - {key: TRUST_PROXY, value: "1"}
+      - {key: APP_URL, sync: false}
+      - {key: ADMIN_EMAIL, sync: false}
+      - {key: ADMIN_SETUP_TOKEN, sync: false}
+      - {key: RESEND_API_KEY, sync: false}
+      - {key: MAIL_FROM, sync: false}
+      - {key: HALA_PAYMENT_URL, sync: false}
+      - {key: HALA_WEBHOOK_SECRET, sync: false}

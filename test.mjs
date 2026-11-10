@@ -866,7 +866,7 @@ const words=(await admin('/admin/categories')).j.find(c=>c.id===cat.id).words;
 assert.equal(words.filter(w=>w.startsWith('زرنيخ')).length,1,'لا تكرار للكلمة');
 });
 
-test('الاستحقاق: العمولة بعد التأكيد فقط، والشهر المجاني، والاعتراض يمنعها، وصلاحيات الطرفين',async()=>{
+test('الاستحقاق: العمولة بعد التأكيد فقط، والاعتراض يمنعها، وصلاحيات الطرفين',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='النجارة والأثاث').id;
 const o=cl();await o('/register','POST',{name:'عميل استحقاق',email:'es1@t.sa',password:'12345678',terms:1,age:1,city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل استحقاق',phone:'0500005001'}); await vfy(o);
@@ -1050,5 +1050,33 @@ const det=(await o(`/agreements/${aid}`)).j;
 assert.equal(det.total_amount,1150,'العميل يدفع الخدمة مع الضريبة');assert.equal(det.helper_net,900,'صافي المساعد بعد 10%');
 assert.equal((await o(`/agreements/${aid}/record-payment`,'POST')).s,403,'لا سداد يدوي من العميل');
 assert.equal((await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agreement_id:aid,amount:1150})})).status,401,'الإشعار بلا سر مرفوض');
+const wh=b=>fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body:JSON.stringify(b)}).then(r=>r.status);
+assert.equal(await wh({agreement_id:aid}),400,'إشعار بلا مبلغ مرفوض');assert.equal(await wh({agreement_id:aid,amount:'abc'}),400,'مبلغ غير رقمي مرفوض');assert.equal(await wh({agreement_id:aid,amount:100}),400,'مبلغ ناقص مرفوض');
 const pl=(await o(`/agreements/${aid}/payment`)).j;assert.equal(pl.amount,1150);assert.equal(pl.status,'not_configured','رابط الدفع ينتظر ربط هلا');
+});
+
+test('الإنتاج: صحة الخادم والمانيفست وإشعار هلا بلا مبلغ مرفوض',async()=>{
+assert.equal((await fetch(B+'/healthz')).status,200);
+const m=await fetch(B+'/manifest.webmanifest');assert.equal(m.status,200);assert.equal((await m.json()).short_name,'المساعد');
+assert.equal((await fetch(B+'/icon-192.png')).status,200);
+const r=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body:JSON.stringify({agreement_id:1})});
+assert.ok([400,404].includes(r.status),'إشعار بلا مبلغ لا يُقبل: '+r.status)});
+
+test('الدفع: لا يُسجَّل سداد على اتفاق غير قائم، ولا يُلغى اتفاق مدفوع',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='النجارة والأثاث').id;
+const o=cl();await o('/register','POST',{name:'عميل دفع',email:'pay1@t.sa',password:'12345678',terms:1,age:1,city:'جدة'});
+await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل دفع',phone:'0500007001'}); await vfy(o);
+const h=cl();await h('/register','POST',{name:'مساعد دفع',email:'pay2@t.sa',password:'12345678',terms:1,age:1,city:'جدة',account_type:'helper',category_ids:[cat]});
+await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد دفع',phone:'0500007002'}); await vfy(h);
+const hid=(await h('/me')).j.user.id;
+const pending=(await o(`/direct/${hid}/agreements`,'POST',{amount:120,description:'اتفاق معلّق للدفع'})).j.id;
+const hook=async(id)=>{const r=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body:JSON.stringify({agreement_id:id,amount:99999,reference:'R'+id})});return{s:r.status,j:await r.json()}};
+const r1=await hook(pending);
+assert.equal(r1.j.refund_required,1,'سداد على اتفاق معلّق يُرفع للإدارة للاسترداد');
+const st=(await o(`/agreements/${pending}`)).j;
+assert.equal(st.paid_at,null,'لا يُسجَّل السداد على اتفاق غير قائم');
+const paidOne=(await o(`/direct/${hid}/agreements`,'POST',{amount:200,description:'اتفاق مدفوع'})).j.id;
+await h(`/agreements/${paidOne}/approve`,'POST');
+assert.equal((await hook(paidOne)).s,200,'سداد اتفاق معتمد يُقبل');
+assert.equal((await o(`/agreements/${paidOne}/cancel`,'POST',{reason:'تغيير الرأي'})).s,400,'لا إلغاء لاتفاق مدفوع');
 });

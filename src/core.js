@@ -1,4 +1,4 @@
-import {SKILL_SEED, ASSIST_CITIES, CANCEL_REASONS, CATALOG} from '../data.js';
+import {SKILL_SEED, ASSIST_CITIES, CANCEL_REASONS, CATALOG, EXTRA_KEYWORDS} from '../data.js';
 import {DatabaseSync} from 'node:sqlite';
 import os from 'node:os';
 import path from 'node:path';
@@ -89,7 +89,7 @@ const issueSaleDoc=(agreementId)=>{const ref='S-'+agreementId;if(get('SELECT 1 x
 const submitInvoice=async(inv)=>{if(!process.env.INVOICE_PROVIDER_URL)return{status:'pending_provider'};return{status:'not_implemented'}};
 
 const commissionPctFor=()=>Number(SET().commission_percent)||10;
-const ensureCommission=(id)=>{const a=get('SELECT * FROM agreements WHERE id=?',id);if(!a||a.status!=='completed'||!a.paid_at)return;const freeMonth=false;const pct=commissionPctFor(helperOf(a));run('INSERT OR IGNORE INTO agreement_commissions(agreement_id,helper_id,amount) VALUES(?,?,?)',id,helperOf(a),freeMonth?0:Math.round(a.amount*pct)/100);issueSaleDoc(id)};
+const ensureCommission=(id)=>{const a=get('SELECT * FROM agreements WHERE id=?',id);if(!a||a.status!=='completed'||!a.paid_at)return;const pct=commissionPctFor(helperOf(a));run('INSERT OR IGNORE INTO agreement_commissions(agreement_id,helper_id,amount) VALUES(?,?,?)',id,helperOf(a),Math.round(a.amount*pct)/100);issueSaleDoc(id)};
 const clientOf=a=>helperOf(a)===a.a_id?a.b_id:a.a_id;
 const CATALOG_VERSION='3';
 const applyCatalog=()=>{const v=get("SELECT value FROM settings WHERE key='catalog_version'");if(v&&v.value===CATALOG_VERSION)return;
@@ -97,6 +97,8 @@ db.exec("DELETE FROM request_categories;DELETE FROM section_keywords;DELETE FROM
 CATALOG.forEach((c,i)=>{const id=Number(run('INSERT INTO skill_categories(name,sort) VALUES(?,?)',c.name,i+1).lastInsertRowid);for(const w of [c.name,...c.words])run('INSERT OR IGNORE INTO section_keywords(category_id,word) VALUES(?,?)',id,normAr(w))});
 run("INSERT OR REPLACE INTO settings(key,value) VALUES('catalog_version',?)",CATALOG_VERSION)};
 applyCatalog();
+const addExtraKeywords=()=>{for(const [name,words] of Object.entries(EXTRA_KEYWORDS)){const c=get('SELECT id FROM skill_categories WHERE name=?',name);if(!c)continue;for(const w of words)run('INSERT OR IGNORE INTO section_keywords(category_id,word) VALUES(?,?)',c.id,normAr(w))}};
+addExtraKeywords();
 db.exec("UPDATE users SET account_type='helper' WHERE account_type='client' AND id IN (SELECT user_id FROM user_sections)");
 db.exec("UPDATE users SET iban=NULL,national_id=NULL");
 const err=(s,m)=>Object.assign(new Error(m),{s});
@@ -124,11 +126,11 @@ const restricted=uid=>{const x=get("SELECT flagged,(suspended_until>datetime('no
 if(x?.flagged)throw err(403,'حسابك قيد مراجعة الإدارة بسبب تكرار الإلغاء بعد الاختيار');
 if(x?.on_hold)throw err(403,'حسابك موقوف مؤقتًا عن النشر والتقدم بسبب تكرار الإلغاء بعد الاختيار');};
 const own=(u,id)=>{if(!id)return null;if(!get('SELECT 1 x FROM attachments WHERE id=? AND user_id=?',+id,u.id))throw err(400,'المرفق غير صالح');return +id};
-const PV=3;
+const PV=4;
 const pledgeBody=s=>[
 `1. أقرّ بأنني اطلعت على شروط المنصة وسياسة الخصوصية، وأن هذا التعهد ملزم لي نظامًا.`,
 `2. ألتزم بسداد عمولة للمنصة قدرها ${s.commission_percent||0}% من السعر النهائي المتفق عليه في كل مهمة أو اتفاق يتم عبر المنصة (طلب أو محادثة)، سواء تم الدفع بالتحويل المباشر أو بأي وسيلة أخرى.`,
-`3. تستحق العمولة عند تأكيد العميل إنجاز المهمة في المنصة، ولا تستحق عند اعتماد الاتفاق وحده، ولا عن المهمة الملغاة أو المعترض عليها أو الجزء غير المنفَّذ. ولا تستحق عن المهام المنجزة خلال الثلاثين يومًا الأولى من تفعيل حسابي، وأسددها خلال ${s.commission_grace_days??3} أيام بالتحويل إلى حساب المنصة المعلن فيها، وأرفع صورة الإثبات.`,
+`3. تستحق العمولة عند تأكيد العميل إنجاز المهمة في المنصة، ولا تستحق عند اعتماد الاتفاق وحده، ولا عن المهمة الملغاة أو المعترض عليها أو الجزء غير المنفَّذ. وأسددها خلال ${s.commission_grace_days??3} أيام بالتحويل إلى حساب المنصة المعلن فيها، وأرفع صورة الإثبات.`,
 `4. ألتزم بعدم التحايل على المنصة، فلا أتفق مع طالب المساعدة على إتمام المهمة أو الدفع خارجها لتفادي العمولة. وإذا ثبت ذلك استحقت المنصة العمولة كاملة، مع حقها في المطالبة بالتعويض عما لحقها من ضرر أمام الجهة المختصة.`,
 `5. عند التأخر عن السداد يحق للمنصة: (أ) إيقاف حسابي أو منعي من التقدم لمهام جديدة، (ب) مطالبتي بالمبلغ المستحق، (ج) اللجوء إلى الجهات القضائية والتنفيذية والتحكيمية المختصة في المملكة لاستيفاء حقها.`,
 `6. أتحمل ما تتكبده المنصة في سبيل التحصيل من رسوم ومصاريف تقاضٍ أو تحكيم وتنفيذ وأتعاب محاماة، وفق ما يقرره المحكم أو الجهة المختصة.`,
