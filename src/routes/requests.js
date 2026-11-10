@@ -5,7 +5,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import {SKILL_SEED, ASSIST_CITIES, CANCEL_REASONS} from '../../data.js';
-import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, log, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hasOffer, hasThread, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, pairCheck, peerOk, send, stripAl, toksOf, hitOr429, needsVat} from '../core.js';
+import {route, notifyEmail, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, log, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hasOffer, hasThread, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, pairCheck, peerOk, send, stripAl, toksOf, hitOr429, needsVat} from '../core.js';
 
 route('GET','/requests',c=>{const q=c.q,w=['r.hidden=0'],a=[];
 if(q.q){w.push("(r.title LIKE ? ESCAPE '\\' OR r.description LIKE ? ESCAPE '\\' OR r.city LIKE ? ESCAPE '\\')");const l=`%${likeEsc(q.q)}%`;a.push(l,l,l)}
@@ -31,11 +31,10 @@ if(VERIFY_REQUIRED&&!u.email_verified)throw err(403,'فعّل بريدك الإ�
 if(u.account_type!=='helper')throw err(403,'التقدم للمهام متاح للمساعدين فقط');if(get("SELECT 1 x FROM agreement_commissions WHERE helper_id=? AND status='due' AND datetime(created_at,'+'||?||' days')<datetime('now') LIMIT 1",u.id,Number(SET().commission_grace_days??3)))throw err(403,'لديك عمولة اتفاق متأخرة، سدّدها أولًا');
 if(r.user_id===u.id)throw err(400,'لا يمكنك التقدم لطلبك');if(!['published','negotiating'].includes(r.status))throw err(400,'الطلب لم يعد متاحًا');if(blocked(u.id,r.user_id))throw err(403,'لا يمكن التقدم لهذا الطلب');if(!get('SELECT 1 x FROM pledges WHERE user_id=? AND version=?',u.id,PV))throw err(403,'يجب تأكيد تعهد سداد العمولة أولًا');
 
-if(get("SELECT 1 x FROM commissions WHERE helper_id=? AND status IN ('due','rejected') AND created_at<=datetime('now',?)",u.id,`-${+(SET().commission_grace_days??3)} days`))throw err(403,'لديك عمولة مستحقة للمنصة؛ سدّدها لتتمكن من التقدم لمهام جديدة');
 const m=str(c.b.message,3,1000,'الرسالة'),p=num(c.b.price,'السعر');if(needsVat(u))throw err(403,'المؤسسات والشركات تحتاج التسجيل الضريبي للتقديم على المهام');
 try{run('INSERT INTO offers(request_id,user_id,message,price) VALUES(?,?,?,?)',r.id,u.id,m,p)}catch{throw err(409,'تقدمت لهذا الطلب مسبقًا')}
 if(r.status==='published'){run("UPDATE requests SET status='negotiating' WHERE id=?",r.id);log(r.id,'negotiating',u.id)}
-notify(r.user_id,`${u.name} تقدّم لطلبك: ${r.title}`,'#/r/'+r.id);return{ok:1}});
+notify(r.user_id,`${u.name} تقدّم لطلبك: ${r.title}`,'#/r/'+r.id);notifyEmail(r.user_id,'تقدّم مساعد لطلبك',`${u.name} تقدّم لطلبك «${r.title}». افتح الطلب لمراجعة العرض.`,'/r/'+r.id);return{ok:1}});
 route('POST','/requests/(\\d+)/choose',c=>tx(()=>{const u=need(c),r=get('SELECT * FROM requests WHERE id=?',c.p[0]);if(!r||r.user_id!==u.id)throw err(403,'غير مصرح');
 if(!['published','negotiating'].includes(r.status))throw err(400,'تم اختيار مساعد مسبقًا');const o=get('SELECT * FROM offers WHERE id=? AND request_id=?',+c.b.offer_id,r.id);if(!o)throw err(400,'العرض غير موجود');
 run("UPDATE requests SET helper_id=?,status='helper_chosen' WHERE id=?",o.user_id,r.id);log(r.id,'helper_chosen',u.id);notify(o.user_id,'تم اختيارك لتنفيذ: '+r.title,'#/r/'+r.id);return{ok:1}}));
@@ -48,8 +47,7 @@ if(a[2]==='cancelled'&&paid>0)throw err(400,'توجد دفعة موثقة لهذ
 if(a[2]==='published')restricted(u.id);
 run('UPDATE requests SET status=? WHERE id=?',a[2],r.id);log(r.id,a[2],u.id);const other=own?r.helper_id:r.user_id;if(other)notify(other,`تغيّرت حالة «${r.title}»`,'#/r/'+r.id);
 if(a[2]==='completed'){award(r.user_id,'complete_requester','done:'+r.id+':o');award(r.helper_id,'complete_helper','done:'+r.id+':h');
-const cp=+(SET().commission_percent||0),amt=Math.round(r.agreed_price*cp)/100;
-if(amt>0){run('INSERT OR IGNORE INTO commissions(request_id,helper_id,amount) VALUES(?,?,?)',r.id,r.helper_id,amt);notify(r.helper_id,`عليك عمولة للمنصة (${amt} ر.س): حوّلها إلى حساب المنصة وأرسل صورة الإثبات`,'#/r/'+r.id)}}return{status:a[2]}}));
+}return{status:a[2]}}));
 route('GET','/requests/(\\d+)/messages',c=>{const u=need(c),r=get('SELECT * FROM requests WHERE id=?',c.p[0]),peer=+c.q.with;if(!r||!peerOk(r,u.id,peer))throw err(403,'غير مصرح');
 return{blocked:blocked(u.id,peer),messages:all('SELECT id,from_id,body,attachment_id,created_at FROM messages WHERE request_id=? AND ((from_id=? AND to_id=?) OR (from_id=? AND to_id=?)) ORDER BY id',r.id,u.id,peer,peer,u.id)}});
 route('POST','/requests/(\\d+)/messages',c=>{const u=need(c),r=get('SELECT * FROM requests WHERE id=?',c.p[0]),to=+c.b.to;if(!r||!peerOk(r,u.id,to))throw err(403,'غير مصرح');
