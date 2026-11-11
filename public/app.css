@@ -130,3 +130,5 @@ form a{display:inline-flex;align-items:center;min-height:44px}
 .agr-doc ul{padding-inline-start:18px;line-height:1.9}
 
 #ft[hidden]{display:none!important}
+
+.hact{display:flex;align-items:center;gap:4px}
