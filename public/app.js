@@ -69,6 +69,7 @@ $('#a').onsubmit=sub(async b=>{if(reg){if(b.account_type==='helper'){b.category_
 function DCHAT_MARKUP(){return `<section class=panel id=dchat><h3 style="margin-top:0">محادثة مباشرة</h3><small>للاستفسار قبل الطلب. إثبات التحويل والدفع يكون داخل الطلب فقط.</small><div id=dagr class=agr></div><form id=aform class=agr-form><small>اقترح اتفاقًا على الخدمة والمبلغ، ولا يُعد الاتفاق نافذًا حتى يوافق الطرف الآخر.</small><input name=description maxlength=300 placeholder="وصف الخدمة، مثل: تركيب باب" aria-label="وصف الخدمة" required><input name=amount type=number min=1 max=100000 placeholder="المبلغ بالريال" aria-label="المبلغ" required><button class=btn>اقترح الاتفاق</button></form><div id=dmsgs class=dmsgs></div><form id=dform class=row style="gap:8px"><input name=body maxlength=1000 placeholder="اكتب استفسارك" aria-label="اكتب استفسارك" style="flex:1"><button type=button class="btn alt" id=dpic aria-label="إرفاق صورة">${ic(I.clip)}</button><button class=btn>إرسال</button></form></section>`}
 async function directChat(id){if(!me.user){location.hash='#/login';return}const peer=await api('/users/'+id).catch(()=>null);const name=(peer&&peer.name)||'المستخدم';app.innerHTML=`<section class=panel style="padding-bottom:6px"><div class=row><h3 style="margin:0">محادثة مع ${esc(name)}</h3><a class=lnk href="#/p/${id}">عرض الملف</a></div></section>`+DCHAT_MARKUP();dchatInit(id)}
 async function chats(){const l=await api('/chats');app.innerHTML=`<h2 style="margin:8px 0">صندوق الوارد</h2><div class=panel style="padding:0">${l.map(c=>{const href=c.request_id?`#/chat/${c.request_id}/${c.peer}`:`#/direct/${c.peer}`;const t=String(c.created_at||'');return `<a href="${href}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #eef0f2;text-decoration:none;color:inherit"><i style="width:52px;height:52px;border-radius:50%;background:#0f6b4f;color:#fff;display:grid;place-items:center;font-style:normal;font-weight:700;flex:0 0 auto">${esc((c.peer_name||'؟')[0])}</i><span style="flex:1;min-width:0"><b>${esc(c.peer_name)}</b><small style="display:block;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.title||'')}${c.body?' · '+esc(c.body.slice(0,50)):''}</small></span><small style="color:#9ca3af;flex:0 0 auto">${esc(t.slice(11,16))}</small></a>`}).join('')||'<div class=empty style="padding:20px">لا توجد محادثات بعد. تبدأ المحادثة من صفحة المساعد.</div>'}</div>`}
+const pickMedia=()=>new Promise((ok,no)=>{const i=document.createElement('input');i.type='file';i.accept='image/*,video/mp4,video/quicktime,video/webm';i.onchange=()=>{const f=i.files[0];if(!f)return no(new Error('لم تختر ملفًا'));if(f.type.startsWith('video/')){(async()=>{try{const mime=f.type||(/\.mov$/i.test(f.name)?'video/quicktime':'video/mp4');const r0=await api('/upload-video/init','POST',{mime,size:f.size});if(r0.mode==='external'){const put=await fetch(r0.url,{method:'PUT',headers:{'content-type':mime},body:f});if(!put.ok)throw new Error('تعذّر رفع الفيديو، حاول مرة أخرى');const c=await api('/upload-video/complete','POST',{key:r0.key,mime});return ok(c.id)}if(f.size>8e6)throw new Error('حجم الفيديو يجب ألا يتجاوز 8 ميجابايت');const data=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=()=>rej(new Error('تعذّر قراءة الفيديو'));rd.readAsDataURL(f)});const x=await api('/upload-video','POST',{data});ok(x.id)}catch(e){no(e)}})();return}const im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);api('/upload','POST',{data:c.toDataURL('image/jpeg',.8)}).then(r=>ok(r.id),no)};im.onerror=()=>no(new Error('الملف ليس صورة'));im.src=URL.createObjectURL(f)};i.click()});
 const pick=()=>new Promise((ok,no)=>{const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>{const f=i.files[0];if(!f)return no(new Error('لم تختر صورة'));const im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);api('/upload','POST',{data:c.toDataURL('image/jpeg',.8)}).then(r=>ok(r.id),no)};im.onerror=()=>no(new Error('الملف ليس صورة'));im.src=URL.createObjectURL(f)};i.click()});
 const report=async(type,id)=>{const reason=prompt('سبب البلاغ:');if(!reason)return;try{await api('/report','POST',{type,id,reason});toast('تم إرسال البلاغ')}catch(x){toast(x.message,1)}};
 const PAY={pending:'بانتظار إرفاق الإثبات',verified:'تم إرفاق إثبات تحويل العميل إلى المساعد',rejected:'لم يُؤكد'},CM={due:'مستحقة',submitted:'بانتظار تحقق الإدارة',verified:'تم السداد',rejected:'مرفوضة'},star=n=>'★'.repeat(n)+'☆'.repeat(5-n);
@@ -83,15 +84,15 @@ app.insertAdjacentHTML('afterbegin',`<a class=lnk href="#/settings" style="displ
 async function profileAccount(){if(!me.user){location.hash='#/login';return}const p=await api('/providers/'+me.user.id);
 const isH=me.user.account_type==='helper',pics=p.portfolio||[],bio=(p.bio||'').trim();
 const avg=p.avg!=null?p.avg:'0.0',done=p.done||0;
-const tiles=pics.map(x=>`<figure><img src="/api/files/${x.attachment_id}" alt="" loading=lazy>${x.caption?`<figcaption>${esc(x.caption)}</figcaption>`:''}</figure>`).join('');
+const tiles=pics.map(x=>`<figure>${mediaTag(x)}${x.caption?`<figcaption>${esc(x.caption)}</figcaption>`:''}</figure>`).join('');
 app.innerHTML=ACC_CSS+`<div class=acc>
-<div class=acc-top><h1>حسابي</h1><div class=acc-icons><a class=acc-ic href="#/notifs" aria-label="الإشعارات">🔔</a><a class=acc-ic href="#/settings" aria-label="المزيد">⋯</a></div></div>
-<div class=acc-head><div class=acc-av>${esc([...(p.name||'؟')][0])}</div><div class=acc-stats><div><b>${pics.length}</b><small>أعمال</small></div><div><b>${done}</b><small>مهمة مكتملة</small></div><div><b>${avg}</b><small>التقييم</small></div></div></div>
-<div class=acc-name><h2>${esc(p.name||'')}</h2><small>${isH?'مساعد':'عميل'}${p.city?' · 📍 '+esc(p.city):''}</small></div>
+<div class=acc-top><h1>حسابي</h1><div class=acc-icons><a class=acc-ic href="#/settings" aria-label="المزيد">⋯</a></div></div>
+<div class=acc-head><button class=acc-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(p.avatar,p.name)}</button><div class=acc-stats><div><b>${pics.length}</b><small>أعمال</small></div><div><b>${done}</b><small>مهمة مكتملة</small></div><div><b>${avg}</b><small>التقييم</small></div></div></div>
+<div class=acc-name><h2>${esc(p.name||'')}</h2>${p.avatar?'<button class=lnk id=avDel type=button>حذف الصورة الشخصية</button>':''}<small>${isH?'مساعد':'عميل'}${p.city?' · 📍 '+esc(p.city):''}</small></div>
 <p class=acc-bio>${bio?esc(bio):'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>
-<div class=acc-btns><a class=btn href="#/settings">الإعدادات</a><a class="btn gray" href="#/profile/gallery">تحميل الوسائط</a></div>
+<div class=acc-btns><a class=btn href="#/settings">الإعدادات</a></div>
 <div class=acc-tabs><nav><a class=on href="#/profile">المنشورات</a><a href="#/profile/gallery">الصور</a></nav>
-<div class=acc-grid>${tiles}<a class=acc-add href="#/profile/gallery" aria-label="إضافة صورة عمل">+</a>${pics.length?'':'<div class=acc-empty>لم تضف أعمالًا بعد. ابدأ بإضافة صورة لعملك.</div>'}</div></div>
+<div class=acc-grid>${tiles}<button class=acc-add id=addWork type=button aria-label="إضافة صورة أو فيديو">+</button>${pics.length?'':'<div class=acc-empty>لم تضف أعمالًا بعد. ابدأ بإضافة صورة لعملك.</div>'}</div></div>
 </div>`}
 const SETTINGS_ITEMS=[['ملفي الشخصي','data'],['المدينة وموقع الخدمة','city'],['قسم خدماتك','specs'],['النبذة','bio'],['معرض أعمالي','gallery'],['النقاط والمحفظة','wallet'],['استخدام الرصيد','points'],['سجل النقاط','ledger'],['الإشعارات والتواصل','notify'],['تفعيل صلاحية المدير','admin'],['الأمان','password'],['حذف الحساب','danger'],['الأسئلة الشائعة','faq']];
 async function settingsPage(){if(!me.user){location.hash='#/login';return}app.innerHTML=`<h2 style="margin:8px 0 12px">الإعدادات</h2><div class=panel style="padding:0">${SETTINGS_ITEMS.map(([t,k],i)=>`<a href="${k==='wallet'?'#/wallet':'#/profile/'+k}" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #eef0f2;text-decoration:none;color:inherit"><span>${i+1}- ${t}</span><span style="color:#9ca3af">‹</span></a>`).join('')}</div>`}
@@ -127,33 +128,40 @@ const ACC_CSS = `<style>
 .acc-grid img{width:100%;height:100%;object-fit:cover;display:block}
 .acc-grid figcaption{position:absolute;inset-inline-start:6px;bottom:6px;background:#000a;color:#fff;font-size:12px;border-radius:8px;padding:2px 8px;max-width:90%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .acc-add{display:grid;place-items:center;color:var(--g);text-decoration:none;font-size:34px;border:1px dashed var(--b)}
+button.acc-add{aspect-ratio:1;width:100%;background:none;cursor:pointer;padding:0;font-family:inherit;border-radius:10px}
+.acc-grid video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+.acc-av{border:0;padding:0;cursor:pointer;overflow:hidden;font-family:inherit}
+.acc-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.acc-btns .btn:only-child{grid-column:1/-1}
 .acc-empty{grid-column:1/-1;text-align:center;color:var(--mu);padding:30px 0}
 .acc-done{margin-top:12px;display:flex;justify-content:space-between;align-items:center;background:var(--ml);border-radius:14px;padding:10px 14px;font-size:14px;color:var(--g)}
 </style>`;
 
+function avHtml(av,name){return av?`<img src="/api/files/${av}" alt="">`:esc([...(name||'؟')][0]||'؟')}
+function mediaTag(x){return /^video\//.test(x.mime||'')?`<video src="/api/files/${x.attachment_id}" controls playsinline preload="metadata"></video>`:`<img src="/api/files/${x.attachment_id}" alt="" loading="lazy">`}
 /* u: المستخدم، pv: الملف العام (bio, portfolio, reviews)، avg/done: أرقام محسوبة، pl: التعهد */
 function accountView(u, pv, avg, done, isH) {
   const pics = pv.portfolio || [];
   const bio = (pv.bio || '').trim();
   const tiles = pics.map(x => `
     <figure>
-      <img src="/api/files/${x.attachment_id}" alt="">
+      ${mediaTag(x)}
       ${x.caption ? `<figcaption>${esc(x.caption)}</figcaption>` : ''}
     </figure>`).join('');
-  const addTile = `<a class="acc-add" href="#/profile/gallery" aria-label="إضافة صورة عمل">+</a>`;
+  const addTile = `<button class=acc-add id=addWork type=button aria-label="إضافة صورة أو فيديو">+</button>`;
 
   return `${ACC_CSS}
 <div class=acc>
   <div class=acc-top>
     <h1>حسابي</h1>
     <div class=acc-icons>
-      <a class=acc-ic href="#/notifs" aria-label="الإشعارات">🔔</a>
+      
       <a class=acc-ic href="#/settings" aria-label="المزيد">⋯</a>
     </div>
   </div>
 
   <div class=acc-head>
-    <div class=acc-av>${esc([...u.name][0] || '')}</div>
+    <button class=acc-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(pv.avatar,u.name)}</button>
     <div class=acc-stats>
       <div><b>${pics.length}</b><small>أعمال</small></div>
       <div><b>${done}</b><small>مهمة مكتملة</small></div>
@@ -163,6 +171,7 @@ function accountView(u, pv, avg, done, isH) {
 
   <div class=acc-name>
     <h2>${esc(u.name)}</h2>
+    ${pv.avatar ? '<button class=lnk id=avDel type=button>حذف الصورة الشخصية</button>' : ''}
     <small>${isH ? 'مساعد' : 'عميل'}${u.city ? ' · 📍 ' + esc(u.city) : ''}${u.active ? '' : ' · الحساب معطّل'}</small>
   </div>
 
@@ -172,7 +181,7 @@ function accountView(u, pv, avg, done, isH) {
 
   <div class=acc-btns>
     <a class=btn href="#/settings">الإعدادات</a>
-    <a class="btn gray" href="#/profile/gallery">تحميل الوسائط</a>
+    
   </div>
 
   ${u.account_type === 'helper' ? '' : `<div class=acc-done><span>${pl && pl.accepted ? 'التعهد موقّع' : 'التعهد غير موقّع'}</span><a class=lnk href="#/profile/specs">قسم خدماتك ‹</a></div>`}
@@ -211,7 +220,7 @@ ${isH?`<section class=panel id=skf-wrap hidden><div class=sec-h><h3>قسم خد�
 <section class=panel id=emf-wrap hidden><div class=sec-h><h3>تغيير البريد الإلكتروني</h3></div><small>البريد الحالي: ${esc(u.email)}</small><form id=emf class=form><label>البريد الجديد<input name=email type=email dir=ltr required></label><label>كلمة المرور للتأكيد<input name=password type=password required></label><button class=btn>تغيير البريد</button></form></section>
 <section class=panel id=pts><div class=sec-h><h3>استخدام الرصيد</h3></div><form id=rf class=form><label>عدد النقاط<input name=points type=number min=1 max=${w.points} required></label><label>الخدمة أو الرسم<input name=purpose required></label><button class=btn>استخدام الرصيد</button></form></section>
 <section class=panel id=ledger><div class=sec-h><h3>سجل النقاط</h3></div>${w.ledger.map(l=>`<div class=row><span>${esc(RS[l.reason]||l.reason)}</span><b dir=ltr>${l.delta>0?'+':''}${l.delta}</b><small>${l.created_at.slice(0,10)}</small></div>`).join('')||'<div class=empty>لا توجد عمليات بعد. تُضاف النقاط عند اكتمال مهمة مؤهلة.</div>'}</section>
-<section class=panel id=gal-wrap><div class=sec-h><h3>معرض أعمالي</h3></div><form id=bioF class=form><label>نبذة عنك (تظهر لمن يبحث عنك)<textarea name=bio rows=3 maxlength=500>${esc(pv.bio)}</textarea></label><button class=btn>حفظ النبذة</button></form><div class=gal style="margin-top:10px">${pv.portfolio.map(x=>`<figure><img src=/api/files/${x.attachment_id} alt=""><figcaption>${esc(x.caption||'')}</figcaption><button class=lnk data-pdel=${x.id}>حذف</button></figure>`).join('')||'<small>لم تضف صورًا لأعمالك بعد.</small>'}</div><button class="btn alt" id=addPh style="margin-top:10px">إضافة صورة عمل</button></section>
+<section class=panel id=gal-wrap><div class=sec-h><h3>معرض أعمالي</h3></div><form id=bioF class=form><label>نبذة عنك (تظهر لمن يبحث عنك)<textarea name=bio rows=3 maxlength=500>${esc(pv.bio)}</textarea></label><button class=btn>حفظ النبذة</button></form><div class=gal style="margin-top:10px">${pv.portfolio.map(x=>`<figure>${mediaTag(x)}<figcaption>${esc(x.caption||'')}</figcaption><button class=lnk data-pdel=${x.id}>حذف</button></figure>`).join('')||'<small>لم تضف صورًا لأعمالك بعد.</small>'}</div><button class="btn alt" id=addPh style="margin-top:10px">إضافة صورة أو فيديو</button></section>
 ${su.needed?`<section class=panel><h3 style="margin-top:0">تفعيل صلاحيات المدير</h3><small>يظهر مرة واحدة، ويتطلب رمز الإعداد الذي يعرفه مالك المنصة.</small><form id=bootF class=form><label>رمز الإعداد<input name=token required autocomplete=off></label><button class=btn>تفعيل</button></form></section>`:''}
 <div class=pf-group>الأمان</div><div class=pf-list><a class=pf-item href="#/profile/password"><span><b>تغيير كلمة المرور</b></span><i>‹</i></a><a class=pf-item href="#" data-act="logout"><span><b>تسجيل الخروج</b></span><i>‹</i></a></div>
 <div class=pf-danger><h3 style="margin:0;color:#b91c1c">حذف الحساب</h3><small>تُحذف بياناتك الشخصية، ويبقى سجل العمليات المالية محفوظًا كما يتطلب النظام. لا يمكن التراجع.</small><form id=delF class=form><label>كلمة المرور<input name=password type=password required autocomplete=current-password></label><label>اكتب «حذف» للتأكيد<input name=confirm required></label><button class="btn">حذف حسابي نهائيًا</button></form></div>
@@ -236,7 +245,7 @@ if($('#sugf'))$('#sugf').onsubmit=sub(async b=>{await api('/skills/suggest','POS
 $('#bioF').onsubmit=sub(async b=>{await api('/me/bio','POST',b);toast('تم حفظ النبذة');location.hash='#/profile'});
 if($('#bootF'))$('#bootF').onsubmit=sub(async b=>{try{await api('/admin/bootstrap','POST',b);toast('تم تفعيل صلاحيات المدير');await boot()}catch(x){toast(x.message,1)}});
 $('#delF').onsubmit=sub(async b=>{if(!confirm('سيُحذف حسابك نهائيًا. هل أنت متأكد؟'))return;try{await api('/me/delete','POST',b);await dropPush();await api('/logout','POST');toast('تم حذف حسابك');await boot();location.hash='#/'}catch(x){toast(x.message,1)}});
-$('#addPh').onclick=async()=>{try{const attachment_id=await pick();const caption=prompt('وصف قصير للعمل (اختياري):')||'';await api('/me/portfolio','POST',{attachment_id,caption});toast('أُضيفت الصورة');profile()}catch(x){toast(x.message,1)}};
+document.addEventListener('click',async e=>{const t=e.target.closest&&e.target.closest('#addWork,#addPh,#avEdit,#avDel');if(!t)return;e.preventDefault();try{if(t.id==='avDel'){if(!confirm('حذف الصورة الشخصية؟'))return;await api('/me/avatar/delete','POST');toast('تم حذف الصورة الشخصية')}else if(t.id==='avEdit'){const id=await pick();await api('/me/avatar','POST',{attachment_id:id});toast('تم تحديث الصورة الشخصية')}else{const id=await pickMedia();const caption=prompt('وصف قصير للعمل (اختياري):')||'';await api('/me/portfolio','POST',{attachment_id:id,caption});toast('أُضيفت إلى معرض أعمالك')}await route()}catch(x){if(!/^لم تختر/.test(x.message))toast(x.message,1)}});
 document.querySelectorAll('[data-pdel]').forEach(b=>b.onclick=async()=>{try{await api(`/me/portfolio/${b.dataset.pdel}/delete`,'POST');profile()}catch(x){toast(x.message,1)}})}
 async function notifs(){const l=await api('/notifications');app.innerHTML=`<h2>الإشعارات</h2><div class=panel>${l.map(n=>`<a class=row href="${esc(n.link||'#/notifs')}"><span>${esc(n.text)}${n.read?'':' •'}</span><small>${n.created_at.slice(0,16)}</small></a>`).join('')||'<div class=empty>لا توجد إشعارات.</div>'}</div>`;me.unread=0;nav()}
 async function admin(){
