@@ -93,7 +93,7 @@ app.innerHTML=ACC_CSS+`<div class=acc>
 <div class=acc-name><h2>${esc(p.name||'')}</h2>${p.avatar?'<button class=lnk id=avDel type=button>حذف الصورة الشخصية</button>':''}<small>${isH?'مساعد':'عميل'}${p.city?' · '+ic(I.pin)+' '+esc(p.city):''}</small></div>
 <p class=acc-bio>${bio?esc(bio):'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>
 <div class=acc-btns><a class=btn href="#/settings">الإعدادات</a><a class="btn gray" href="#/invoices">فواتيري</a></div>
-<div class=acc-tabs><nav><a class=on href="#/profile">المنشورات</a><a href="#/">الشات</a></nav>
+<div class=acc-tabs><nav><a class=on href="#/profile">المنشورات</a><a href="#/chats">محادثاتي</a></nav>
 <div class=acc-grid>${tiles}<button class=acc-add id=addWork type=button aria-label="إضافة صورة أو فيديو">+</button>${pics.length?'':'<div class=acc-empty>لم تضف أعمالًا بعد. ابدأ بإضافة صورة لعملك.</div>'}</div></div>
 </div>`}
 const SETTINGS_ITEMS=[['ملفي الشخصي','data'],['قسم خدماتك','specs'],['النبذة','bio'],['معرض أعمالي','gallery'],['النقاط والمحفظة','wallet'],['استخدام الرصيد','points'],['سجل النقاط','ledger'],['الإشعارات والتواصل','notify'],['تفعيل صلاحية المدير','admin'],['الأمان','password'],['حذف الحساب','danger'],['الأسئلة الشائعة','faq']];
@@ -191,7 +191,7 @@ function accountView(u, pv, avg, done, isH, pl) {
   <div class=acc-tabs>
     <nav>
       <a class=on href="#/profile">المنشورات</a>
-      <a href="#/">الشات</a>
+      <a href="#/chats">محادثاتي</a>
     </nav>
     <div class=acc-grid>
       ${tiles}
