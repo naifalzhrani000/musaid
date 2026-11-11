@@ -1,3 +1,4 @@
+import {sendWebPush} from './push-crypto.js';
 import {SKILL_SEED, ASSIST_CITIES, CANCEL_REASONS, CATALOG, EXTRA_KEYWORDS} from '../data.js';
 import {DatabaseSync} from 'node:sqlite';
 import os from 'node:os';
@@ -12,25 +13,16 @@ const db=new DatabaseSync(DB_PATH);
 db.exec(`PRAGMA foreign_keys=ON;PRAGMA journal_mode=WAL;
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,name TEXT NOT NULL,email TEXT UNIQUE NOT NULL,pass TEXT NOT NULL,city TEXT,role TEXT NOT NULL DEFAULT 'user',active INT NOT NULL DEFAULT 1,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id),exp INT NOT NULL);
-CREATE TABLE IF NOT EXISTS requests(id INTEGER PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id),title TEXT NOT NULL,description TEXT NOT NULL,city TEXT,category TEXT,budget REAL,negotiable INT DEFAULT 1,status TEXT NOT NULL DEFAULT 'published',helper_id INT REFERENCES users(id),hidden INT DEFAULT 0,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-CREATE INDEX IF NOT EXISTS ix_req ON requests(status,city,id);
-CREATE TABLE IF NOT EXISTS offers(id INTEGER PRIMARY KEY,request_id INT NOT NULL REFERENCES requests(id),user_id INT NOT NULL REFERENCES users(id),message TEXT NOT NULL,price REAL,created_at TEXT DEFAULT CURRENT_TIMESTAMP,UNIQUE(request_id,user_id));
-CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY,request_id INT NOT NULL REFERENCES requests(id),from_id INT NOT NULL,to_id INT NOT NULL,body TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-CREATE INDEX IF NOT EXISTS ix_msg ON messages(request_id,from_id,to_id);
 CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,user_id INT NOT NULL,text TEXT NOT NULL,link TEXT,read INT DEFAULT 0,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS push_subscriptions(id INTEGER PRIMARY KEY,user_id INT NOT NULL,endpoint TEXT UNIQUE NOT NULL,p256dh TEXT NOT NULL,auth TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS reward_rules(key TEXT PRIMARY KEY,points INT NOT NULL DEFAULT 0 CHECK(points>=0));
 CREATE TABLE IF NOT EXISTS points_ledger(id INTEGER PRIMARY KEY,user_id INT NOT NULL,delta INT NOT NULL,reason TEXT NOT NULL,ref TEXT UNIQUE NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-CREATE TABLE IF NOT EXISTS status_log(id INTEGER PRIMARY KEY,request_id INT,status TEXT,by_id INT,at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS audit_log(id INTEGER PRIMARY KEY,admin_id INT,action TEXT,detail TEXT,at TEXT DEFAULT CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO reward_rules(key,points) VALUES('complete_requester',0),('complete_helper',0);`);
 db.exec(`CREATE TABLE IF NOT EXISTS attachments(id INTEGER PRIMARY KEY,user_id INT NOT NULL,mime TEXT NOT NULL,data BLOB NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-CREATE TABLE IF NOT EXISTS payments(id INTEGER PRIMARY KEY,request_id INT NOT NULL REFERENCES requests(id),payer_id INT NOT NULL,payee_id INT NOT NULL,amount REAL NOT NULL CHECK(amount>0),proof_id INT NOT NULL REFERENCES attachments(id),status TEXT NOT NULL DEFAULT 'pending',note TEXT,reviewed_by INT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,reviewed_at TEXT);
-CREATE TABLE IF NOT EXISTS ratings(id INTEGER PRIMARY KEY,request_id INT NOT NULL REFERENCES requests(id),rater_id INT NOT NULL,ratee_id INT NOT NULL,stars INT NOT NULL CHECK(stars BETWEEN 1 AND 5),comment TEXT,hidden INT DEFAULT 0,created_at TEXT DEFAULT CURRENT_TIMESTAMP,UNIQUE(request_id,rater_id));
 CREATE TABLE IF NOT EXISTS reports(id INTEGER PRIMARY KEY,reporter_id INT NOT NULL,type TEXT NOT NULL,target_id INT NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',note TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,UNIQUE(reporter_id,type,target_id));
 CREATE TABLE IF NOT EXISTS blocks(blocker_id INT NOT NULL,blocked_id INT NOT NULL,PRIMARY KEY(blocker_id,blocked_id));
-CREATE TABLE IF NOT EXISTS commissions(id INTEGER PRIMARY KEY,request_id INT UNIQUE NOT NULL REFERENCES requests(id),helper_id INT NOT NULL,amount REAL NOT NULL,status TEXT NOT NULL DEFAULT 'due',proof_id INT,note TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,submitted_at TEXT,reviewed_at TEXT);
 CREATE TABLE IF NOT EXISTS pledges(id INTEGER PRIMARY KEY,user_id INT NOT NULL,version INT NOT NULL,ip TEXT,ua TEXT,text TEXT NOT NULL,accepted_at TEXT DEFAULT CURRENT_TIMESTAMP,UNIQUE(user_id,version));
-CREATE TABLE IF NOT EXISTS cancellations(id INTEGER PRIMARY KEY,request_id INT NOT NULL REFERENCES requests(id),by_id INT NOT NULL,other_id INT NOT NULL,reason TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS expenses(id INTEGER PRIMARY KEY,title TEXT NOT NULL,amount REAL NOT NULL CHECK(amount>0),category TEXT,by_id INT,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS skill_categories(id INTEGER PRIMARY KEY,name TEXT UNIQUE NOT NULL,sort INT DEFAULT 0);
 CREATE TABLE IF NOT EXISTS skills(id INTEGER PRIMARY KEY,category_id INT NOT NULL REFERENCES skill_categories(id),name TEXT UNIQUE NOT NULL,status TEXT NOT NULL DEFAULT 'pending',suggested_by INT,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
@@ -40,9 +32,8 @@ CREATE TABLE IF NOT EXISTS portfolio(id INTEGER PRIMARY KEY,user_id INT NOT NULL
 CREATE TABLE IF NOT EXISTS direct_messages(id INTEGER PRIMARY KEY,from_id INT NOT NULL REFERENCES users(id),to_id INT NOT NULL REFERENCES users(id),body TEXT NOT NULL,attachment_id INT REFERENCES attachments(id),created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE INDEX IF NOT EXISTS ix_direct ON direct_messages(from_id,to_id);
 CREATE TABLE IF NOT EXISTS password_resets(id INTEGER PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id),token_hash TEXT NOT NULL UNIQUE,expires_at TEXT NOT NULL,used INT NOT NULL DEFAULT 0,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS payouts(id INTEGER PRIMARY KEY,request_id INT UNIQUE NOT NULL REFERENCES requests(id),helper_id INT NOT NULL,amount REAL NOT NULL CHECK(amount>=0),status TEXT NOT NULL DEFAULT 'pending',ref TEXT,paid_by INT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,paid_at TEXT);`);
-for(const s of ['ALTER TABLE requests ADD COLUMN category TEXT','ALTER TABLE requests ADD COLUMN image_id INT','ALTER TABLE messages ADD COLUMN attachment_id INT','ALTER TABLE users ADD COLUMN iban TEXT','ALTER TABLE users ADD COLUMN national_id TEXT','ALTER TABLE users ADD COLUMN phone TEXT','ALTER TABLE users ADD COLUMN address TEXT','ALTER TABLE requests ADD COLUMN agreed_price REAL','ALTER TABLE requests ADD COLUMN price_by INT','ALTER TABLE requests ADD COLUMN price_ok INT DEFAULT 0','ALTER TABLE users ADD COLUMN suspended_until TEXT','ALTER TABLE users ADD COLUMN flagged INT DEFAULT 0','ALTER TABLE users ADD COLUMN bio TEXT','ALTER TABLE users ADD COLUMN email_verified INT NOT NULL DEFAULT 1','ALTER TABLE users ADD COLUMN notify_email INT NOT NULL DEFAULT 1','ALTER TABLE users ADD COLUMN age_ok INT NOT NULL DEFAULT 1','ALTER TABLE users ADD COLUMN terms_version TEXT','ALTER TABLE users ADD COLUMN terms_at TEXT','ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT \'client\'','CREATE UNIQUE INDEX IF NOT EXISTS ux_users_nid ON users(national_id) WHERE national_id IS NOT NULL','CREATE UNIQUE INDEX IF NOT EXISTS ux_users_phone ON users(phone) WHERE phone IS NOT NULL'])try{db.exec(s)}catch{}
+CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);`);
+for(const s of ['ALTER TABLE users ADD COLUMN iban TEXT','ALTER TABLE users ADD COLUMN national_id TEXT','ALTER TABLE users ADD COLUMN phone TEXT','ALTER TABLE users ADD COLUMN address TEXT','ALTER TABLE users ADD COLUMN suspended_until TEXT','ALTER TABLE users ADD COLUMN flagged INT DEFAULT 0','ALTER TABLE users ADD COLUMN bio TEXT','ALTER TABLE users ADD COLUMN email_verified INT NOT NULL DEFAULT 1','ALTER TABLE users ADD COLUMN notify_email INT NOT NULL DEFAULT 1','ALTER TABLE users ADD COLUMN push_enabled INT NOT NULL DEFAULT 1','ALTER TABLE users ADD COLUMN age_ok INT NOT NULL DEFAULT 1','ALTER TABLE users ADD COLUMN terms_version TEXT','ALTER TABLE users ADD COLUMN terms_at TEXT','ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT \'client\'','CREATE UNIQUE INDEX IF NOT EXISTS ux_users_nid ON users(national_id) WHERE national_id IS NOT NULL','CREATE UNIQUE INDEX IF NOT EXISTS ux_users_phone ON users(phone) WHERE phone IS NOT NULL'])try{db.exec(s)}catch{}
 const all=(s,...a)=>db.prepare(s).all(...a),get=(s,...a)=>db.prepare(s).get(...a),run=(s,...a)=>db.prepare(s).run(...a);
 const normAr=s=>String(s||'').normalize('NFKC').replace(/[\u064B-\u065F\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').toLowerCase().trim();
 
@@ -52,14 +43,12 @@ db.exec(`CREATE TABLE IF NOT EXISTS section_keywords(category_id INT NOT NULL RE
 CREATE TABLE IF NOT EXISTS user_sections(user_id INT NOT NULL REFERENCES users(id),category_id INT NOT NULL REFERENCES skill_categories(id),PRIMARY KEY(user_id,category_id));
 CREATE TABLE IF NOT EXISTS verify_tokens(token_hash TEXT PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id),expires_at TEXT NOT NULL,used INT NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS login_attempts(k TEXT PRIMARY KEY,n INT NOT NULL,t INT NOT NULL);
-CREATE TABLE IF NOT EXISTS request_skills(request_id INT NOT NULL REFERENCES requests(id),skill_id INT NOT NULL REFERENCES skills(id),PRIMARY KEY(request_id,skill_id));
 CREATE TABLE IF NOT EXISTS agreements(id INTEGER PRIMARY KEY,a_id INT NOT NULL REFERENCES users(id),b_id INT NOT NULL REFERENCES users(id),amount INT NOT NULL,description TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT DEFAULT CURRENT_TIMESTAMP,updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS agreement_commissions(id INTEGER PRIMARY KEY,agreement_id INT UNIQUE NOT NULL REFERENCES agreements(id),helper_id INT NOT NULL REFERENCES users(id),amount REAL NOT NULL,status TEXT NOT NULL DEFAULT 'due',created_at TEXT DEFAULT CURRENT_TIMESTAMP,paid_at TEXT);
 CREATE TABLE IF NOT EXISTS reset_codes(user_id INT PRIMARY KEY REFERENCES users(id),code_hash TEXT NOT NULL,expires_at TEXT NOT NULL,attempts INT NOT NULL DEFAULT 0,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS verify_codes(user_id INT PRIMARY KEY REFERENCES users(id),code_hash TEXT NOT NULL,expires_at TEXT NOT NULL,attempts INT NOT NULL DEFAULT 0,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS agreement_cancellations(id INTEGER PRIMARY KEY,agreement_id INT NOT NULL REFERENCES agreements(id),by_id INT NOT NULL REFERENCES users(id),reason TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS contact_messages(id INTEGER PRIMARY KEY,name TEXT NOT NULL,email TEXT NOT NULL,body TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-CREATE TABLE IF NOT EXISTS request_categories(request_id INT NOT NULL REFERENCES requests(id),category_id INT NOT NULL REFERENCES skill_categories(id),PRIMARY KEY(request_id,category_id));
 CREATE TABLE IF NOT EXISTS failed_searches(id INTEGER PRIMARY KEY,text TEXT NOT NULL,at TEXT DEFAULT CURRENT_TIMESTAMP);`);
 const seedSections=()=>{if(get('SELECT COUNT(*) n FROM section_keywords').n>0)return;db.exec("INSERT OR IGNORE INTO section_keywords(category_id,word) SELECT s.category_id,k.word FROM skill_keywords k JOIN skills s ON s.id=k.skill_id WHERE s.status='approved'");for(const c of all('SELECT id,name FROM skill_categories'))run('INSERT OR IGNORE INTO section_keywords(category_id,word) VALUES(?,?)',c.id,normAr(c.name))};
 seedSections();
@@ -96,16 +85,16 @@ run("INSERT OR REPLACE INTO settings(key,value) VALUES('platform_vat_registered'
 all("SELECT id FROM users WHERE role='admin'").forEach(a=>notify(a.id,'بلغ إجمالي توريدات المنصة حد التسجيل الإلزامي 375,000 ريال، وفُعّلت ضريبة القيمة المضافة تلقائيًا','#/admin'));return true};
 // the platform invoices a registered helper's net amount (price minus commission) plus VAT; only when the platform is VAT-registered
 const issueHelperDoc=(agreementId)=>{const ref='H-'+agreementId;if(get('SELECT 1 x FROM invoices WHERE ref=?',ref))return;if(SET().platform_vat_registered!=='1')return;
-const a=get('SELECT amount,helper_id FROM agreements WHERE id=?',agreementId);if(!a||!(a.amount>0))return;const h=get('SELECT name,vat_status,vat_number,vat_verified FROM users WHERE id=?',a.helper_id)||{};if(!(h.vat_status==='registered'&&h.vat_verified===1))return;
+const a0=get('SELECT amount,a_id,b_id FROM agreements WHERE id=?',agreementId);if(!a0||!(a0.amount>0))return;const a={amount:a0.amount,helper_id:get("SELECT id FROM users WHERE id=? AND account_type='helper'",a0.a_id)?a0.a_id:a0.b_id};const h=get('SELECT name,vat_status,vat_number,vat_verified FROM users WHERE id=?',a.helper_id)||{};if(!(h.vat_status==='registered'&&h.vat_verified===1))return;
 const pvat=String(SET().platform_vat_number||''),name=SET().org_name||'مؤسسة المساعد';const net=Math.round(a.amount*(100-commissionPctFor()))/100;const vat=Math.round(net*0.15*100)/100,total=Math.round((net+vat)*100)/100;
 const seq=get('SELECT COALESCE(MAX(seq),0)+1 n FROM invoices').n;const ts=new Date().toISOString();
 run('INSERT INTO invoices(kind,ref,seq,agreement_id,issuer_name,issuer_vat,buyer_name,buyer_vat,description,subtotal,vat_rate,vat_amount,total,issued_at,qr,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)','tax_invoice',ref,seq,agreementId,h.name||'',String(h.vat_number||''),name,pvat,'خدمات مقدم خدمة للمنصة عن الاتفاق رقم '+agreementId,net,0.15,vat,total,ts,null,'pending_provider')};
 const commissionPctFor=()=>Number(SET().commission_percent)||2;
-const ensureCommission=(id)=>{const a=get('SELECT * FROM agreements WHERE id=?',id);if(!a||a.status!=='completed'||!a.paid_at)return;const pct=commissionPctFor(helperOf(a));run('INSERT OR IGNORE INTO agreement_commissions(agreement_id,helper_id,amount) VALUES(?,?,?)',id,helperOf(a),Math.round(a.amount*pct)/100);issueSaleDoc(id);issueHelperDoc(id)};
+const ensureCommission=(id)=>{const a=get('SELECT * FROM agreements WHERE id=?',id);if(!a||!a.paid_at)return;const pct=commissionPctFor(helperOf(a));run("INSERT OR IGNORE INTO agreement_commissions(agreement_id,helper_id,amount,status,paid_at) VALUES(?,?,?,'paid',datetime('now'))",id,helperOf(a),Math.round(a.amount*pct)/100);issueSaleDoc(id);issueHelperDoc(id)};
 const clientOf=a=>helperOf(a)===a.a_id?a.b_id:a.a_id;
 const CATALOG_VERSION='3';
 const applyCatalog=()=>{const v=get("SELECT value FROM settings WHERE key='catalog_version'");if(v&&v.value===CATALOG_VERSION)return;
-db.exec("DELETE FROM request_categories;DELETE FROM section_keywords;DELETE FROM user_sections;DELETE FROM user_skills;DELETE FROM request_skills;DELETE FROM skill_keywords;DELETE FROM skills;DELETE FROM skill_categories;");
+db.exec("DELETE FROM section_keywords;DELETE FROM user_sections;DELETE FROM user_skills;DELETE FROM skill_keywords;DELETE FROM skills;DELETE FROM skill_categories;");
 CATALOG.forEach((c,i)=>{const id=Number(run('INSERT INTO skill_categories(name,sort) VALUES(?,?)',c.name,i+1).lastInsertRowid);for(const w of [c.name,...c.words])run('INSERT OR IGNORE INTO section_keywords(category_id,word) VALUES(?,?)',id,normAr(w))});
 run("INSERT OR REPLACE INTO settings(key,value) VALUES('catalog_version',?)",CATALOG_VERSION)};
 applyCatalog();
@@ -117,14 +106,14 @@ const err=(s,m)=>Object.assign(new Error(m),{s});
 const tx=f=>{db.exec('BEGIN IMMEDIATE');try{const r=f();db.exec('COMMIT');return r}catch(e){db.exec('ROLLBACK');throw e}};
 const hash=p=>{const s=crypto.randomBytes(16).toString('hex');return s+':'+crypto.scryptSync(p,s,64).toString('hex')};
 const check=(p,h)=>{const [s,x]=h.split(':');return crypto.timingSafeEqual(crypto.scryptSync(p,s,64),Buffer.from(x,'hex'))};
-const notify=(u,t,l)=>run('INSERT INTO notifications(user_id,text,link) VALUES(?,?,?)',u,t,l??null);
+const notify=(u,t,l)=>{const r=run('INSERT INTO notifications(user_id,text,link) VALUES(?,?,?)',u,t,l??null);pushTo(u,t,l);return r};
+const pushHits=new Map();
+const pushTo=(uid,title,link)=>{const cfg=process.env.VAPID_PUBLIC_KEY&&process.env.VAPID_PRIVATE_KEY?{publicKey:process.env.VAPID_PUBLIC_KEY,privateKey:process.env.VAPID_PRIVATE_KEY,subject:process.env.VAPID_SUBJECT||'mailto:admin@example.com'}:null;if(!cfg)return;const pref=get('SELECT push_enabled FROM users WHERE id=?',uid);if(!pref||!pref.push_enabled)return;const nowT=Date.now(),hits=(pushHits.get(uid)||[]).filter(t=>nowT-t<600000);if(hits.length>=10){pushHits.set(uid,hits);return}hits.push(nowT);pushHits.set(uid,hits);for(const sub of all('SELECT id,endpoint,p256dh,auth FROM push_subscriptions WHERE user_id=?',uid))sendWebPush(sub,JSON.stringify({title:'المساعد',body:String(title),url:'/'+(link||'')}),cfg).then(r=>{if(r.status===404||r.status===410)run('DELETE FROM push_subscriptions WHERE id=?',sub.id);else if(!r.ok)console.error('push: '+r.status)}).catch(e=>console.error('push: '+e.message))};
 const bal=u=>get('SELECT COALESCE(SUM(delta),0) b FROM points_ledger WHERE user_id=?',u).b;
 const award=(u,key,ref)=>{const p=get('SELECT points FROM reward_rules WHERE key=?',key)?.points||0;if(p>0&&run('INSERT OR IGNORE INTO points_ledger(user_id,delta,reason,ref) VALUES(?,?,?,?)',u,p,key,ref).changes)notify(u,`أُضيفت ${p} نقطة إلى محفظتك`,'#/profile')};
-export const hooks={onPublished:()=>{}};
-const log=(id,st,by)=>{run('INSERT INTO status_log(request_id,status,by_id) VALUES(?,?,?)',id,st,by);if(st==='published')hooks.onPublished(id)};
 const audit=(a,act,d)=>run('INSERT INTO audit_log(admin_id,action,detail) VALUES(?,?,?)',a,act,d);
 const startSession=(res,uid)=>{const t=crypto.randomBytes(32).toString('hex');run('INSERT INTO sessions VALUES(?,?,?)',t,uid,Date.now()+6048e5);res.setHeader('Set-Cookie',`sid=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${((process.env.APP_URL||'').startsWith('https')||res.req.headers['x-forwarded-proto']==='https')?'; Secure':''}`)};
-const userOf=t=>t?get('SELECT u.id,u.name,u.email,u.city,u.role,u.active,u.account_type,u.phone,u.address,u.email_verified,u.notify_email,u.perms,u.vat_status,u.vat_number,u.helper_type,u.vat_verified FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.exp>? AND u.active=1',t,Date.now()):undefined;
+const userOf=t=>t?get('SELECT u.id,u.name,u.email,u.city,u.role,u.active,u.account_type,u.phone,u.address,u.email_verified,u.notify_email,u.push_enabled,u.perms,u.vat_status,u.vat_number,u.helper_type,u.vat_verified FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.exp>? AND u.active=1',t,Date.now()):undefined;
 const need=c=>{if(!c.u)throw err(401,'سجّل الدخول أولًا');return c.u};
 const adm=c=>{if(need(c).role!=='admin')throw err(403,'غير مصرح');return c.u};
 const can=(c,area)=>{const u=need(c);if(u.role==='admin')return u;if(u.role==='staff'&&(u.perms||'').split(',').includes(area))return u;throw err(403,'لا تملك صلاحية لهذا القسم')};
@@ -141,8 +130,8 @@ const own=(u,id)=>{if(!id)return null;if(!get('SELECT 1 x FROM attachments WHERE
 const PV=4;
 const pledgeBody=s=>[
 `1. أقرّ بأنني اطلعت على شروط المنصة وسياسة الخصوصية، وأن هذا التعهد ملزم لي نظامًا.`,
-`2. ألتزم بسداد عمولة للمنصة قدرها ${s.commission_percent||0}% من السعر النهائي المتفق عليه في كل مهمة أو اتفاق يتم عبر المنصة (طلب أو محادثة)، سواء تم الدفع بالتحويل المباشر أو بأي وسيلة أخرى.`,
-`3. تستحق العمولة عند تأكيد العميل إنجاز المهمة في المنصة، ولا تستحق عند اعتماد الاتفاق وحده، ولا عن المهمة الملغاة أو المعترض عليها أو الجزء غير المنفَّذ. وأسددها خلال ${s.commission_grace_days??3} أيام بالتحويل إلى حساب المنصة المعلن فيها، وأرفع صورة الإثبات.`,
+`2. ألتزم بسداد عمولة للمنصة قدرها ${s.commission_percent||2}% من السعر النهائي المتفق عليه في كل مهمة أو اتفاق يتم عبر المنصة (طلب أو محادثة)، سواء تم الدفع بالتحويل المباشر أو بأي وسيلة أخرى.`,
+`3. تُخصم العمولة تلقائيًا من المبلغ المدفوع عبر بوابة هلا عند نجاح الدفع، ويُوزَّع الباقي على المساعد دون أي تحويل يدوي من الطرفين. ولا تُستحق عن المهمة الملغاة أو المعترض عليها أو الجزء غير المنفَّذ.`,
 `4. ألتزم بعدم التحايل على المنصة، فلا أتفق مع طالب المساعدة على إتمام المهمة أو الدفع خارجها لتفادي العمولة. وإذا ثبت ذلك استحقت المنصة العمولة كاملة، مع حقها في المطالبة بالتعويض عما لحقها من ضرر أمام الجهة المختصة.`,
 `5. عند التأخر عن السداد يحق للمنصة: (أ) إيقاف حسابي أو منعي من التقدم لمهام جديدة، (ب) مطالبتي بالمبلغ المستحق، (ج) اللجوء إلى الجهات القضائية والتنفيذية والتحكيمية المختصة في المملكة لاستيفاء حقها.`,
 `6. أتحمل ما تتكبده المنصة في سبيل التحصيل من رسوم ومصاريف تقاضٍ أو تحكيم وتنفيذ وأتعاب محاماة، وفق ما يقرره المحكم أو الجهة المختصة.`,
@@ -166,18 +155,12 @@ const TERMS_VERSION='2026-10';
 const VERIFY_REQUIRED=process.env.EMAIL_VERIFY_REQUIRED==='1';
 const issueVerify=async(uid,email)=>{const code=String(crypto.randomInt(0,10000)).padStart(4,'0');run("INSERT OR REPLACE INTO verify_codes(user_id,code_hash,expires_at,attempts,created_at) VALUES(?,?,datetime('now','+10 minutes'),0,datetime('now'))",uid,sha(code+':'+uid));const u=get('SELECT name FROM users WHERE id=?',uid);return sendMail(email,'رمز تفعيل البريد - المساعد',`<div dir="rtl"><p>أهلًا ${hx(u?u.name:'')}،</p><p>رمز تفعيل بريدك الإلكتروني:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>الرمز صالح لمدة 10 دقائق. إذا لم تطلب ذلك فتجاهل هذه الرسالة.</p></div>`)};
 const ACT={start:['helper',['helper_chosen'],'in_progress'],complete:['owner',['in_progress'],'completed'],cancel:['owner',['draft','published','negotiating'],'cancelled'],publish:['owner',['draft'],'published'],dispute:['party',['helper_chosen','in_progress'],'disputed']};
-const hasThread=(rid,a,b)=>!!get('SELECT 1 x FROM messages WHERE request_id=? AND ((from_id=? AND to_id=?) OR (from_id=? AND to_id=?)) LIMIT 1',rid,a,b,b,a);
-const hasOffer=(rid,uid)=>!!get('SELECT 1 x FROM offers WHERE request_id=? AND user_id=?',rid,uid);
-const peerOk=(r,me,peer)=>me===r.user_id?(hasOffer(r.id,peer)||hasThread(r.id,me,peer)):(peer===r.user_id&&(hasOffer(r.id,me)||hasThread(r.id,me,peer)));
 const blocked=(a,b)=>!!get('SELECT 1 x FROM blocks WHERE (blocker_id=? AND blocked_id=?) OR (blocker_id=? AND blocked_id=?)',a,b,b,a);
-const send=(r,u,to,body,att)=>{if(blocked(u.id,to))throw err(403,'لا يمكن التواصل مع هذا المستخدم');const id=Number(run('INSERT INTO messages(request_id,from_id,to_id,body,attachment_id) VALUES(?,?,?,?,?)',r.id,u.id,to,body,att).lastInsertRowid);notify(to,`رسالة جديدة بخصوص: ${r.title}`,'#/chat/'+r.id+'/'+u.id);notifyMessageMail(to,u.name,`/chat/${r.id}/${u.id}`);return id};
 const CFG=()=>{const s=SET();return{warn:+(s.cancel_warn_at??2),sus:+(s.cancel_suspend_at??3),rev:+(s.cancel_review_at??5),days:+(s.cancel_suspend_days??7)}};
-const applyPenalty=uid=>{const c=CFG(),n=get("SELECT (SELECT COUNT(*) FROM cancellations WHERE by_id=? AND created_at>datetime('now','-30 days'))+(SELECT COUNT(*) FROM agreement_cancellations WHERE by_id=? AND created_at>datetime('now','-30 days')) n",uid,uid).n;
+const applyPenalty=uid=>{const c=CFG(),n=get("SELECT (SELECT COUNT(*) FROM agreement_cancellations WHERE by_id=? AND created_at>datetime('now','-30 days')) n",uid).n;
 if(n>=c.rev){run('UPDATE users SET flagged=1 WHERE id=?',uid);all("SELECT id FROM users WHERE role='admin'").forEach(a=>notify(a.id,'حساب يحتاج مراجعة بسبب تكرار الإلغاء بعد الاختيار','#/admin'))}
 if(n>=c.sus){run("UPDATE users SET suspended_until=datetime('now', '+' || ? || ' days') WHERE id=?",c.days,uid);notify(uid,`أُوقف نشرك وتقدمك لمدة ${c.days} أيام بسبب تكرار الإلغاء بعد اختيار المساعد`,'#/profile')}
 else if(n>=c.warn)notify(uid,'تنبيه: تكرار الإلغاء بعد اختيار المساعد قد يؤدي إلى إيقاف حسابك','#/profile')};
-const pairCheck=(a,b)=>{const n=get("SELECT COUNT(*) n FROM cancellations WHERE ((by_id=? AND other_id=?) OR (by_id=? AND other_id=?)) AND created_at>datetime('now','-30 days')",a,b,b,a).n;
-if(n>=2)all("SELECT id FROM users WHERE role='admin'").forEach(x=>notify(x.id,`تكرار إلغاء بعد الاختيار بين طرفين (${n} مرات خلال 30 يومًا)`,'#/admin'))};
 const likeEsc=v=>String(v).replace(/[\\%_]/g,m=>'\\'+m);
 const cleanSearch=t=>String(t).replace(/\+?[\d\u0660-\u0669][\d\u0660-\u0669\s-]{7,}[\d\u0660-\u0669]/g,'[\u0631\u0642\u0645]').replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g,'[\u0628\u0631\u064a\u062f]').trim().slice(0,200);
 const stripAl=w=>w.length>3&&w.startsWith('ال')?w.slice(2):w;
@@ -191,4 +174,4 @@ const base=(process.env.APP_URL||'').replace(/\/$/,'');sendMail(u.email,'رسا�
 
 const RATE=new Map();
 const hitOr429=(key,limit,windowMs=3600e3)=>{if(RATE.size>50000)RATE.clear();const now=Date.now(),r=RATE.get(key)||{n:0,t:now};if(now-r.t>windowMs){r.n=0;r.t=now}r.n++;RATE.set(key,r);if(r.n>limit)throw err(429,'محاولات كثيرة، حاول بعد قليل')};
-export {DB_PATH, notifyEmail, activateVatIfNeeded, issueHelperDoc, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, log, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hasOffer, hasThread, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, pairCheck, peerOk, send, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, issueCommissionDoc, submitInvoice, commissionPctFor, issueSaleDoc};
+export {DB_PATH, notifyEmail, activateVatIfNeeded, issueHelperDoc, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, issueCommissionDoc, submitInvoice, commissionPctFor, issueSaleDoc};

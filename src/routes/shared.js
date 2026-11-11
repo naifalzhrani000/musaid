@@ -1,0 +1,34 @@
+import {DatabaseSync} from 'node:sqlite';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import {SKILL_SEED, ASSIST_CITIES, CANCEL_REASONS} from '../../data.js';
+import {route, notifyEmail, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, needsVat} from '../core.js';
+
+route('POST','/upload',c=>{const u=need(c),m=/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(c.b.data||''));if(!m)throw err(400,'صيغة الصورة غير مدعومة');const d=Buffer.from(m[2],'base64');if(d.length>2e6||d.length<12)throw err(400,'حجم الصورة غير مقبول');
+const h=d.subarray(0,12).toString('latin1'),ok=m[1]==='png'?d[0]===0x89&&h.slice(1,4)==='PNG':m[1]==='jpeg'?d[0]===0xff&&d[1]===0xd8:h.startsWith('RIFF')&&h.slice(8)==='WEBP';if(!ok)throw err(400,'الملف ليس صورة صالحة');
+if(get("SELECT COUNT(*) n FROM attachments WHERE user_id=? AND created_at>datetime('now','-1 hour')",u.id).n>=40)throw err(429,'تجاوزت حد الرفع');
+return{id:Number(run('INSERT INTO attachments(user_id,mime,data) VALUES(?,?,?)',u.id,'image/'+m[1],d).lastInsertRowid)}});
+route('GET','/files/(\\d+)',c=>{const f=get('SELECT * FROM attachments WHERE id=?',c.p[0]);if(!f)throw err(404,'غير موجود');const me=c.u?.id||0;
+const ok=c.u?.role==='admin'||f.user_id===me;if(!ok&&!get('SELECT 1 x FROM portfolio WHERE attachment_id=?',f.id)&&!get('SELECT 1 x FROM direct_messages WHERE attachment_id=? AND (from_id=? OR to_id=?)',f.id,me,me))throw err(403,'غير مصرح');return{raw:f.data,mime:f.mime}});
+route('POST','/assistant',c=>{hitOr429('ast|'+(c.u?c.u.id:c.ip),+(process.env.ASSISTANT_PER_HOUR)||300);const t=String(c.b.message||'').trim();if(t.length<3||t.length>500)throw err(400,'اكتب طلبك في جملة واضحة');
+if(!c.u)return{reply:'سجّل دخولك حتى أبحث لك عن المساعدين المسجّلين.',needLogin:1,providers:[],requests:[]};
+const hits=matchSections(t),city=ASSIST_CITIES.find(x=>t.includes(x))||null;
+if(!hits.length){run("INSERT INTO failed_searches(text,reason,city) VALUES(?,'no_category',?)",cleanSearch(t),city);return{reply:'لم أجد قسمًا مناسبًا لطلبك. جرّب وصف الخدمة بكلمات أخرى، أو اقترح قسمًا جديدًا إذا كانت خدمتك غير موجودة.',noMatch:1,sections:all('SELECT id,name FROM skill_categories ORDER BY sort,name'),providers:[],requests:[]}}
+const ids=hits.map(h=>h.id),ph=ids.map(()=>'?').join(','),names=hits.map(h=>h.name).join('، ');
+const providers=all(`SELECT u.id,u.name,u.city,COUNT(DISTINCT us.category_id) matched FROM users u JOIN user_sections us ON us.user_id=u.id WHERE us.category_id IN (${ph}) AND u.active=1 AND u.flagged=0 AND (u.vat_status IS NOT 'registered' OR u.vat_verified=1) AND (u.suspended_until IS NULL OR u.suspended_until<=datetime('now')) ${city?"AND u.city LIKE ? ESCAPE '\\'":''} GROUP BY u.id ORDER BY matched DESC,u.id LIMIT 10`,...ids,...(city?[`%${likeEsc(city)}%`]:[]));
+if(!providers.length)run("INSERT INTO failed_searches(text,reason,city,category_id) VALUES(?,'no_provider',?,?)",cleanSearch(t),city,hits[0].id);
+const reply=providers.length?`وجدت ${providers.length} مساعدًا مسجلًا في: ${names}${city?' في '+city:''}.`:`لا يوجد مساعدون مسجلون في: ${names}${city?' في '+city:''} بعد.`+(city?'':' حدّد المدينة لنتائج أدق.');
+return{reply,category:hits[0].name,providers:providers.map(x=>({id:x.id,name:String(x.name).split(' ')[0],city:x.city,done:0,avg:null})),requests:[]}});
+route('GET','/skills',()=>{const cats=all('SELECT id,name FROM skill_categories ORDER BY sort,id');const sk=all("SELECT id,name,category_id FROM skills WHERE status='approved' ORDER BY name");return{categories:cats.map(c=>({...c,skills:sk.filter(s=>s.category_id===c.id)}))}});
+route('POST','/skills/suggest',c=>{const u=need(c),cat=+c.b.category_id;if(!get('SELECT 1 x FROM skill_categories WHERE id=?',cat))throw err(400,'القسم غير صالح');const name=str(c.b.name,2,60,'اسم المهارة');
+const kws=String(c.b.keywords||'').split(/[,،]/).map(normAr).filter(x=>x.length>=2).slice(0,15);
+if(get("SELECT COUNT(*) n FROM skills WHERE suggested_by=? AND status='pending'",u.id).n>=5)throw err(429,'لديك مهارات بانتظار الاعتماد، انتظر حتى تُراجع');
+if(get('SELECT 1 x FROM skills WHERE name=?',name))throw err(409,'هذه المهارة موجودة أو بانتظار الاعتماد');
+const id=Number(run("INSERT INTO skills(category_id,name,status,suggested_by) VALUES(?,?,'pending',?)",cat,name,u.id).lastInsertRowid);
+for(const k of new Set([normAr(name),...kws]))run('INSERT OR IGNORE INTO skill_keywords(skill_id,word) VALUES(?,?)',id,k);
+all("SELECT id FROM users WHERE role='admin'").forEach(a=>notify(a.id,`مهارة جديدة بانتظار الاعتماد: ${name}`,'#/admin'));return{id,status:'pending'}});
+route('GET','/providers/(\\d+)',c=>{need(c);const id=+c.p[0];const u=get('SELECT id,name,city,bio FROM users WHERE id=? AND active=1',id);if(!u)throw err(404,'المساعد غير موجود');
+return{id:u.id,name:u.name,city:u.city||'',bio:u.bio||'',skills:(()=>{const sp=all("SELECT s.name FROM user_skills us JOIN skills s ON s.id=us.skill_id WHERE us.user_id=? AND s.status='approved' ORDER BY s.name",id).map(x=>x.name);return sp.length?sp:all("SELECT c.name FROM user_sections us JOIN skill_categories c ON c.id=us.category_id WHERE us.user_id=? ORDER BY c.sort",id).map(x=>x.name)})(),done:get("SELECT COUNT(*) n FROM agreements WHERE (a_id=? OR b_id=?) AND status='completed'",id,id).n,avg:null,count:0,reviews:[],portfolio:all('SELECT p.id,p.attachment_id,p.caption FROM portfolio p WHERE p.user_id=? ORDER BY p.id DESC LIMIT 30',id)}});
