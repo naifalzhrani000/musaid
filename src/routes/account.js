@@ -5,7 +5,8 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, hitOr429, hx} from '../core.js';
+import {macOf, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, hitOr429, hx} from '../core.js';
+import {mediaDir} from '../storage.js';
 
 route('POST','/register',c=>{hitOr429('reg|'+c.ip,+(process.env.REGISTER_PER_HOUR)||20);const b=c.b,name=str(b.name,2,60,'الاسم'),email=str(b.email,5,120,'البريد').toLowerCase(),city=str(b.city||'',0,60,'المدينة');
 if(!/^\S+@\S+\.\S+$/.test(email))throw err(400,'البريد غير صالح');str(b.password,8,100,'كلمة المرور');if(!/^[^\s@<>\"'`]+@[^\s@<>\"'`]+\.[^\s@<>\"'`]+$/.test(email))throw err(400,'البريد الإلكتروني غير صالح');if(!b.terms)throw err(400,'يجب قبول الشروط وسياسة الخصوصية');if(!b.age)throw err(400,'التسجيل متاح لمن عمره 18 سنة فأكثر');
@@ -16,13 +17,13 @@ route('POST','/login',c=>{const email=String(c.b.email||'').toLowerCase(),k=c.ip
 if(f.n>=8)throw err(429,'محاولات كثيرة، حاول بعد قليل');const u=get('SELECT * FROM users WHERE email=?',email);
 if(!u||!check(String(c.b.password||''),u.pass)){run('INSERT INTO login_attempts(k,n,t) VALUES(?,?,?) ON CONFLICT(k) DO UPDATE SET n=excluded.n,t=excluded.t',k,f.n+1,f.t);throw err(401,'البريد أو كلمة المرور غير صحيحة')}
 if(!u.active)throw err(403,'الحساب معطّل');run('DELETE FROM login_attempts WHERE k=?',k);startSession(c.res,u.id);return{ok:1}});
-route('POST','/logout',c=>{run('DELETE FROM sessions WHERE token=?',c.tok||'');return{ok:1}});
+route('POST','/logout',c=>{run('DELETE FROM sessions WHERE token=?',sha(c.tok||''));return{ok:1}});
 route('GET','/me',c=>c.u?{user:c.u,unread:get('SELECT COUNT(*) n FROM notifications WHERE user_id=? AND read=0',c.u.id).n}:{user:null});
 route('POST','/profile',c=>{const u=need(c),ph=String(c.b.phone||'').replace(/[\s-]/g,'');
 let phone=null;if(ph){const m=/^(?:\+?966|0)(5\d{8})$/.exec(ph);if(!m)throw err(400,'رقم الجوال غير صالح (مثال: 05XXXXXXXX)');phone='0'+m[1]}
 const ad=str(c.b.address||'',0,200,'العنوان');
 const vs=['','registered','not_registered'].includes(c.b.vat_status)?c.b.vat_status:null;let vn=null;if(vs==='registered'){vn=String(c.b.vat_number||'').replace(/\s/g,'');if(!/^3\d{14}$/.test(vn))throw err(400,'الرقم الضريبي يتكون من 15 رقمًا ويبدأ بـ 3');}else if(vs==='not_registered'){vn='';}
-if(vs!==null&&u.account_type==='helper'){run('UPDATE users SET vat_status=?,vat_number=?,vat_verified=0 WHERE id=?',vs,vn,u.id)}
+if(vs!==null&&u.account_type==='helper'){const cur=get('SELECT vat_status,vat_number FROM users WHERE id=?',u.id);const changed=!cur||cur.vat_status!==vs||(cur.vat_number||null)!==vn;if(changed)run('UPDATE users SET vat_status=?,vat_number=?,vat_verified=0 WHERE id=?',vs,vn,u.id)}
 run('UPDATE users SET name=?,city=COALESCE(?,city),phone=COALESCE(?,phone),address=COALESCE(?,address) WHERE id=?',str(c.b.name,2,60,'الاسم'),c.b.city===undefined?null:str(c.b.city,0,60,'المدينة'),phone,ad||null,u.id);return{ok:1}});
 route('GET','/pledge',c=>{const u=need(c),s=SET();return{ready:!!(s.org_name&&s.org_cr&&s.dispute_clause),accepted:!!get('SELECT 1 x FROM pledges WHERE user_id=? AND version=?',u.id,PV),org:s.org_name||'',org_cr:s.org_cr||'',body:pledgeBody(s)}});
 route('POST','/pledge',c=>{const u=need(c),s=SET();if(!(s.org_name&&s.org_cr&&s.dispute_clause))throw err(400,'التعهد غير مفعّل بعد، تواصل مع الإدارة');if(!c.b.accept)throw err(400,'يجب تحديد الموافقة');
@@ -48,17 +49,20 @@ route('GET','/setup-status',()=>({needed:!!(process.env.ADMIN_SETUP_TOKEN&&!get(
 route('POST','/me/delete',c=>tx(()=>{const u=need(c),pw=String(c.b.password||'');if(c.b.confirm!=='حذف')throw err(400,'اكتب كلمة «حذف» للتأكيد');
 if(!check(pw,get('SELECT pass FROM users WHERE id=?',u.id).pass))throw err(403,'كلمة المرور غير صحيحة');
 run('DELETE FROM portfolio WHERE user_id=?',u.id);run('DELETE FROM settings WHERE key=?','avatar:'+u.id);run('DELETE FROM user_skills WHERE user_id=?',u.id);run('DELETE FROM sessions WHERE user_id=?',u.id);run('DELETE FROM notifications WHERE user_id=?',u.id);run('DELETE FROM direct_messages WHERE from_id=? OR to_id=?',u.id,u.id);run('DELETE FROM user_sections WHERE user_id=?',u.id);
+const orphanVids=all("SELECT id,ext_key FROM attachments WHERE user_id=? AND ext_key LIKE 'disk:%' AND id NOT IN (SELECT attachment_id FROM direct_messages WHERE attachment_id IS NOT NULL) AND id NOT IN (SELECT attachment_id FROM portfolio WHERE attachment_id IS NOT NULL)",u.id);
+for(const v of orphanVids)fs.rmSync(path.join(mediaDir(),path.basename(v.ext_key.slice(5))),{force:true});
+if(orphanVids.length)run("DELETE FROM attachments WHERE id IN ("+orphanVids.map(()=>'?').join(',')+')',...orphanVids.map(v=>v.id));
 run("UPDATE users SET name='مستخدم محذوف',email='deleted-'||id||'@deleted.invalid',pass=?,city=NULL,phone=NULL,national_id=NULL,address=NULL,iban=NULL,bio=NULL,active=0,flagged=0,suspended_until=NULL,role='user' WHERE id=?",hash(crypto.randomBytes(24).toString('hex')),u.id);
 audit(u.id,'account_delete',`user:${u.id}`);return{ok:1}}));
 route('POST','/forgot',async c=>{const email=String(c.b.email||'').trim().toLowerCase();const u=email?get('SELECT id,name,email FROM users WHERE email=? AND active=1',email):null;
 let allowed=false;if(u){try{hitOr429('fg|'+u.id,3);allowed=true}catch{}}
-if(allowed){const code=String(crypto.randomInt(0,10000)).padStart(4,'0');run("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts,created_at) VALUES(?,?,datetime('now','+10 minutes'),0,datetime('now'))",u.id,sha(code+':'+u.id));
+if(allowed){const code=String(crypto.randomInt(0,10000)).padStart(4,'0');run("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts,created_at) VALUES(?,?,datetime('now','+10 minutes'),0,datetime('now'))",u.id,macOf(code+':'+u.id));
 await sendMail(u.email,'رمز استعادة كلمة المرور - المساعد',`<div dir="rtl"><p>أهلًا ${hx(u.name)}،</p><p>رمز استعادة كلمة المرور:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>الرمز صالح لمدة 10 دقائق، ويُستخدم مرة واحدة. إذا لم تطلب ذلك فتجاهل هذه الرسالة.</p></div>`).catch(()=>{})}
 return{ok:1}});
 route('POST','/reset-code',c=>{const email=String(c.b.email||'').trim().toLowerCase(),code=String(c.b.code||'').trim();const bad=()=>{throw err(400,'الرمز غير صحيح أو منتهي، اطلب رمزًا جديدًا')};
 const u=email?get('SELECT id FROM users WHERE email=? AND active=1',email):null;if(!u)bad();
 const r=get('SELECT code_hash,attempts,datetime(expires_at)>datetime(\'now\') AS fresh FROM reset_codes WHERE user_id=?',u.id);if(!r||!r.fresh||r.attempts>=5)bad();
-if(r.code_hash!==sha(code+':'+u.id)){run('UPDATE reset_codes SET attempts=attempts+1 WHERE user_id=?',u.id);bad()}
+if(r.code_hash!==macOf(code+':'+u.id)){run('UPDATE reset_codes SET attempts=attempts+1 WHERE user_id=?',u.id);bad()}
 run('DELETE FROM reset_codes WHERE user_id=?',u.id);const tok=crypto.randomBytes(32).toString('hex');run("INSERT INTO password_resets(user_id,token_hash,expires_at) VALUES(?,?,datetime('now','+15 minutes'))",u.id,sha(tok));return{token:tok}});
 route('POST','/verify-email',c=>tx(()=>{const tok=String(c.b.token||'');if(!/^[0-9a-f]{64}$/.test(tok))throw err(400,'الرابط غير صالح أو منتهي');const r=get("SELECT user_id FROM verify_tokens WHERE token_hash=? AND used=0 AND expires_at>datetime('now')",sha(tok));if(!r)throw err(400,'الرابط غير صالح أو منتهي');run('UPDATE users SET email_verified=1 WHERE id=?',r.user_id);run('UPDATE verify_tokens SET used=1 WHERE user_id=?',r.user_id);return{ok:1}}));
 route('POST','/me/notify',c=>{const u=need(c);run('UPDATE users SET notify_email=? WHERE id=?',c.b.enabled?1:0,u.id);return{ok:1}});
@@ -67,7 +71,7 @@ if(!check(String(c.b.password||''),get('SELECT pass FROM users WHERE id=?',u.id)
 if(!/^[^\s@<>\"'`]+@[^\s@<>\"'`]+\.[^\s@<>\"'`]+$/.test(email))throw err(400,'البريد الإلكتروني غير صالح');
 if(email===u.email)return{ok:1};
 if(get('SELECT 1 x FROM users WHERE email=? AND id!=?',email,u.id))throw err(409,'البريد مسجّل مسبقًا');
-tx(()=>{run('UPDATE users SET email=?,email_verified=? WHERE id=?',email,VERIFY_REQUIRED?0:1,u.id);run('DELETE FROM sessions WHERE user_id=? AND token!=?',u.id,c.tok||'');run('UPDATE verify_tokens SET used=1 WHERE user_id=?',u.id)});
+tx(()=>{run('UPDATE users SET email=?,email_verified=? WHERE id=?',email,VERIFY_REQUIRED?0:1,u.id);run('DELETE FROM sessions WHERE user_id=? AND token!=?',u.id,sha(c.tok||''));run('UPDATE verify_tokens SET used=1 WHERE user_id=?',u.id)});
 const oldEmail=u.email;sendMail(oldEmail,'تم تغيير بريد حسابك - المساعد','<div dir="rtl"><p>تم تغيير البريد الإلكتروني لحسابك في المساعد.</p><p>إذا لم تكن أنت من قام بذلك، تواصل مع الدعم فورًا.</p></div>').catch(()=>{});
 const mailed=VERIFY_REQUIRED?await issueVerify(u.id,email):true;return{ok:1,mailed}});
 route('POST','/me/resend-verification',async c=>{const u=need(c);if(u.email_verified)return{ok:1};try{hitOr429('vr|'+u.id,3)}catch{throw err(429,'طلبت الرمز كثيرًا، جرّب لاحقًا')}if(!await issueVerify(u.id,u.email))throw err(503,'تعذّر إرسال البريد الآن، حاول بعد قليل');return{ok:1}});
@@ -76,13 +80,13 @@ const r=get("SELECT id,user_id FROM password_resets WHERE token_hash=? AND used=
 run('UPDATE users SET pass=? WHERE id=?',hash(pw),r.user_id);run('UPDATE password_resets SET used=1 WHERE user_id=?',r.user_id);run('DELETE FROM sessions WHERE user_id=?',r.user_id);audit(r.user_id,'password_reset_self',`user:${r.user_id}`);return{ok:1}}));
 route('POST','/verify-code',c=>{const u=need(c),code=String(c.b.code||'').trim();const bad=()=>{throw err(400,'الرمز غير صحيح أو منتهي، اطلب رمزًا جديدًا')};
 if(u.email_verified)return{ok:1};const r=get("SELECT code_hash,attempts,datetime(expires_at)>datetime('now') AS fresh FROM verify_codes WHERE user_id=?",u.id);if(!r||!r.fresh||r.attempts>=5)bad();
-if(r.code_hash!==sha(code+':'+u.id)){run('UPDATE verify_codes SET attempts=attempts+1 WHERE user_id=?',u.id);bad()}
+if(r.code_hash!==macOf(code+':'+u.id)){run('UPDATE verify_codes SET attempts=attempts+1 WHERE user_id=?',u.id);bad()}
 run('UPDATE users SET email_verified=1 WHERE id=?',u.id);run('DELETE FROM verify_codes WHERE user_id=?',u.id);run('UPDATE verify_tokens SET used=1 WHERE user_id=?',u.id);return{ok:1}});
 
 route('POST','/me/password',c=>{const u=need(c),cur=String(c.b.current||''),nw=String(c.b.password||'');try{hitOr429('pw|'+u.id,10)}catch{throw err(429,'محاولات كثيرة، جرّب لاحقًا')}
 if(!check(cur,get('SELECT pass FROM users WHERE id=?',u.id).pass))throw err(401,'كلمة المرور الحالية غير صحيحة');
 if(nw.length<8||nw.length>100)throw err(400,'كلمة المرور الجديدة 8 أحرف على الأقل');if(nw===cur)throw err(400,'اختر كلمة مرور مختلفة عن الحالية');
-run('UPDATE users SET pass=? WHERE id=?',hash(nw),u.id);run('DELETE FROM sessions WHERE user_id=? AND token!=?',u.id,c.tok||'');return{ok:1}});
+run('UPDATE users SET pass=? WHERE id=?',hash(nw),u.id);run('DELETE FROM sessions WHERE user_id=? AND token!=?',u.id,sha(c.tok||''));return{ok:1}});
 
 route('POST','/contact',async c=>{try{hitOr429('ct|'+c.ip,5)}catch{throw err(429,'أرسلت رسائل كثيرة، جرّب لاحقًا')}
 const name=str(c.b.name,2,60,'الاسم'),email=str(c.b.email,5,120,'البريد').toLowerCase(),body=str(c.b.body,10,2000,'الرسالة');

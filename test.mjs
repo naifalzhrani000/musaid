@@ -1,6 +1,8 @@
 import {test,before,after} from 'node:test';import assert from 'node:assert/strict';import {spawn} from 'node:child_process';
+const macKeyOf=(file)=>{const d=new DatabaseSync(file);const r=d.prepare("SELECT value FROM settings WHERE key='mac_key'").get();d.close();return r?.value};
+const macFor=(file,s)=>createHmac('sha256',macKeyOf(file)).update(s).digest('hex');
 import {DatabaseSync} from 'node:sqlite';
-import {createHash} from 'node:crypto';
+import {createHash,createHmac} from 'node:crypto';
 import {existsSync,readdirSync,statSync} from 'node:fs';
 import {join} from 'node:path';
 let DBF;
@@ -12,7 +14,7 @@ let phSeq=0;const ph=()=>'05'+String(70000000+(++phSeq));
 const reg=async(e)=>{const c=cl();await c('/register','POST',{name:'مستخدم '+e,email:e+'@t.sa',password:'12345678',terms:1,age:1}); await c('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مستخدم '+e,phone:ph()}); await vfy(c);return c};
 const asHelper=async c=>{const cats=(await c('/skills')).j.categories;return c('/me/account-type','POST',{type:'helper',category_ids:[cats[0].id]})};
 const backdateHelper=e=>{const d=new DatabaseSync(DBF);d.prepare("UPDATE users SET created_at=datetime('now','-40 days') WHERE email=?").run(e);d.close()};
-const vfy=async(c)=>{const id=(await c('/me')).j.user.id;const d=new DatabaseSync(DBF);d.prepare("UPDATE users SET vat_verified=1,vat_status='registered',vat_number=CASE WHEN vat_number IS NULL OR vat_number='' THEN '312345678901234' ELSE vat_number END WHERE id=?").run(id);d.close();};
+const vfy=async(c)=>{const id=(await c('/me')).j.user.id;const d=new DatabaseSync(DBF);d.prepare("UPDATE users SET email_verified=1,vat_verified=1,vat_status='registered',vat_number=CASE WHEN vat_number IS NULL OR vat_number='' THEN '312345678901234' ELSE vat_number END WHERE id=?").run(id);d.close();};
 const payReq=async(id,amt)=>{const r=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body:JSON.stringify({request_id:id,amount:amt,reference:'RQ'+id})});return{s:r.status,j:await r.json()}};
 const payHala=async(id)=>{const r=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body:JSON.stringify({agreement_id:id,amount:99999,reference:'R'+id})});return r.status};
 test('الحسابات المشتركة للاختبارات اللاحقة',async()=>{const adm=await reg('admin');await reg('o2');assert.equal((await adm('/admin/bootstrap','POST',{token:'test-token'})).s,200);});
@@ -238,7 +240,7 @@ assert.equal((await c('/me/sections','POST',{category_ids:[cat.id,cat.id+1]})).s
 test('الامتثال: التسجيل يتطلب تأكيد العمر، ويُحفظ إصدار الشروط، والتصدير يعيد بيانات المستخدم',async()=>{
 const c=await cl();assert.equal((await c('/register','POST',{name:'امتثال تجريبي',email:'cp1@t.sa',password:'12345678',terms:1})).s,400);
 assert.equal((await c('/register','POST',{name:'امتثال تجريبي',email:'cp1@t.sa',password:'12345678',terms:1,age:1})).s,200);
-const ex=(await c('/me/export')).j;assert.equal(ex.profile.email,'cp1@t.sa');assert.equal(ex.profile.terms_version,'2026-10');assert.ok(Array.isArray(ex.direct_messages));
+const ex=(await c('/me/export')).j;assert.equal(ex.profile.email,'cp1@t.sa');assert.equal(ex.profile.terms_version,'2026-12');assert.ok(Array.isArray(ex.direct_messages));
 });
 
 test('الاتفاق في المحادثة: يقترحه طرف، ويعتمده الطرف الآخر فقط',async()=>{
@@ -336,7 +338,7 @@ const db=new DatabaseSync(DBF);const row=db.prepare('SELECT code_hash FROM reset
 assert.ok(row,'الرمز محفوظ');
 const sh=s=>createHash('sha256').update(s).digest('hex');
 const code='4821';
-const db2=new DatabaseSync(DBF);db2.prepare('UPDATE reset_codes SET code_hash=?,attempts=0 WHERE user_id=?').run(sh(code+':'+uid),uid);db2.close();
+const db2=new DatabaseSync(DBF);db2.prepare('UPDATE reset_codes SET code_hash=?,attempts=0 WHERE user_id=?').run(macFor(DBF,code+':'+uid),uid);db2.close();
 const x=cl();
 assert.equal((await x('/reset-code','POST',{email:'otp1@t.sa',code:'0000'})).s,400);
 assert.equal((await x('/reset-code','POST',{email:'otp1@t.sa',code})).s,200,'الرمز الصحيح يعمل');
@@ -346,7 +348,7 @@ const t=(await x('/reset-code','POST',{email:'otp1@t.sa',code})).j;assert.equal(
 test('الرمز المكوّن من 4 أرقام يُقفل بعد 5 محاولات خاطئة',async()=>{
 const c=await cl();await c('/register','POST',{name:'قفل الرمز',email:'lock1@t.sa',password:'12345678',terms:1,age:1});
 const uid=(await c('/me')).j.user.id;const sh=s=>createHash('sha256').update(s).digest('hex');
-const db=new DatabaseSync(DBF);db.prepare("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,sh('7777:'+uid));db.close();
+const db=new DatabaseSync(DBF);db.prepare("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,macFor(DBF,'7777:'+uid));db.close();
 const x=cl();
 for(let i=0;i<5;i++)assert.equal((await x('/reset-code','POST',{email:'lock1@t.sa',code:'0000'})).s,400);
 assert.equal((await x('/reset-code','POST',{email:'lock1@t.sa',code:'7777'})).s,400,'بعد 5 محاولات حتى الرمز الصحيح لا يعمل');
@@ -356,7 +358,7 @@ test('تفعيل البريد بالرمز: الرمز الصحيح يفعّل،
 const c=await cl();await c('/register','POST',{name:'تفعيل بالرمز',email:'vc1@t.sa',password:'12345678',terms:1,age:1});
 const uid=(await c('/me')).j.user.id;const sh=s=>createHash('sha256').update(s).digest('hex');
 const db=new DatabaseSync(DBF);db.prepare('UPDATE users SET email_verified=0 WHERE id=?').run(uid);
-db.prepare("INSERT OR REPLACE INTO verify_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,sh('3141:'+uid));db.close();
+db.prepare("INSERT OR REPLACE INTO verify_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,macFor(DBF,'3141:'+uid));db.close();
 for(let i=0;i<5;i++)assert.equal((await c('/verify-code','POST',{code:'0000'})).s,400);
 assert.equal((await c('/verify-code','POST',{code:'3141'})).s,400,'بعد 5 محاولات يُقفل');
 const db2=new DatabaseSync(DBF);db2.prepare("UPDATE verify_codes SET attempts=0 WHERE user_id=?").run(uid);db2.close();

@@ -108,9 +108,9 @@ return{threshold:thr,trailing_12_months_value:total,projected_next_12_months_val
 route('POST','/admin/supply-threshold',c=>{const u=adm(c);const v=Number(c.b.value);if(!Number.isFinite(v)||v<0)throw err(400,'قيمة غير صالحة');run("INSERT INTO settings(key,value) VALUES('vat_threshold',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(v));audit(u.id,'vat_threshold',String(v));return{ok:1}});
 
 
-route('GET','/admin/verifications',c=>{adm(c);return{vat:all("SELECT id,name,email,helper_type,vat_number FROM users WHERE account_type='helper' AND helper_type IN ('establishment','company') AND vat_status='registered' AND vat_verified=0"),type_requests:all("SELECT id,name,email,helper_type,helper_type_request FROM users WHERE helper_type_request IS NOT NULL")}});
+route('GET','/admin/verifications',c=>{adm(c);return{vat:all("SELECT id,name,email,helper_type,vat_number FROM users WHERE account_type='helper' AND helper_type IN ('establishment','company') AND vat_status='registered' AND vat_verified!=1"),type_requests:all("SELECT id,name,email,helper_type,helper_type_request FROM users WHERE helper_type_request IS NOT NULL")}});
 route('POST','/admin/vat/(\\d+)/verify',c=>{const a=adm(c),id=+c.p[0];const u=get('SELECT id FROM users WHERE id=?',id);if(!u)throw err(404,'المستخدم غير موجود');const ok=c.b.decision==='approve';
-if(ok)run('UPDATE users SET vat_verified=1 WHERE id=?',id);else run("UPDATE users SET vat_status='not_registered',vat_number='',vat_verified=0 WHERE id=?",id);
+if(ok)run('UPDATE users SET vat_verified=1 WHERE id=?',id);else run("UPDATE users SET vat_verified=2 WHERE id=?",id);
 run('INSERT INTO direct_messages(from_id,to_id,body) VALUES(?,?,?)',a.id,id,ok?'تم التحقق من رقمك الضريبي، ويمكنك الآن استقبال الطلبات.':'لم يتم التحقق من الرقم الضريبي، يرجى مراجعة البيانات وإعادة الإرسال.');audit(a.id,'vat_verify',id+':'+(ok?'approve':'reject'));return{ok:1}});
 route('POST','/admin/helper-type/(\\d+)/decide',c=>{const a=adm(c),id=+c.p[0];const u=get('SELECT id,helper_type_request FROM users WHERE id=?',id);if(!u||!u.helper_type_request)throw err(404,'لا يوجد طلب تغيير');
 if(c.b.decision==='approve'){run("UPDATE users SET helper_type=?,helper_type_request=NULL,vat_verified=0 WHERE id=?",u.helper_type_request,id)}else{run('UPDATE users SET helper_type_request=NULL WHERE id=?',id)}
@@ -125,10 +125,10 @@ audit(a.id,'invoicing_config',reg?'registered':'not_registered');return{ok:1}});
 route('POST','/admin/agreement-commissions/(\\d+)/refunded',c=>{can(c,'finance');const row=get("SELECT id FROM agreement_commissions WHERE id=? AND status='refund_due'",c.p[0]);if(!row)throw err(400,'هذه العمولة لا تحتاج استردادًا');run("UPDATE agreement_commissions SET status='refunded' WHERE id=?",row.id);audit(c.u.id,'agreement_commission_refunded',String(row.id));return{ok:1}});
 
 // تحليلات البحث وتحليلات الأقسام (الطلبات المنشورة أُلغيت، فيبقى البحث الفاشل والعرض)
-route('GET','/admin/insights',c=>{adm(c);const days=[7,30,0].includes(+c.q.days)?+c.q.days:30,since=days?`datetime('now','-${days} days')`:"'1970-01-01 00:00:00'";
+route('GET','/admin/insights',c=>{adm(c);const days=[7,30,0].includes(+c.q.days)?+c.q.days:30,since=days?new Date(Date.now()-days*864e5).toISOString().slice(0,19).replace('T',' '):'1970-01-01 00:00:00';
 const supply=new Map(all("SELECT us.category_id,COUNT(*) n FROM user_sections us JOIN users u ON u.id=us.user_id WHERE u.active=1 AND u.account_type='helper' GROUP BY us.category_id").map(x=>[x.category_id,x.n]));
 const demand=[];const gap=demand.map(d=>({id:d.id,name:d.name,cat:d.cat,n:d.n,helpers:supply.get(d.id)||0}));
-const failed=all(`SELECT text,COUNT(*) n,MAX(at) last FROM failed_searches WHERE at>=${since} GROUP BY text ORDER BY n DESC,last DESC LIMIT 20`);
+const failed=all(`SELECT text,COUNT(*) n,MAX(at) last FROM failed_searches WHERE at>=? GROUP BY text ORDER BY n DESC,last DESC LIMIT 20`,since);
 return{days,total:0,demand,gap,failed}});
 
 // بلاغات الرسائل المباشرة: عرض المحادثة بين الطرفين

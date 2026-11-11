@@ -15,6 +15,8 @@ services:
       - {key: DB_FILE, value: /var/data/data.db}
       - {key: BACKUP_DIR, value: /var/data/backups}
       - {key: TRUST_PROXY, value: "1"}
+      - {key: EMAIL_VERIFY_REQUIRED, value: "1"}
+      - {key: APP_SECRET, generateValue: true}
       - {key: APP_URL, sync: false}
       - {key: ADMIN_EMAIL, sync: false}
       - {key: ADMIN_SETUP_TOKEN, sync: false}
