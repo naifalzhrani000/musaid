@@ -90,16 +90,109 @@ const SETTINGS_ITEMS=[['ملفي الشخصي','data'],['المدينة وموق
 async function settingsPage(){if(!me.user){location.hash='#/login';return}app.innerHTML=`<h2 style="margin:8px 0 12px">الإعدادات</h2><div class=panel style="padding:0">${SETTINGS_ITEMS.map(([t,k],i)=>`<a href="${k==='wallet'?'#/wallet':'#/profile/'+k}" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #eef0f2;text-decoration:none;color:inherit"><span>${i+1}- ${t}</span><span style="color:#9ca3af">‹</span></a>`).join('')}</div>`}
 async function walletPage(){if(!me.user){location.hash='#/login';return}const w=await api('/wallet');
 app.innerHTML=`<a class=lnk href="#/settings" style="display:inline-block;margin:6px 0">‹ الإعدادات</a><h2 style="margin:6px 0 10px;color:#0f4f3c">النقاط والمحفظة</h2><section class=panel><div class=row><b>الرصيد الحالي</b><b dir=ltr>${w.points} نقطة</b></div><small>تُضاف النقاط عند اكتمال مهمة مؤهلة.</small></section><section class=panel><a class=lnk href="#/profile/points">استخدام الرصيد ‹</a><br><a class=lnk href="#/profile/ledger">سجل النقاط ‹</a></section>`}
+const ACC_CSS = `<style>
+.acc{max-width:560px;margin:0 auto}
+.acc-top{display:flex;justify-content:space-between;align-items:center;padding:4px 0 12px}
+.acc-top h1{margin:0;font-size:22px;color:var(--g)}
+.acc-top .acc-icons{display:flex;gap:4px}
+.acc-ic{width:44px;height:44px;display:grid;place-items:center;color:var(--g);text-decoration:none;font-size:20px;border-radius:50%}
+.acc-head{display:flex;align-items:center;gap:14px}
+.acc-av{width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 30% 20%,#2f8a6c,var(--g));color:#fff;display:grid;place-items:center;font-size:38px;font-weight:700;flex:0 0 auto;box-shadow:0 6px 18px #0f3d2e33}
+.acc-stats{flex:1;display:grid;grid-template-columns:repeat(3,1fr);text-align:center}
+.acc-stats div+div{border-inline-start:1px solid var(--b)}
+.acc-stats b{display:block;font-size:22px;color:var(--t);line-height:1.3}
+.acc-stats small{font-size:13px}
+.acc-name{margin-top:12px;text-align:start}
+.acc-name h2{margin:0;font-size:20px;color:var(--t)}
+.acc-name small{color:var(--mu)}
+.acc-bio{color:var(--mu);font-size:14px;margin:8px 0 14px}
+.acc-bio a{color:var(--g)}
+.acc-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acc-btns .btn{text-align:center;border-radius:12px;padding:12px 8px;font-weight:600}
+.acc-btns .btn.gray{background:#eef0ef;color:var(--t);border:0}
+.acc-tabs{margin:18px -16px 0;background:#fff;border-radius:26px 26px 0 0;padding:14px 12px 0;min-height:320px}
+.acc-tabs nav{display:flex;justify-content:space-around;border-bottom:1px solid var(--b)}
+.acc-tabs nav a{padding:10px 8px;color:var(--mu);text-decoration:none;font-weight:600;position:relative}
+.acc-tabs nav a.on{color:var(--g)}
+.acc-tabs nav a.on::after{content:"";position:absolute;inset-inline:10%;bottom:-1px;height:3px;background:var(--g);border-radius:3px}
+.acc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px 0 16px}
+.acc-grid figure,.acc-grid a{margin:0;aspect-ratio:1;position:relative;overflow:hidden;border-radius:10px;background:var(--bg)}
+.acc-grid img{width:100%;height:100%;object-fit:cover;display:block}
+.acc-grid figcaption{position:absolute;inset-inline-start:6px;bottom:6px;background:#000a;color:#fff;font-size:12px;border-radius:8px;padding:2px 8px;max-width:90%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.acc-add{display:grid;place-items:center;color:var(--g);text-decoration:none;font-size:34px;border:1px dashed var(--b)}
+.acc-empty{grid-column:1/-1;text-align:center;color:var(--mu);padding:30px 0}
+.acc-done{margin-top:12px;display:flex;justify-content:space-between;align-items:center;background:var(--ml);border-radius:14px;padding:10px 14px;font-size:14px;color:var(--g)}
+</style>`;
+
+/* u: المستخدم، pv: الملف العام (bio, portfolio, reviews)، avg/done: أرقام محسوبة، pl: التعهد */
+function accountView(u, pv, avg, done, isH) {
+  const pics = pv.portfolio || [];
+  const bio = (pv.bio || '').trim();
+  const tiles = pics.map(x => `
+    <figure>
+      <img src="/api/files/${x.attachment_id}" alt="">
+      ${x.caption ? `<figcaption>${esc(x.caption)}</figcaption>` : ''}
+    </figure>`).join('');
+  const addTile = `<a class="acc-add" href="#/profile/gallery" aria-label="إضافة صورة عمل">+</a>`;
+
+  return `${ACC_CSS}
+<div class=acc>
+  <div class=acc-top>
+    <h1>حسابي</h1>
+    <div class=acc-icons>
+      <a class=acc-ic href="#/notifs" aria-label="الإشعارات">🔔</a>
+      <a class=acc-ic href="#/settings" aria-label="المزيد">⋯</a>
+    </div>
+  </div>
+
+  <div class=acc-head>
+    <div class=acc-av>${esc([...u.name][0] || '')}</div>
+    <div class=acc-stats>
+      <div><b>${pics.length}</b><small>أعمال</small></div>
+      <div><b>${done}</b><small>مهمة مكتملة</small></div>
+      <div><b>${avg}</b><small>التقييم</small></div>
+    </div>
+  </div>
+
+  <div class=acc-name>
+    <h2>${esc(u.name)}</h2>
+    <small>${isH ? 'مساعد' : 'عميل'}${u.city ? ' · 📍 ' + esc(u.city) : ''}${u.active ? '' : ' · الحساب معطّل'}</small>
+  </div>
+
+  <p class=acc-bio>${bio
+    ? esc(bio)
+    : 'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>
+
+  <div class=acc-btns>
+    <a class=btn href="#/settings">الإعدادات</a>
+    <a class="btn gray" href="#/profile/gallery">تحميل الوسائط</a>
+  </div>
+
+  ${u.account_type === 'helper' ? '' : `<div class=acc-done><span>${pl && pl.accepted ? 'التعهد موقّع' : 'التعهد غير موقّع'}</span><a class=lnk href="#/profile/specs">قسم خدماتك ‹</a></div>`}
+
+  <div class=acc-tabs>
+    <nav>
+      <a class=on href="#/profile">المنشورات</a>
+      <a href="#/profile/gallery">الصور</a>
+    </nav>
+    <div class=acc-grid>
+      ${tiles}
+      ${addTile}
+      ${pics.length ? '' : '<div class=acc-empty>لم تضف أعمالًا بعد. ابدأ بإضافة صورة لعملك.</div>'}
+    </div>
+  </div>
+</div>`;
+}
+
 async function profile(){const[w,pl,sk,mine,pv,su,ch]=await Promise.all([api('/wallet'),api('/pledge'),api('/skills'),api('/me/sections'),api('/providers/'+me.user.id),api('/setup-status'),api('/chats')]),u=me.user,RS={complete_requester:'إتمام طلب',complete_helper:'إتمام مهمة'};
 const isH=u.account_type==='helper',done=w.ledger.filter(l=>l.reason==='complete_requester'||l.reason==='complete_helper').length;
 const rv=pv.reviews||[],avg=rv.length?(rv.reduce((a,r)=>a+(+r.stars||0),0)/rv.length).toFixed(1):'0.0';
 const parts=[u.name,u.city,u.phone,pv.bio,isH?(mine.length?1:''):1,isH?(pv.portfolio.length?1:''):1].filter(Boolean).length,pct=Math.round(parts/6*100);
 const item=(key,label,hint)=>`<a class=pf-item href="#/profile/${key}"><span><b>${label}</b>${hint?`<small>${esc(hint)}</small>`:''}</span><i>‹</i></a>`;
 const stylesheet=`<style>.pf-hero{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#e7f6ef,#f7fbf9);border-radius:18px;padding:18px;margin-bottom:12px}.pf-av{width:64px;height:64px;border-radius:50%;background:#0f6b4f;color:#fff;display:grid;place-items:center;font-size:26px;font-weight:700;flex:0 0 auto}.pf-card,.pf-wallet{border-radius:18px;padding:16px;margin-bottom:12px}.pf-card{background:#fff;border:1px solid #e5e7eb}.pf-row{display:flex;justify-content:space-between;align-items:center}.pf-pct{color:#0f6b4f;font-weight:700}.pf-bar{height:8px;background:#e5e7eb;border-radius:8px;margin:10px 0;overflow:hidden}.pf-bar i{display:block;height:100%;background:#0f6b4f;border-radius:8px}.pf-wallet{background:linear-gradient(135deg,#0f4f3c,#0f6b4f);color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px}.pf-wallet .big{font-size:26px;font-weight:700}.pf-tag{display:inline-block;background:rgba(255,255,255,.18);border-radius:999px;padding:3px 10px;font-size:12px}.pf-wallet .btn{background:#fff;color:#0f4f3c;border-color:#fff}.pf-wallet small,.pf-wallet .big,.pf-wallet .big small{color:#fff}.pf-hero h2{font-size:20px;line-height:1.3}.pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}.pf-stats div{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px;text-align:center}.pf-stats b{display:block;font-size:20px;color:#0f4f3c}.pf-group{margin:18px 0 8px;color:#0f4f3c;font-size:16px}.pf-list{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;margin-bottom:12px}.pf-item{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;background:none;border:0;border-bottom:1px solid #eef0f3;padding:14px 16px;text-align:right;font:inherit;cursor:pointer}.pf-item:last-child{border-bottom:0}.pf-item span{display:flex;flex-direction:column;gap:2px}.pf-item small{color:#6b7280}.pf-item i{font-style:normal;color:#9ca3af;font-size:20px}.pf-item.off{cursor:default;opacity:.7}.tg{appearance:none;width:46px;height:26px;border-radius:26px;background:#cbd5e1;position:relative;cursor:pointer;flex:0 0 auto;transition:.2s}.tg::after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}.tg:checked{background:#0f6b4f}.tg:checked::after{right:23px}.pf-switch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px}.pf-types{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.pf-type{border:2px solid #e5e7eb;border-radius:14px;padding:14px;background:#fff;text-align:center}.pf-type.on{border-color:#0f6b4f;background:#e7f6ef;color:#0f4f3c;font-weight:700}details.cat{border:1px solid #e5e7eb;border-radius:14px;padding:10px 12px;margin:8px 0;background:#fff}details.cat summary{font-weight:700;color:#0f4f3c;cursor:pointer}details.cat label.check{display:inline-flex;align-items:center;gap:6px;border:1px solid #d1d5db;border-radius:999px;padding:6px 12px;margin:4px 4px 0 0}details.cat label.check:has(input:checked){background:#0f6b4f;color:#fff;border-color:#0f6b4f}details.cat input[type=checkbox]{accent-color:#0f6b4f}.pf-foot{text-align:center;color:#6b7280;font-size:13px;margin:18px 0}.pf-danger{border:1px solid #fecaca;background:#fff5f5;border-radius:16px;padding:14px;margin-top:12px}.pf-danger .btn{background:#dc2626;border-color:#dc2626;color:#fff}</style>`;
-const html=`${stylesheet}<section class=pf-hero><div class=pf-av>${esc([...u.name][0])}</div><div class=grow><h2 style="margin:0">${esc(u.name)}</h2><small>${isH?'مساعد':'عميل'}${u.city?' · '+esc(u.city):''}${u.active?'':' · الحساب معطّل'}</small><div class=chips><span class=chip>${pl.accepted?'التعهد موقّع':'التعهد غير موقّع'}</span></div></div><a class="btn alt" id=ed href="#/profile/data">تعديل البيانات</a></section>
+const html=`${stylesheet}${accountView(u,pv,avg,done,isH)}
 <section class=pf-card><div class=pf-row><b>اكمل ملفك الشخصي</b><span class=pf-pct>${pct}%</span></div><div class=pf-bar><i style="width:${pct}%"></i></div><small>أضف الجوال والمدينة والنبذة${isH?'، ومعرض أعمالك':''} لزيادة فرص ظهورك.</small></section>
 <section class=pf-wallet><div><small>رصيد النقاط</small><div class=big>${w.points} <small>نقطة</small></div><span class=pf-tag>20 نقطة = ${w.riyal} ريال</span>${w.agr_due>0?`<div class=pf-due>الرصيد المالي: -${w.agr_due} ريال (عمولة اتفاق مستحقة)</div>`:''}</div><a class=btn href="#pts">تفاصيل الرصيد</a></section>
-<div class=pf-stats><div><b>${ch.length}</b><small>المحادثات</small></div><div><b>${done}</b><small>المهام المكتملة</small></div><div><b>${avg}</b><small>التقييم</small></div></div>
 <div class=pf-group>ملفي الشخصي</div><div class=pf-list>${item('data','البيانات الشخصية','الاسم والجوال والعنوان')}${item('city','المدينة وموقع الخدمة',u.city||'لم تُحدد بعد')}${item('gallery','معرض أعمالي',pv.portfolio.length?pv.portfolio.length+' صورة':'أضف صور أعمالك')}${me.user&&(me.user.role==='admin'||me.user.role==='staff')?'<a class=pf-item href="#/manage"><span><b>إدارة الموقع</b><small>لوحة الإدارة</small></span><i>‹</i></a>':''}${item('specs','قسم خدماتك',isH?'اختر قسم خدماتك':'اختر قسم خدماتك لتقديم الخدمات')}</div>
 <div class=pf-group>النقاط والمحفظة</div><div class=pf-list>${item('points','استخدام الرصيد')}${item('ledger','سجل النقاط')}<details class=pf-item style="display:block"><summary style="cursor:pointer">شروط النقاط</summary><p style="margin:8px 0 0;color:#6b7280">الرصيد داخلي، لا يُحوَّل بين المستخدمين ولا يُسحب نقدًا، ولا يُعد دفعًا لقيمة المهمة.</p></details></div>
 <div class=pf-group>الإشعارات والتواصل</div><div class=pf-list><form id=ntf class="pf-switch"><span><b>إشعارات البريد</b><small>عند وصول رسالة جديدة في محادثاتك</small></span><input class=tg type=checkbox name=enabled ${u.notify_email!==0?'checked':''}><button class=btn style="display:none" type=submit>حفظ</button></form><form id=pushf class="pf-switch"><span><b>إشعارات الدفع</b><small>تصلك الإشعارات على جهازك حتى والمنصة مغلقة</small></span><input class=tg type=checkbox name=enabled ${u.push_enabled!==0?'checked':''}></form>${item('email','تغيير البريد الإلكتروني',u.email)}</div>
