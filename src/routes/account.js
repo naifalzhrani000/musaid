@@ -5,7 +5,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, log, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, hitOr429, hx} from '../core.js';
+import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, hitOr429, hx} from '../core.js';
 
 route('POST','/register',c=>{hitOr429('reg|'+c.ip,+(process.env.REGISTER_PER_HOUR)||20);const b=c.b,name=str(b.name,2,60,'الاسم'),email=str(b.email,5,120,'البريد').toLowerCase(),city=str(b.city||'',0,60,'المدينة');
 if(!/^\S+@\S+\.\S+$/.test(email))throw err(400,'البريد غير صالح');str(b.password,8,100,'كلمة المرور');if(!/^[^\s@<>\"'`]+@[^\s@<>\"'`]+\.[^\s@<>\"'`]+$/.test(email))throw err(400,'البريد الإلكتروني غير صالح');if(!b.terms)throw err(400,'يجب قبول الشروط وسياسة الخصوصية');if(!b.age)throw err(400,'التسجيل متاح لمن عمره 18 سنة فأكثر');
@@ -32,10 +32,8 @@ const text=`تعهد والتزام بسداد عمولة المنصة\n\nالم
 tx(()=>{run('UPDATE users SET name=? WHERE id=?',name,u.id);run('INSERT INTO pledges(user_id,version,ip,ua,text) VALUES(?,?,?,?,?)',u.id,PV,`${c.ip}`,String(c.ua||'').slice(0,200),text)});return{ok:1}});
 route('POST','/me/account-type',c=>tx(()=>{const u=need(c),t=c.b.type;if(!['client','helper'].includes(t))throw err(400,'نوع غير صالح');
 if(t==='helper'){if(c.b.skill_ids!==undefined){const sp=resolveSkills(c.b.skill_ids);if(!sp.skillIds.length)throw err(400,'اختر تخصصًا واحدًا على الأقل');run("UPDATE users SET account_type='helper' WHERE id=?",u.id);saveSpecialties(u.id,sp.skillIds,sp.catIds);return{ok:1}}const ids=cleanSections(c.b.category_ids);if(!ids.length)throw err(400,'اختر قسمًا واحدًا على الأقل لتقديم الخدمات');run("UPDATE users SET account_type='helper' WHERE id=?",u.id);saveSections(u.id,ids);return{ok:1}}
-if(get("SELECT 1 x FROM requests WHERE (user_id=? OR helper_id=?) AND status IN ('helper_chosen','in_progress','disputed')",u.id,u.id))throw err(400,'لديك مهام قيد التنفيذ أو متنازع عليها، أنهِها أو تواصل مع الإدارة أولًا');
-run("UPDATE users SET account_type='client' WHERE id=?",u.id);run('DELETE FROM user_sections WHERE user_id=?',u.id);run("DELETE FROM offers WHERE user_id=? AND request_id IN (SELECT id FROM requests WHERE status IN ('published','negotiating'))",u.id);run("UPDATE requests SET status='published' WHERE status='negotiating' AND id NOT IN (SELECT request_id FROM offers)");return{ok:1}}));
+run("UPDATE users SET account_type='client' WHERE id=?",u.id);run('DELETE FROM user_sections WHERE user_id=?',u.id);return{ok:1}}));
 route('GET','/me/export',c=>{const u=need(c);return{exported_at:new Date().toISOString(),profile:get('SELECT name,email,city,phone,address,bio,role,account_type,created_at,terms_version,terms_at FROM users WHERE id=?',u.id),
-requests:all('SELECT * FROM requests WHERE user_id=?',u.id),offers:all('SELECT * FROM offers WHERE user_id=?',u.id),messages:all('SELECT * FROM messages WHERE from_id=? OR to_id=?',u.id,u.id),
 direct_messages:all('SELECT * FROM direct_messages WHERE from_id=? OR to_id=?',u.id,u.id),pledges:all('SELECT version,text,accepted_at FROM pledges WHERE user_id=?',u.id),points:all('SELECT * FROM points_ledger WHERE user_id=?',u.id),
 specialties:all('SELECT s.name FROM user_skills us JOIN skills s ON s.id=us.skill_id WHERE us.user_id=?',u.id).map(x=>x.name)}});
 route('GET','/me/specialties',c=>{const u=need(c);return all('SELECT skill_id FROM user_skills WHERE user_id=?',u.id).map(x=>x.skill_id)});
@@ -47,8 +45,6 @@ route('POST','/me/portfolio/(\\d+)/delete',c=>{const u=need(c);run('DELETE FROM 
 route('GET','/setup-status',()=>({needed:!!(process.env.ADMIN_SETUP_TOKEN&&!get("SELECT 1 x FROM users WHERE role='admin'"))}));
 route('POST','/me/delete',c=>tx(()=>{const u=need(c),pw=String(c.b.password||'');if(c.b.confirm!=='حذف')throw err(400,'اكتب كلمة «حذف» للتأكيد');
 if(!check(pw,get('SELECT pass FROM users WHERE id=?',u.id).pass))throw err(403,'كلمة المرور غير صحيحة');
-if(get("SELECT 1 x FROM requests WHERE (user_id=? OR helper_id=?) AND status IN ('helper_chosen','in_progress','disputed')",u.id,u.id))throw err(400,'لديك مهام قيد التنفيذ أو متنازع عليها، أنهِها أو تواصل مع الإدارة أولًا');
-run("UPDATE requests SET status='cancelled' WHERE user_id=? AND status IN ('draft','published','negotiating')",u.id);
 run('DELETE FROM portfolio WHERE user_id=?',u.id);run('DELETE FROM user_skills WHERE user_id=?',u.id);run('DELETE FROM sessions WHERE user_id=?',u.id);run('DELETE FROM notifications WHERE user_id=?',u.id);run('DELETE FROM direct_messages WHERE from_id=? OR to_id=?',u.id,u.id);run('DELETE FROM user_sections WHERE user_id=?',u.id);
 run("UPDATE users SET name='مستخدم محذوف',email='deleted-'||id||'@deleted.invalid',pass=?,city=NULL,phone=NULL,national_id=NULL,address=NULL,iban=NULL,bio=NULL,active=0,flagged=0,suspended_until=NULL,role='user' WHERE id=?",hash(crypto.randomBytes(24).toString('hex')),u.id);
 audit(u.id,'account_delete',`user:${u.id}`);return{ok:1}}));
@@ -94,3 +90,8 @@ const s=SET();if(s.support_email)sendMail(s.support_email,'رسالة جديدة
 return{ok:1}});
 
 route('POST','/me/helper-type-request',c=>{const u=need(c);if(u.account_type!=='helper')throw err(400,'للمساعدين فقط');const ht=c.b.helper_type;if(!['individual','establishment','company'].includes(ht))throw err(400,'نوع غير صالح');if(ht===u.helper_type)throw err(400,'هذا هو نوعك الحالي');run('UPDATE users SET helper_type_request=? WHERE id=?',ht,u.id);return{ok:1,pending:ht}});
+
+route('GET','/push/key',c=>({key:process.env.VAPID_PUBLIC_KEY||null}));
+route('POST','/push/subscribe',c=>{const u=need(c),ep=c.b.endpoint,k=c.b.keys||{};if(typeof ep!=='string'||!/^https:\/\//.test(ep)||ep.length>2000)throw err(400,'اشتراك غير صالح');if(typeof k.p256dh!=='string'||typeof k.auth!=='string'||k.p256dh.length>200||k.auth.length>100)throw err(400,'مفاتيح الاشتراك غير صالحة');run('INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth) VALUES(?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id,p256dh=excluded.p256dh,auth=excluded.auth',u.id,ep,k.p256dh,k.auth);run('UPDATE users SET push_enabled=1 WHERE id=?',u.id);return{ok:1}});
+route('POST','/push/unsubscribe',c=>{const u=need(c);run('DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?',u.id,String(c.b.endpoint||''));return{ok:1}});
+route('POST','/push/pref',c=>{const u=need(c);run('UPDATE users SET push_enabled=? WHERE id=?',c.b.enabled?1:0,u.id);return{ok:1}});

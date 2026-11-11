@@ -20,5 +20,8 @@ services:
       - {key: ADMIN_SETUP_TOKEN, sync: false}
       - {key: RESEND_API_KEY, sync: false}
       - {key: MAIL_FROM, sync: false}
+      - {key: VAPID_PUBLIC_KEY, sync: false}
+      - {key: VAPID_PRIVATE_KEY, sync: false}
+      - {key: VAPID_SUBJECT, sync: false}
       - {key: HALA_PAYMENT_URL, sync: false}
       - {key: HALA_WEBHOOK_SECRET, sync: false}
