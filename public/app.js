@@ -92,7 +92,7 @@ app.innerHTML=ACC_CSS+`<div class=acc>
 <div class=acc-head><button class=acc-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(p.avatar,p.name)}</button><div class=acc-stats><div><b>${pics.length}</b><small>أعمال</small></div><div><b>${done}</b><small>مهمة مكتملة</small></div><div><b>${avg}</b><small>التقييم</small></div></div></div>
 <div class=acc-name><h2>${esc(p.name||'')}</h2>${p.avatar?'<button class=lnk id=avDel type=button>حذف الصورة الشخصية</button>':''}<small>${isH?'مساعد':'عميل'}${p.city?' · '+ic(I.pin)+' '+esc(p.city):''}</small></div>
 <p class=acc-bio>${bio?esc(bio):'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>
-<div class=acc-btns><a class=btn href="#/settings">الإعدادات</a><a class="btn gray" href="#/invoices">فواتيري</a></div>
+<div class=acc-btns><a class=btn href="#/settings">الإعدادات</a><a class="btn gray" href="#/profile/gallery">معرض الأعمال</a></div>
 <div class=acc-tabs><nav><a class=on href="#/profile">المنشورات</a><a href="#/chats">محادثاتي</a></nav>
 <div class=acc-grid>${tiles}<button class=acc-add id=addWork type=button aria-label="إضافة صورة أو فيديو">+</button>${pics.length?'':'<div class=acc-empty>لم تضف أعمالًا بعد. ابدأ بإضافة صورة لعملك.</div>'}</div></div>
 </div>`}
