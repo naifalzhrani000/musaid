@@ -26,10 +26,11 @@ route('POST','/feed',c=>{
 // Author or admin removes a post
 route('POST','/feed/(\\d+)/delete',c=>{
   const u=need(c),id=+c.p[0];
-  const p=get('SELECT user_id FROM posts WHERE id=?',id);
+  const p=get('SELECT user_id,attachment_id FROM posts WHERE id=?',id);
   if(!p)throw err(404,'المنشور غير موجود');
   if(p.user_id!==u.id&&u.role!=='admin')throw err(403,'غير مصرح');
   run('UPDATE posts SET hidden=1 WHERE id=?',id);
+  if(p.user_id===u.id&&p.attachment_id)run('DELETE FROM portfolio WHERE user_id=? AND attachment_id=?',u.id,p.attachment_id);
   if(u.role==='admin'&&p.user_id!==u.id)audit(u.id,'post_hide',`post:${id}`);
   return{ok:1};
 });

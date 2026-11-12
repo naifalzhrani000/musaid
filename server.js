@@ -14,6 +14,7 @@ import './src/routes/messages.js';
 import './src/routes/shared.js';
 import './src/routes/account.js';
 import './src/routes/feed.js';
+import './src/routes/accounting.js';
 import './src/routes/admin.js';
 
 

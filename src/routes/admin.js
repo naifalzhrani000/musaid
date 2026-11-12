@@ -4,7 +4,8 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission} from '../core.js';
+import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen} from '../core.js';
+import {ASSIST_CITIES} from '../../data.js';
 route('GET','/admin/reports',c=>{can(c,'support');const Q={user:'SELECT name t FROM users WHERE id=?'};
 return all("SELECT rp.*,u.name reporter FROM reports rp JOIN users u ON u.id=rp.reporter_id ORDER BY (rp.status='open') DESC,rp.id DESC LIMIT 100").map(r=>({...r,info:get(Q[r.type],r.target_id)?.t}))});
 route('POST','/admin/reports/(\\d+)/resolve',c=>{const a=can(c,'support'),r=get('SELECT * FROM reports WHERE id=?',c.p[0]);if(!r)throw err(404,'غير موجود');const note=str(c.b.note,3,300,'الملاحظة');if(c.b.hide&&r.type==='user'&&a.role!=='admin')throw err(403,'إيقاف الحسابات للمدير فقط');
@@ -77,7 +78,7 @@ route('GET','/admin/growth',c=>{adm(c);return{users:all("SELECT date(created_at)
 
 route('GET','/admin/staff',c=>{adm(c);return all("SELECT id,name,email,perms FROM users WHERE role='staff' ORDER BY id")});
 route('POST','/admin/staff',c=>{const a=adm(c),email=String(c.b.email||'').trim().toLowerCase();const t=email?get('SELECT id,role FROM users WHERE email=? AND active=1',email):null;if(!t)throw err(404,'لا يوجد حساب فعّال بهذا البريد');if(t.id===a.id)throw err(400,'لا يمكنك تغيير صلاحياتك');if(t.role==='admin')throw err(400,'هذا الحساب مدير بالفعل');
-const allowed=['finance','support'];const perms=[...new Set((Array.isArray(c.b.perms)?c.b.perms:[]).filter(p=>allowed.includes(p)))];
+const allowed=['finance','support','accounting'];const perms=[...new Set((Array.isArray(c.b.perms)?c.b.perms:[]).filter(p=>allowed.includes(p)))];
 run("UPDATE users SET role=?,perms=? WHERE id=?",perms.length?'staff':'user',perms.join(','),t.id);audit(a.id,'staff_perms',`${t.id}:${perms.join(',')||'none'}`);return{ok:1,perms}});
 
 const wdSince=ts=>{if(!ts)return 0;let d=new Date(String(ts).replace(' ','T')+'Z'),n=0;const now=new Date();for(let x=new Date(d);x<now;x.setUTCDate(x.getUTCDate()+1)){const w=x.getUTCDay();if(w!==5&&w!==6)n++}return n};
@@ -92,6 +93,8 @@ if(final==='completed'){ensureCommission(id)}
 if(final==='completed'){run("UPDATE agreement_commissions SET status='due' WHERE agreement_id=? AND status='on_hold' AND amount>0",id)}else{run("UPDATE agreement_commissions SET status='refund_due' WHERE agreement_id=? AND status='paid'",id);run("UPDATE agreement_commissions SET status='void' WHERE agreement_id=? AND status IN ('due','on_hold')",id)}
 audit(u.id,'dispute_final',id+':'+final);return{ok:1,status:final==='completed'?'completed':'closed_disputed'}}));
 
+route('GET','/admin/city-coverage',c=>{adm(c);return ASSIST_CITIES.map(city=>{const cv=cityCoverage(city);const missing=all(`SELECT name FROM skill_categories WHERE mode!='online' AND id NOT IN (SELECT us.category_id FROM user_sections us JOIN users u ON u.id=us.user_id WHERE u.city=? AND u.account_type='helper' AND u.active=1 AND u.email_verified=1 AND u.flagged=0) ORDER BY sort,name`,city).map(r=>r.name);return{city,covered:cv.covered,total:cv.total,pct:Math.round(cv.pct*1000)/10,open:cv.open||(JSON.parse(SET().opened_cities||'[]')).includes(city),missing}}).sort((a,b)=>b.pct-a.pct)});
+route('POST','/admin/cities/open',c=>{const a=adm(c),city=String(c.b.city||'');if(!ASSIST_CITIES.includes(city))throw err(400,'المدينة غير مدرجة');let list=[];try{list=JSON.parse(SET().opened_cities||'[]')}catch{}if(!list.includes(city))list.push(city);run("INSERT INTO settings(key,value) VALUES('opened_cities',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",JSON.stringify(list));audit(a.id,'city_open',city);return{ok:1}});
 route('GET','/admin/supply-report',c=>{adm(c);const thr=Number(SET().vat_threshold)||0;
 const months=[];const now=new Date();for(let i=11;i>=0;i--){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1));months.push(d.toISOString().slice(0,7))}
 const rows=months.map(m=>{

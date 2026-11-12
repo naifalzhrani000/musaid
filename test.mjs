@@ -398,7 +398,7 @@ assert.notEqual((await cl()('/admin/contact-messages')).s,200,'الزائر لا
 test('إدارة الموقع: قائمة المستخدمين والأقسام وحذف كلمة مفتاحية',async()=>{
 const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
 const users=(await admin('/admin/users?q=admin')).j;assert.ok(users.find(u=>u.email==='admin@t.sa'),'البحث يجد المدير');
-const cats=(await admin('/admin/categories')).j;assert.equal(cats.length,42);assert.ok(Array.isArray(cats[0].words)&&cats[0].words.length>0);
+const cats=(await admin('/admin/categories')).j;assert.equal(cats.length,46);assert.ok(Array.isArray(cats[0].words)&&cats[0].words.length>0);
 const cat=cats.find(c=>c.name==='النجارة والأثاث');const w=cat.words[0];
 assert.equal((await admin(`/admin/sections/${cat.id}/keywords/remove`,'POST',{word:w})).s,200);
 assert.ok(!(await admin('/admin/categories')).j.find(c=>c.id===cat.id).words.includes(w),'الكلمة حُذفت');
@@ -450,6 +450,7 @@ assert.equal((await cl()('/admin/failed-searches')).s,401,'غير المدير �
 });
 test('مختبر الطلبات: مساعد مناسب لا ينشئ سجلًا، وتنظيف الجوال والبريد',async()=>{
 const cats=(await cl()('/skills')).j.categories;const cat=cats.find(c=>c.name==='النجارة والأثاث');
+const adm0=cl();await adm0('/login','POST',{email:'admin@t.sa',password:'12345678'});assert.equal((await adm0('/admin/cities/open','POST',{city:'جدة'})).s,200,'فتح المدينة يدويًا');
 const askc=cl();await askc('/register','POST',{name:'باحث مختبر ٢',email:'askl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 const hp=cl();await hp('/register','POST',{name:'نجار مختبر',email:'lab1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat.id]});
 await hp('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'نجار مختبر',phone:'0500007777'}); await vfy(hp);await hp('/pledge','POST',{accept:true,name:'نجار مختبر'});

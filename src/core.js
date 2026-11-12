@@ -1,5 +1,5 @@
 import {sendWebPush} from './push-crypto.js';
-import {SKILL_SEED, ASSIST_CITIES, CANCEL_REASONS, CATALOG, EXTRA_KEYWORDS} from '../data.js';
+import {SKILL_SEED, ASSIST_CITIES, CANCEL_REASONS, CATALOG, EXTRA_KEYWORDS, NEW_CATALOG} from '../data.js';
 import {DatabaseSync} from 'node:sqlite';
 import os from 'node:os';
 import path from 'node:path';
@@ -112,8 +112,11 @@ db.exec("DELETE FROM section_keywords;DELETE FROM user_sections;DELETE FROM user
 CATALOG.forEach((c,i)=>{const id=Number(run('INSERT INTO skill_categories(name,sort) VALUES(?,?)',c.name,i+1).lastInsertRowid);for(const w of [c.name,...c.words])run('INSERT OR IGNORE INTO section_keywords(category_id,word) VALUES(?,?)',id,normAr(w))});
 run("INSERT OR REPLACE INTO settings(key,value) VALUES('catalog_version',?)",CATALOG_VERSION)};
 applyCatalog();
+const addNewCatalog=()=>{let sort=get('SELECT COALESCE(MAX(sort),0) m FROM skill_categories').m;for(const nc of NEW_CATALOG){if(get('SELECT 1 x FROM skill_categories WHERE name=?',nc.name))continue;const id=Number(run('INSERT INTO skill_categories(name,sort) VALUES(?,?)',nc.name,++sort).lastInsertRowid);for(const w of [nc.name,...nc.words])run('INSERT OR IGNORE INTO section_keywords(category_id,word) VALUES(?,?)',id,normAr(w))}};
+addNewCatalog();
 const addExtraKeywords=()=>{for(const [name,words] of Object.entries(EXTRA_KEYWORDS)){const c=get('SELECT id FROM skill_categories WHERE name=?',name);if(!c)continue;for(const w of words)run('INSERT OR IGNORE INTO section_keywords(category_id,word) VALUES(?,?)',c.id,normAr(w))}};
 addExtraKeywords();
+try{db.exec("ALTER TABLE skill_categories ADD COLUMN mode TEXT NOT NULL DEFAULT 'onsite'");db.exec("UPDATE skill_categories SET mode='online' WHERE name='تقنية وتصميم'")}catch{}
 db.exec("UPDATE users SET account_type='helper' WHERE account_type='client' AND id IN (SELECT user_id FROM user_sections)");
 db.exec("UPDATE users SET iban=NULL,national_id=NULL");
 const err=(s,m)=>Object.assign(new Error(m),{s});
@@ -191,4 +194,25 @@ const base=(process.env.APP_URL||'').replace(/\/$/,'');sendMail(u.email,'رسا�
 
 const RATE=new Map();
 const hitOr429=(key,limit,windowMs=3600e3)=>{if(RATE.size>50000)RATE.clear();const now=Date.now(),r=RATE.get(key)||{n:0,t:now};if(now-r.t>windowMs){r.n=0;r.t=now}r.n++;RATE.set(key,r);if(r.n>limit)throw err(429,'محاولات كثيرة، حاول بعد قليل')};
-export {macOf,DB_PATH, notifyEmail, activateVatIfNeeded, issueHelperDoc, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, issueCommissionDoc, submitInvoice, commissionPctFor, issueSaleDoc};
+// فتح المدينة للخدمات الحضورية: مساعد واحد نشط على الأقل في 80% من التخصصات الحضورية
+const CITY_OPEN_PCT=0.8;
+const cityCoverage=city=>{
+  const total=get("SELECT COUNT(*) n FROM skill_categories WHERE mode!='online'").n;
+  const covered=get(`SELECT COUNT(DISTINCT us.category_id) n FROM user_sections us
+    JOIN skill_categories sc ON sc.id=us.category_id AND sc.mode!='online'
+    JOIN users u ON u.id=us.user_id
+    WHERE u.city=? AND u.account_type='helper' AND u.active=1 AND u.email_verified=1 AND u.flagged=0`,city).n;
+  const pct=total?covered/total:0;
+  return{total,covered,pct,open:pct>=CITY_OPEN_PCT};
+};
+// بعد بلوغ العتبة تبقى المدينة مفتوحة حتى لو انخفض العدد لاحقًا
+const cityOpen=city=>{
+  let list=[];try{list=JSON.parse(SET().opened_cities||'[]')}catch{}
+  if(list.includes(city))return true;
+  if(!cityCoverage(city).open)return false;
+  list.push(city);
+  run("INSERT INTO settings(key,value) VALUES('opened_cities',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",JSON.stringify(list));
+  return true;
+};
+
+export {cityCoverage,cityOpen,CITY_OPEN_PCT,macOf,DB_PATH, notifyEmail, activateVatIfNeeded, issueHelperDoc, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, issueCommissionDoc, submitInvoice, commissionPctFor, issueSaleDoc};
