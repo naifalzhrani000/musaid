@@ -134,3 +134,71 @@ form a{display:inline-flex;align-items:center;min-height:44px}
 .hact{display:flex;align-items:center;gap:4px}
 
 .gal figure{overflow:hidden;min-width:0}.gal video{display:block;width:100%;height:110px;object-fit:cover;border-radius:10px;background:#000}.gal figcaption{font-size:12px;color:#6b7280;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* لوحة الإدارة: بطاقات المؤشرات والرسوم */
+.dash-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 16px}
+.dash-head select{border:1px solid #cfcbbf;border-radius:10px;padding:8px 12px;background:#fff;font:inherit}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:#fff;border:1px solid #e3e8e5;border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,51,39,.06)}
+.kpi small{display:block;color:#6b7a73;font-size:12.5px}
+.kpi b{display:block;font-size:24px;color:#0f3327;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.kpi span{font-size:12px;color:#6b7a73}
+.kpi.warn b{color:#8a1c1c}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:6px}
+.chart-card{background:#fff;border:1px solid #e3e8e5;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(15,51,39,.06)}
+.chart-card h4{margin:0 0 6px;font-size:14px;color:#0f3327}
+
+/* لوحة الإدارة: الجداول والتصنيفات والطلبات */
+.chip-btn{border:1px solid #cfcbbf;background:#fff;color:#173d30;border-radius:999px;padding:6px 14px;font:inherit;font-size:13px;cursor:pointer}
+.chip-btn.on{background:#173d30;color:#fff;border-color:#173d30}
+.ord-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin:12px 0}
+.ord-chips{display:flex;gap:6px;flex-wrap:wrap}
+.ord-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ord-tools input{min-width:240px}
+.tbl-wrap{overflow-x:auto;background:#fff;border:1px solid #e3e8e5;border-radius:12px}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:start;background:#f5f7f6;color:#4a5a53;font-weight:600;padding:10px;border-bottom:1px solid #e3e8e5;white-space:nowrap}
+.tbl td{padding:10px;border-bottom:1px solid #eef2ef;vertical-align:middle}
+.tbl tr.stuck td{background:#fff8ec}
+.pill-warn{display:inline-block;background:#fdecec;color:#8a1c1c;border-radius:999px;padding:2px 8px;font-size:12px;margin-inline-start:4px}
+.pager{display:flex;justify-content:center;align-items:center;gap:12px;margin:14px 0}
+
+/* لوحة الإدارة: الوضع الداكن وشريط الأعلى */
+.mg-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 0}
+.mg-top .mg-burger{margin:0}
+.mg-theme{border:1px solid #cfcbbf;background:#fff;color:#173d30;border-radius:10px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer;margin-inline-start:auto}
+.mg-shell.mg-dark{background:#0f1714;color:#e6efeb}
+.mg-shell.mg-dark .mg-tabs{background:#08120e}
+.mg-shell.mg-dark .kpi,.mg-shell.mg-dark .chart-card,.mg-shell.mg-dark .tbl-wrap,.mg-shell.mg-dark .mg-stats{background:#16221d;border-color:#26372f}
+.mg-shell.mg-dark .kpi b,.mg-shell.mg-dark .mg-h,.mg-shell.mg-dark .chart-card h4,.mg-shell.mg-dark .dash-head h2{color:#dcefe6}
+.mg-shell.mg-dark .kpi small,.mg-shell.mg-dark .kpi span,.mg-shell.mg-dark small{color:#9fb5ab}
+.mg-shell.mg-dark .tbl th{background:#1d2b25;color:#c7d9d0;border-color:#26372f}
+.mg-shell.mg-dark .tbl td{border-color:#22332c}
+.mg-shell.mg-dark .tbl tr.stuck td{background:#33281a}
+.mg-shell.mg-dark .mg-row{border-color:#22332c}
+.mg-shell.mg-dark .mg-row:hover{background:#1a2823}
+.mg-shell.mg-dark input,.mg-shell.mg-dark select,.mg-shell.mg-dark textarea{background:#16221d;color:#e6efeb;border-color:#2f4339}
+.mg-shell.mg-dark .btn.alt,.mg-shell.mg-dark .chip-btn,.mg-shell.mg-dark .mg-theme{background:#16221d;color:#dcefe6;border-color:#2f4339}
+.mg-shell.mg-dark .btn{background:#2f7a5c;border-color:#2f7a5c}
+
+/* تحميل هيكلي وحوار مخصص */
+.skel-wrap{display:grid;gap:10px;padding:6px 0}
+.skel{height:44px;border-radius:10px;background:linear-gradient(90deg,#eef2ef 25%,#f7f9f8 50%,#eef2ef 75%);background-size:200% 100%;animation:skel 1.2s linear infinite}
+@keyframes skel{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+
+/* توحيد عناوين أقسام لوحة الإدارة */
+.mg-page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;padding:6px 0 14px;margin:0 0 16px;border-bottom:1px solid #e3e8e5}
+.mg-page-head h2{margin:0 0 2px;font-size:22px;color:#0f3327;font-weight:700}
+.mg-page-head small{color:#6b7a73;font-size:13px}
+/* عنوان القسم داخل الصفحة يُعرض في الترويسة الموحدة فقط */
+#mgBody>h3.mg-h:first-child{display:none}
+#mgBody .mg-h{font-size:16px;color:#0f3327;margin:18px 0 10px;font-weight:700}
+#mgBody .empty{background:#fff;border:1px dashed #cfd9d3;border-radius:14px;padding:28px 16px;color:#6b7a73;text-align:center}
+
+/* صفحة المحادثة المبلغ عنها */
+.chat-thread{display:flex;flex-direction:column;gap:8px;background:#f5f7f6;border:1px solid #e3e8e5;border-radius:14px;padding:14px;max-height:60vh;overflow-y:auto}
+.bubble{max-width:78%;padding:9px 12px;border-radius:14px;background:#fff;border:1px solid #e3e8e5}
+.bubble.a{align-self:flex-start;background:#fff}
+.bubble.b{align-self:flex-end;background:#e7f2ec;border-color:#cfe3d7}
+.bubble small{color:#6b7a73;font-size:12px}

@@ -87,13 +87,13 @@ const reg=SET().platform_vat_registered==='1',pvat=String(SET().platform_vat_num
 const issuer=ht.taxed?{name:ht.name,vat:ht.vat}:{name,vat:reg?pvat:''};
 const rate=(ht.taxed||reg)?0.15:0;const vat=Math.round(a.amount*rate*100)/100,total=Math.round((a.amount+vat)*100)/100;
 const seq=get('SELECT COALESCE(MAX(seq),0)+1 n FROM invoices').n;const ts=new Date().toISOString();const pct=commissionPctFor(),comm=Math.round(a.amount*pct)/100,desc='خدمة عبر منصة المساعد رقم '+agreementId+'. الدفع يُحوَّل مباشرة عبر بوابة الدفع إلى مقدم الخدمة، وعمولة المنصة '+pct+'% ('+comm.toFixed(2)+' ريال) هي وحدها التي تستلمها المنصة.';const qr=rate>0&&issuer.vat?qrOf(issuer.name,issuer.vat,ts,total,vat):null;
-run('INSERT INTO invoices(kind,ref,seq,agreement_id,issuer_name,issuer_vat,buyer_name,buyer_vat,description,subtotal,vat_rate,vat_amount,total,issued_at,qr,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)','tax_invoice',ref,seq,agreementId,issuer.name,issuer.vat,cname,'',desc,a.amount,rate,vat,total,ts,qr,'pending_provider')};
+run('INSERT INTO invoices(kind,ref,seq,agreement_id,issuer_name,issuer_vat,buyer_name,buyer_vat,description,subtotal,vat_rate,vat_amount,total,issued_at,qr,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rate>0?'tax_invoice':'simplified',ref,seq,agreementId,issuer.name,issuer.vat,cname,'',desc,a.amount,rate,vat,total,ts,qr,'pending_provider')};
 // the link to the e-invoicing provider: nothing is sent until a provider contract is set up
 const submitInvoice=async(inv)=>{if(!process.env.INVOICE_PROVIDER_URL)return{status:'pending_provider'};return{status:'not_implemented'}};
 
 const VAT_THRESHOLD=375000;
 // توريدات المنصة الخاضعة: المنصة تستلم العمولة فقط، فلا تُحسب قيمة المهمة كاملة إلا للمساعد غير المسجل (مورّد مفترض) إن كان العد الاحتياطي مفعّلًا
-const supplyFor=(amount,hid)=>{const h=get('SELECT vat_status,vat_number FROM users WHERE id=?',hid)||{};const taxed=h.vat_status==='registered'&&!!h.vat_number;if(taxed)return Math.round(Number(amount)*commissionPctFor())/100;return SET().deemed_supply_counting==='0'?0:Number(amount)};
+const supplyFor=(amount,hid)=>{const h=get('SELECT vat_status,vat_number FROM users WHERE id=?',hid)||{};const taxed=h.vat_status==='registered'&&!!h.vat_number;if(taxed)return Math.round(Number(amount)*commissionPctFor())/100;return Number(amount)};
 const supplyOf=a=>supplyFor(a.amount,helperOf(a));
 const turnover12m=()=>all("SELECT amount,a_id,b_id FROM agreements WHERE paid_at IS NOT NULL AND paid_at>=datetime('now','-365 days')").reduce((s,a)=>s+supplyOf(a),0);
 // called BEFORE a new agreement is priced: if the platform's supplies would reach the threshold, VAT is switched on first
@@ -103,7 +103,7 @@ all("SELECT id FROM users WHERE role='admin'").forEach(a=>notify(a.id,'بلغ إ
 const commissionPctFor=()=>Number(SET().commission_percent)||15;
 const ensureCommission=(id)=>{const a=get('SELECT * FROM agreements WHERE id=?',id);if(!a||!a.paid_at)return;const pct=commissionPctFor(helperOf(a));run("INSERT OR IGNORE INTO agreement_commissions(agreement_id,helper_id,amount,status,paid_at) VALUES(?,?,?,'paid',datetime('now'))",id,helperOf(a),Math.round(a.amount*pct)/100);issueSaleDoc(id);issueCommissionDoc(id)};
 const clientOf=a=>helperOf(a)===a.a_id?a.b_id:a.a_id;
-const CATALOG_VERSION='3';
+const CATALOG_VERSION='4';
 const applyCatalog=()=>{const v=get("SELECT value FROM settings WHERE key='catalog_version'");if(v&&v.value===CATALOG_VERSION)return;
 db.exec("DELETE FROM section_keywords;DELETE FROM user_sections;DELETE FROM user_skills;DELETE FROM skill_keywords;DELETE FROM skills;DELETE FROM skill_categories;");
 CATALOG.forEach((c,i)=>{const id=Number(run('INSERT INTO skill_categories(name,sort) VALUES(?,?)',c.name,i+1).lastInsertRowid);for(const w of [c.name,...c.words])run('INSERT OR IGNORE INTO section_keywords(category_id,word) VALUES(?,?)',id,normAr(w))});

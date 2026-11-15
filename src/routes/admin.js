@@ -4,7 +4,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {route, supplyOf, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen} from '../core.js';
+import {route, supplyOf, matchSections, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen} from '../core.js';
 import {ASSIST_CITIES} from '../../data.js';
 route('GET','/admin/reports',c=>{can(c,'support');const Q={user:'SELECT name t FROM users WHERE id=?'};
 return all("SELECT rp.*,u.name reporter FROM reports rp JOIN users u ON u.id=rp.reporter_id ORDER BY (rp.status='open') DESC,rp.id DESC LIMIT 100").map(r=>({...r,info:get(Q[r.type],r.target_id)?.t}))});
@@ -39,7 +39,8 @@ route('POST','/admin/users/(\\d+)/role',c=>{const a=adm(c),id=+c.p[0],role=c.b.r
 const why=str(c.b.reason,3,300,'السبب');run('UPDATE users SET role=? WHERE id=?',role,id);audit(a.id,'role',`${id}:${role}:${why}`);return{ok:1}});
 route('POST','/admin/users/(\\d+)/password',c=>{const a=adm(c),id=+c.p[0];if(!get('SELECT 1 x FROM users WHERE id=?',id))throw err(404,'المستخدم غير موجود');const pw=str(c.b.password,8,100,'كلمة المرور'),why=str(c.b.reason,3,300,'السبب');
 run('UPDATE users SET pass=? WHERE id=?',hash(pw),id);run('DELETE FROM sessions WHERE user_id=?',id);audit(a.id,'password_reset',`${id}:${why}`);notify(id,'تم تغيير كلمة مرورك بواسطة الإدارة، سجّل دخولك بالكلمة الجديدة','#/login');return{ok:1}});
-route('POST','/admin/broadcast',c=>tx(()=>{const a=adm(c),text=str(c.b.text,5,500,'النص'),link=String(c.b.link||'#/').slice(0,200);const us=all('SELECT id FROM users WHERE active=1');us.forEach(x=>notify(x.id,text,link));audit(a.id,'broadcast',`${us.length}:${text.slice(0,80)}`);return{sent:us.length}}));
+route('POST','/admin/broadcast',c=>tx(()=>{const a=adm(c),text=str(c.b.text,5,500,'النص'),link=String(c.b.link||'#/').slice(0,200);const aud=['all','helpers','clients'].includes(c.b.audience)?c.b.audience:'all';const where=aud==='helpers'?" AND account_type='helper'":aud==='clients'?" AND account_type!='helper'":'';const us=all('SELECT id FROM users WHERE active=1'+where);us.forEach(x=>notify(x.id,text,link));audit(a.id,'broadcast',`${aud}:${us.length}:${text.slice(0,80)}`);return{sent:us.length,audience:aud}}));
+route('GET','/admin/broadcasts',c=>{adm(c);return all("SELECT a.id,a.detail,a.at,u.name admin FROM audit_log a LEFT JOIN users u ON u.id=a.admin_id WHERE a.action='broadcast' ORDER BY a.id DESC LIMIT 100").map(r=>{const [aud,n,...t]=String(r.detail||'').split(':');return{id:r.id,audience:aud,sent:Number(n)||0,text:t.join(':'),at:r.at,admin:r.admin}})});
 route('GET','/admin/backup',c=>{const a=adm(c),f=path.join(os.tmpdir(),`musaed-backup-${Date.now()}.db`);db.exec(`VACUUM INTO '${f.replace(/'/g,"''")}'`);const raw=fs.readFileSync(f);fs.unlinkSync(f);audit(a.id,'backup','manual');return{raw,mime:'application/octet-stream'}});
 route('GET','/admin/skills',c=>{adm(c);return all("SELECT s.id,s.name,s.status,c.name cat,u.name suggested_by,(SELECT GROUP_CONCAT(word,'، ') FROM skill_keywords k WHERE k.skill_id=s.id) keywords FROM skills s JOIN skill_categories c ON c.id=s.category_id LEFT JOIN users u ON u.id=s.suggested_by ORDER BY (s.status='pending') DESC,s.id DESC LIMIT 200")});
 route('POST','/admin/skills/(\\d+)/review',c=>{const a=adm(c),s=get('SELECT * FROM skills WHERE id=?',+c.p[0]);if(!s)throw err(404,'غير موجود');if(s.status!=='pending')throw err(400,'هذه المهارة ليست بانتظار الاعتماد');const d=c.b.decision;
@@ -107,8 +108,8 @@ return{month:m,platform_commission:Math.round(comm*100)/100,platform_supply:Math
 const total=rows.reduce((s,r)=>s+r.platform_supply,0);const last3=rows.slice(-3).reduce((s,r)=>s+r.platform_supply,0)/3;const projected=Math.round(last3*12);
 const status=thr<=0?'not_set':total>=thr?'exceeded':(total>=thr*0.8?'near':'below');
 const expectedStatus=thr<=0?'not_set':(total+projected>=thr||projected>=thr?'expected_to_exceed':'below');
-return{threshold:thr,trailing_12_months_value:total,projected_next_12_months_value:projected,status,expected_status:expectedStatus,warn_at:Math.round(thr*0.8),deemed_supply_counting:SET().deemed_supply_counting!=='0',rows,note:'تقدير داخلي للمتابعة. الحد الإلزامي يحدده المحاسب، وطلب التسجيل يقدَّم خلال 30 يومًا من نهاية الشهر المعني عند التجاوز أو توقعه.'}});
-route('POST','/admin/supply-threshold',c=>{const u=adm(c);const v=Number(c.b.value);if(!Number.isFinite(v)||v<0)throw err(400,'قيمة غير صالحة');if(c.b.deemed_supply_counting!==undefined)run("INSERT INTO settings(key,value) VALUES('deemed_supply_counting',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",c.b.deemed_supply_counting?'1':'0');run("INSERT INTO settings(key,value) VALUES('vat_threshold',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(v));audit(u.id,'vat_threshold',String(v));return{ok:1}});
+return{threshold:thr,trailing_12_months_value:total,projected_next_12_months_value:projected,status,expected_status:expectedStatus,warn_at:Math.round(thr*0.8),deemed_supply_counting:true,rows,note:'تقدير داخلي للمتابعة. الحد الإلزامي يحدده المحاسب، وطلب التسجيل يقدَّم خلال 30 يومًا من نهاية الشهر المعني عند التجاوز أو توقعه.'}});
+route('POST','/admin/supply-threshold',c=>{const u=adm(c);const v=Number(c.b.value);if(!Number.isFinite(v)||v<0)throw err(400,'قيمة غير صالحة');run("INSERT INTO settings(key,value) VALUES('vat_threshold',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(v));audit(u.id,'vat_threshold',String(v));return{ok:1}});
 
 
 route('GET','/admin/verifications',c=>{adm(c);return{vat:all("SELECT id,name,email,helper_type,vat_number FROM users WHERE account_type='helper' AND helper_type IN ('establishment','company') AND vat_status='registered' AND vat_verified!=1"),type_requests:all("SELECT id,name,email,helper_type,helper_type_request FROM users WHERE helper_type_request IS NOT NULL")}});
@@ -142,3 +143,138 @@ audit(a.id,'chat_view','report:'+r.id);return{messages:rows}});
 
 route('GET','/admin/ratings',c=>{can(c,'support');return all('SELECT r.id,r.stars,r.comment,r.hidden,r.agreement_id,u.name rater,t.name rated FROM ratings r JOIN users u ON u.id=r.rater_id JOIN users t ON t.id=r.ratee_id ORDER BY r.id DESC LIMIT 200')});
 route('POST','/admin/ratings/(\\d+)/hidden',c=>{const a=can(c,'support'),x=get('SELECT id FROM ratings WHERE id=?',+c.p[0]);if(!x)throw err(404,'التقييم غير موجود');const h=c.b.hidden?1:0;run('UPDATE ratings SET hidden=? WHERE id=?',h,x.id);audit(a.id,h?'rating_hidden':'rating_shown',String(x.id));return{ok:1}});
+
+// لوحة الرئيسية: أرقام وسلاسل زمنية من قاعدة البيانات الفعلية (لا بيانات تجريبية)
+const DASH_ACTIONS={settings:'تحديث إعدادات المنصة',expense:'تسجيل مصروف',lift:'رفع القيود عن مستخدم',post_hide:'إخفاء منشور',comment_delete:'حذف تعليق',vat_threshold:'تحديث حد التسجيل',invoicing:'تحديث إعدادات الفوترة'};
+route('GET','/admin/dashboard',c=>{
+  adm(c);
+  const days=[7,30,90].includes(+c.q?.days)?+c.q.days:30;
+  const since=`-${days} days`;
+  const dayList=[];const now=new Date();
+  for(let i=days-1;i>=0;i--){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()-i));dayList.push(d.toISOString().slice(0,10))}
+  const fill=(rows,key='n')=>{const m=Object.fromEntries(rows.map(r=>[r.d,Number(r[key])||0]));return dayList.map(d=>m[d]||0)};
+  const byDay=(sql,...args)=>all(sql,...args);
+  const usersSeries=fill(byDay(`SELECT substr(created_at,1,10) d,COUNT(*) n FROM users WHERE created_at>=datetime('now',?) GROUP BY d`,since));
+  const requestsSeries=fill(byDay(`SELECT substr(created_at,1,10) d,COUNT(*) n FROM agreements WHERE created_at>=datetime('now',?) GROUP BY d`,since));
+  const profitSeries=fill(byDay(`SELECT substr(paid_at,1,10) d,COALESCE(SUM(amount),0) n FROM agreement_commissions WHERE status='paid' AND paid_at>=datetime('now',?) GROUP BY d`,since),'n');
+  const helperSeries=fill(byDay(`SELECT substr(g.created_at,1,10) d,COUNT(DISTINCT x.id) n FROM agreements g JOIN users x ON x.id IN (g.a_id,g.b_id) AND x.account_type='helper' WHERE g.created_at>=datetime('now',?) GROUP BY d`,since));
+  const one=(sql,...a)=>get(sql,...a);
+  const totals={
+    users:one('SELECT COUNT(*) n FROM users').n,
+    helpers:one("SELECT COUNT(*) n FROM users WHERE account_type='helper'").n,
+    requests:one('SELECT COUNT(*) n FROM agreements').n,
+    active_requests:one("SELECT COUNT(*) n FROM agreements WHERE status IN ('agreed','completion_requested')").n,
+    completed_requests:one("SELECT COUNT(*) n FROM agreements WHERE status='completed'").n,
+    commissions_total:Math.round(one("SELECT COALESCE(SUM(amount),0) s FROM agreement_commissions WHERE status='paid'").s*100)/100,
+    commissions_due:Math.round(one("SELECT COALESCE(SUM(amount),0) s FROM agreement_commissions WHERE status='due'").s*100)/100,
+    commissions_due_count:one("SELECT COUNT(*) n FROM agreement_commissions WHERE status='due'").n,
+    open_reports:one("SELECT COUNT(*) n FROM reports WHERE status='open'").n,
+    new_users_period:usersSeries.reduce((a,b)=>a+b,0),
+    new_requests_period:requestsSeries.reduce((a,b)=>a+b,0),
+  };
+  const activity=all('SELECT a.action,a.detail,a.at,u.name admin FROM audit_log a LEFT JOIN users u ON u.id=a.admin_id ORDER BY a.id DESC LIMIT 15').map(r=>({action:DASH_ACTIONS[r.action]||r.action,detail:r.detail||'',at:r.at,admin:r.admin||'النظام'}));
+  return{days,labels:dayList,series:{users:usersSeries,requests:requestsSeries,profit:profitSeries,helpers:helperSeries},totals,activity};
+});
+
+// ---- الطلبات (الاتفاقات) للإدارة: قائمة وتصنيف ومتعثرة ----
+const STUCK_RULES={pending:3,agreed:14,completion_requested:7};
+const ORDER_GROUPS={open:['pending'],active:['agreed','completion_requested'],completed:['completed'],cancelled:['cancelled'],disputed:['disputed','closed_disputed']};
+const ordersQuery=c=>{
+  const g=String(c.q?.group||'all'), q=String(c.q?.q||'').trim().slice(0,80);
+  let where='1=1';const args=[];
+  if(ORDER_GROUPS[g]){where+=` AND g.status IN (${ORDER_GROUPS[g].map(()=>'?').join(',')})`;args.push(...ORDER_GROUPS[g])}
+  if(g==='stuck'){where+=` AND ((g.status='pending' AND julianday('now')-julianday(g.updated_at)>${STUCK_RULES.pending}) OR (g.status='agreed' AND julianday('now')-julianday(g.updated_at)>${STUCK_RULES.agreed}) OR (g.status='completion_requested' AND julianday('now')-julianday(g.updated_at)>${STUCK_RULES.completion_requested}))`}
+  if(q){const like=`%${q.replace(/[%_\\]/g,m=>'\\'+m)}%`;where+=` AND (g.description LIKE ? ESCAPE '\\' OR a.name LIKE ? ESCAPE '\\' OR b.name LIKE ? ESCAPE '\\' OR CAST(g.id AS TEXT)=?)`;args.push(like,like,like,q.replace(/\D/g,'')||'-1')}
+  return{where,args};
+};
+route('GET','/admin/orders',c=>{
+  can(c,'support');
+  const {where,args}=ordersQuery(c);
+  const page=Math.max(0,+(c.q?.page)||0);
+  const rows=all(`SELECT g.id,g.description,g.amount,g.status,g.created_at,g.updated_at,g.paid_at,
+      a.id a_id,a.name a_name,a.account_type a_type,b.id b_id,b.name b_name,b.account_type b_type,
+      (SELECT amount FROM agreement_commissions ac WHERE ac.agreement_id=g.id) commission
+    FROM agreements g JOIN users a ON a.id=g.a_id JOIN users b ON b.id=g.b_id
+    WHERE ${where} ORDER BY g.id DESC LIMIT 50 OFFSET ?`,...args,page*50);
+  return rows.map(r=>{const days=(Date.now()-Date.parse(String(r.updated_at).replace(' ','T')+'Z'))/864e5;const lim=STUCK_RULES[r.status];return{...r,days_idle:Math.floor(days),stuck:lim!==undefined&&days>lim}});
+});
+route('GET','/admin/orders/summary',c=>{
+  can(c,'support');
+  const cnt=(sql)=>get(sql).n;
+  return{all:cnt('SELECT COUNT(*) n FROM agreements'),open:cnt("SELECT COUNT(*) n FROM agreements WHERE status='pending'"),active:cnt("SELECT COUNT(*) n FROM agreements WHERE status IN ('agreed','completion_requested')"),completed:cnt("SELECT COUNT(*) n FROM agreements WHERE status='completed'"),cancelled:cnt("SELECT COUNT(*) n FROM agreements WHERE status='cancelled'"),disputed:cnt("SELECT COUNT(*) n FROM agreements WHERE status IN ('disputed','closed_disputed')"),stuck:get(`SELECT COUNT(*) n FROM agreements g WHERE (g.status='pending' AND julianday('now')-julianday(g.updated_at)>${STUCK_RULES.pending}) OR (g.status='agreed' AND julianday('now')-julianday(g.updated_at)>${STUCK_RULES.agreed}) OR (g.status='completion_requested' AND julianday('now')-julianday(g.updated_at)>${STUCK_RULES.completion_requested})`).n};
+});
+// تذكير الطرفين بطلب متعثر: إشعار فقط، ولا يغيّر الحالة أو المال
+route('POST','/admin/orders/(\\d+)/nudge',c=>{
+  const a=can(c,'support'),id=+c.p[0];
+  const g=get('SELECT id,a_id,b_id,status FROM agreements WHERE id=?',id);
+  if(!g)throw err(404,'الطلب غير موجود');
+  const why=str(c.b.reason,3,200,'سبب التذكير');
+  const txt=`تذكير من إدارة المنصة بالطلب رقم ${id}: ${why}`;
+  notify(g.a_id,txt,'#/direct/'+g.b_id);notify(g.b_id,txt,'#/direct/'+g.a_id);
+  audit(a.id,'order_nudge',`${id}:${why}`);
+  return{ok:1};
+});
+// تصدير CSV للطلبات والمستخدمين (للمدير)
+const csvEsc=v=>{const t=v==null?'':String(v);return /[",\n]/.test(t)?`"${t.replace(/"/g,'""')}"`:t};
+route('GET','/admin/export',c=>{
+  adm(c);
+  const type=String(c.q?.type||'');
+  let head,rows;
+  if(type==='orders'){head=['رقم الطلب','الوصف','المبلغ','الحالة','تاريخ الإنشاء','آخر تحديث'];rows=all('SELECT id,description,amount,status,created_at,updated_at FROM agreements ORDER BY id DESC LIMIT 5000').map(r=>[r.id,r.description,r.amount,r.status,r.created_at,r.updated_at])}
+  else if(type==='users'){head=['الرقم','الاسم','البريد','المدينة','النوع','الحالة','تاريخ التسجيل'];rows=all('SELECT id,name,email,city,account_type,active,created_at FROM users ORDER BY id DESC LIMIT 5000').map(r=>[r.id,r.name,r.email,r.city,r.account_type,r.active?'مفعل':'موقوف',r.created_at])}
+  else throw err(400,'نوع التصدير غير صالح');
+  const csv='\ufeff'+[head,...rows].map(r=>r.map(csvEsc).join(',')).join('\r\n');
+  return{raw:Buffer.from(csv,'utf8'),mime:'text/csv; charset=utf-8'};
+});
+
+// ملف المستخدم للإدارة: بياناته، أقسامه، تقييماته، وطلباته
+route('GET','/admin/users/(\\d+)/profile',c=>{
+  can(c,'support');
+  const id=+c.p[0];
+  const u=get('SELECT id,name,email,phone,city,role,account_type,helper_type,vat_status,vat_verified,active,flagged,suspended_until,created_at,email_verified FROM users WHERE id=?',id);
+  if(!u)throw err(404,'المستخدم غير موجود');
+  const sections=all('SELECT c.name FROM user_sections us JOIN skill_categories c ON c.id=us.category_id WHERE us.user_id=?',id).map(x=>x.name);
+  const reviews=all('SELECT r.stars,r.comment,r.created_at,r.hidden,rv.name rater FROM ratings r JOIN users rv ON rv.id=r.rater_id WHERE r.ratee_id=? ORDER BY r.id DESC LIMIT 30',id);
+  const orders=all(`SELECT g.id,g.description,g.amount,g.status,g.updated_at,a.name a_name,b.name b_name FROM agreements g JOIN users a ON a.id=g.a_id JOIN users b ON b.id=g.b_id WHERE g.a_id=? OR g.b_id=? ORDER BY g.id DESC LIMIT 30`,id,id);
+  const avg=get('SELECT ROUND(AVG(stars),1) a,COUNT(*) n FROM ratings WHERE ratee_id=? AND hidden=0',id);
+  return{user:u,sections,reviews,orders,rating:{avg:avg.a,count:avg.n},stats:{orders:orders.length,completed:orders.filter(o=>o.status==='completed').length,cancelled:orders.filter(o=>o.status==='cancelled').length}};
+});
+
+route('GET','/admin/admins',c=>{adm(c);return all("SELECT id,name,email,active,created_at FROM users WHERE role='admin' ORDER BY id")});
+
+// إعدادات المنصة للمدير: قراءة كل المفاتيح القابلة للتحرير
+const SETTING_KEYS=['bank_name','account_name','iban','commission_percent','commission_grace_days','org_name','org_cr','dispute_clause','penalty_rules','support_email','support_phone','support_address','platform_vat_registered','platform_vat_number'];
+route('GET','/admin/settings',c=>{adm(c);const out={};for(const k of SETTING_KEYS)out[k]=SET()[k]??'';return out});
+
+// اختبار محرك المطابقة للمدير: أي الأقسام تطابق عبارة بحث، دون حفظ شيء
+route('POST','/admin/match-test',c=>{
+  adm(c);
+  const text=str(c.b.text,2,200,'عبارة البحث');
+  const hits=matchSections(text);
+  return{text,matched:hits.length>0,hits:hits.map(h=>({id:h.id,name:h.name,score:h.score}))};
+});
+
+// أداء المساعدين: تقييم وطلبات وإلغاءات وبلاغات ضدهم وعمولات، من الجداول الفعلية
+route('GET','/admin/helper-performance',c=>{
+  can(c,'support');
+  const days=[30,90,365].includes(+c.q?.days)?+c.q.days:90;
+  return all(`SELECT u.id,u.name,u.city,u.vat_status,u.active,
+      (SELECT ROUND(AVG(r.stars),2) FROM ratings r WHERE r.ratee_id=u.id AND r.hidden=0) rating,
+      (SELECT COUNT(*) FROM ratings r WHERE r.ratee_id=u.id AND r.hidden=0) rating_count,
+      (SELECT COUNT(*) FROM agreements g WHERE (g.a_id=u.id OR g.b_id=u.id) AND g.created_at>=datetime('now',?)) orders,
+      (SELECT COUNT(*) FROM agreements g WHERE (g.a_id=u.id OR g.b_id=u.id) AND g.status='completed' AND g.created_at>=datetime('now',?)) completed,
+      (SELECT COUNT(*) FROM agreements g WHERE (g.a_id=u.id OR g.b_id=u.id) AND g.status='cancelled' AND g.created_at>=datetime('now',?)) cancelled,
+      (SELECT COUNT(*) FROM reports rp WHERE rp.type='user' AND rp.target_id=u.id) reports,
+      (SELECT COALESCE(SUM(ac.amount),0) FROM agreement_commissions ac WHERE ac.helper_id=u.id AND ac.status='paid') commissions_paid
+    FROM users u WHERE u.account_type='helper' AND u.role!='admin' ORDER BY completed DESC, u.id LIMIT 200`,`-${days} days`,`-${days} days`,`-${days} days`).map(r=>({...r,days}));
+});
+
+// بلاغ محادثة واحد للإدارة: بيانات البلاغ والطرفان، والقرار السابق إن وُجد
+route('GET','/admin/reports/(\\d+)',c=>{
+  can(c,'support');
+  const r=get('SELECT rp.id,rp.type,rp.target_id,rp.reason,rp.status,rp.note,rp.created_at,u.name reporter FROM reports rp JOIN users u ON u.id=rp.reporter_id WHERE rp.id=?',+c.p[0]);
+  if(!r)throw err(404,'البلاغ غير موجود');
+  if(r.type!=='message')throw err(400,'هذا البلاغ لا يتعلق بمحادثة');
+  const m=get('SELECT m.from_id,m.to_id,fa.name from_name,ta.name to_name FROM direct_messages m JOIN users fa ON fa.id=m.from_id JOIN users ta ON ta.id=m.to_id WHERE m.id=?',r.target_id);
+  return{...r,parties:m?{from_id:m.from_id,from_name:m.from_name,to_id:m.to_id,to_name:m.to_name}:null};
+});
