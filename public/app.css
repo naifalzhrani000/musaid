@@ -202,3 +202,60 @@ form a{display:inline-flex;align-items:center;min-height:44px}
 .bubble.a{align-self:flex-start;background:#fff}
 .bubble.b{align-self:flex-end;background:#e7f2ec;border-color:#cfe3d7}
 .bubble small{color:#6b7a73;font-size:12px}
+
+/* ===== مطابقة تصميم لوحة الإدارة للمرجع ===== */
+.mg-shell{background:#f3f6f5}
+.mg-shell .mg-tabs{background:#0f3d2e;padding:14px 12px 18px;gap:6px;width:auto}
+.mg-shell .mg-brand-side{display:flex;align-items:center;gap:10px;color:#fff;padding:6px 8px 16px}
+.mg-shell .mg-brand-side img{background:#fff;border-radius:12px;padding:4px}
+.mg-shell .mg-brand-side b{font-size:19px}
+.mg-shell .mg-tab{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;color:#cfe5da;font-size:14.5px;text-decoration:none}
+.mg-shell .mg-tab svg{flex:none}
+.mg-shell .mg-tab:hover{background:rgba(255,255,255,.08);color:#fff}
+.mg-shell .mg-tab.on{background:#1f7a5a;color:#fff;font-weight:600;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.mg-shell .mg-sep{color:#8fb3a3;font-size:12px;margin:16px 6px 4px}
+.mg-topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border-radius:16px;padding:12px 16px;margin:0 0 18px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(15,61,46,.06)}
+.mg-brand{display:flex;align-items:center;gap:8px;color:#0f3d2e}
+.mg-brand b{font-size:20px}
+.mg-tb-end{display:flex;align-items:center;gap:10px}
+.mg-bell,.mg-avatar{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font-size:16px}
+.mg-bell{background:#fff;border:1px solid #e0e8e4}
+.mg-avatar{background:#1f5f4a;color:#fff;font-weight:700}
+.mg-shell .mg-theme{border-radius:999px;padding:8px 12px}
+.hm-grid{display:grid;gap:16px}
+.hm-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(15,61,46,.06)}
+.stat{display:flex;align-items:center;gap:12px;padding:16px;border-radius:18px;border:1px solid #e3ece8;background:#fff}
+.stat small{display:block;color:#6b7a73;font-size:13px}
+.stat b{font-size:26px;color:#0f3d2e;font-variant-numeric:tabular-nums}
+.stat-ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;flex:none}
+.s-red{background:#fff8f4}.s-red .stat-ic{background:#fde4d6;color:#e0592b}
+.s-blue{background:#f6f9ff}.s-blue .stat-ic{background:#e2ecff;color:#2f6fd6}
+.s-green{background:#f5fbf7}.s-green .stat-ic{background:#dcf1e6;color:#1f7a5a}
+.s-mint{background:#f1fbf6;border-color:#9fdcbf}.s-mint .stat-ic{background:#cdf0de;color:#1f7a5a}
+.ch-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.ch-head h3{margin:0;font-size:16px;color:#0f3d2e;display:flex;align-items:center;gap:8px}
+.pill-select{border:1px solid #d6e0db;border-radius:999px;padding:8px 14px;background:#fff;font:inherit;color:#0f3d2e}
+.ch-wrap{position:relative}
+.chart-tip{position:absolute;top:8px;left:52%;background:#fff;border:1px solid #e3ece8;border-radius:12px;padding:6px 12px;font-weight:600;color:#0f3d2e;box-shadow:0 6px 16px rgba(15,61,46,.12)}
+.acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.act{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #e3ece8;border-radius:16px;text-decoration:none;color:inherit;background:#fff}
+.act:hover{border-color:#9fdcbf;background:#f8fdfa}
+.act-ic{width:46px;height:46px;border-radius:14px;background:#eef7f2;color:#1f7a5a;display:grid;place-items:center;flex:none}
+.act-t{flex:1;display:flex;flex-direction:column;min-width:0}
+.act-t b{color:#0f3d2e;font-size:15px}
+.act-t small{color:#6b7a73;font-size:12.5px}
+.act-go{color:#8a9a93;font-size:22px;padding:0 4px}
+.feed-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #eef2ef}
+.feed-row:last-child{border-bottom:0}
+.feed-ic{width:36px;height:36px;border-radius:50%;background:#eef7f2;color:#1f7a5a;display:grid;place-items:center;flex:none}
+.feed-t{flex:1;color:#0f3d2e;font-weight:600;min-width:0}
+.feed-t small{display:block;color:#6b7a73;font-weight:400}
+.feed-time{color:#6b7a73;white-space:nowrap}
+.pill-btn{border:1px solid #d6e0db;border-radius:999px;padding:7px 14px;text-decoration:none;color:#0f3d2e;font-size:13px;background:#fff}
+@media (max-width:900px){
+  .hm-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .acts{grid-template-columns:1fr}
+  .mg-topbar{margin-bottom:14px}
+}
+@media (max-width:900px){.mg-shell .mg-tabs{width:264px}}
