@@ -259,3 +259,5 @@ form a{display:inline-flex;align-items:center;min-height:44px}
   .mg-topbar{margin-bottom:14px}
 }
 @media (max-width:900px){.mg-shell .mg-tabs{width:264px}}
+header.mg-page-head,.mg-page-head{background:transparent;color:#0f3d2e;box-shadow:none;border-radius:0}
+.mg-page-head h2{color:#0f3d2e}
