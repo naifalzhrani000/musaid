@@ -1,0 +1,157 @@
+diff --git a/REPORT.md b/REPORT.md
+index fdeeca7..514f240 100644
+--- a/REPORT.md
++++ b/REPORT.md
+@@ -39,3 +39,11 @@
+ - افتح اللوحة على الجوال والكمبيوتر، وتحقق من القائمة المنزلقة والوضع الداكن والجداول وصفحة المحادثة.
+ - خذ نسخة احتياطية من قاعدة البيانات قبل تشغيل النسخة الجديدة.
+ - المسائل الضريبية مؤكدة كتابياً من المحاسب. احتفظ بالتأكيد مع ملفات المشروع.
++
++## تحديث لوحة الإدارة — 15 نوفمبر 2026
++
++- تم تحسين الصفحة الرئيسية للوحة الإدارة: شريط علوي بعرض الصفحة، ترحيب المدير، تخطيط RTL متجاوب، وبطاقات مؤشرات بتصميم أقرب للصورة المرجعية.
++- أضيف اختيار مقياس الرسم البياني (المستخدمون، الطلبات، العمولات، نشاط المساعدين)، وأضيفت مؤشرات إضافية قابلة للفتح. جميع القيم تقرأ من `/admin/dashboard` وقاعدة البيانات الحالية.
++- تم تعديل `test.mjs` لاستخدام مجلد النظام المؤقت بدل المسار الثابت `/tmp` كي يبدأ الاختبار على Windows.
++- تحقق `node --check` من `public/app.js` و`test.mjs` بنجاح. تشغيل `npm test` على Windows: نجح 26 من 62 اختبارًا وفشل 36؛ تضمنت الإخفاقات قيود تسجيل 429، خدمة بريد 503، قيدًا أجنبيًا، وفشلًا في النسخ الاحتياطي. لم تُعدَّل وظائف الخادم أو قاعدة البيانات ضمن هذا التحديث.
++- لم يتم التحقق البصري عبر متصفح فعلي في هذه الجولة.
+diff --git a/public/app.css b/public/app.css
+index 6eec118..b1a9902 100644
+--- a/public/app.css
++++ b/public/app.css
+@@ -261,3 +261,45 @@ form a{display:inline-flex;align-items:center;min-height:44px}
+ @media (max-width:900px){.mg-shell .mg-tabs{width:264px}}
+ header.mg-page-head,.mg-page-head{background:transparent;color:#0f3d2e;box-shadow:none;border-radius:0}
+ .mg-page-head h2{color:#0f3d2e}
++
++/* لوحة الإدارة: توزيع الشريط العلوي والصفحة الرئيسية حسب المرجع */
++.mg-shell{grid-template-columns:164px minmax(0,1fr);grid-template-rows:82px minmax(0,1fr);min-height:100vh;direction:rtl;background:#f3f6fa}
++.mg-shell .mg-topbar{grid-column:1/-1;grid-row:1;margin:0;border-radius:0 0 16px 16px;padding:12px 28px;z-index:2;border-bottom:1px solid #e3e9f0}
++.mg-shell .mg-tabs{grid-column:1;grid-row:2;position:sticky;top:0;height:calc(100vh - 82px);min-height:520px;border-radius:0 0 0 14px;padding:24px 10px 18px}
++.mg-shell .mg-main{grid-column:2;grid-row:2;padding:24px 28px;min-width:0}
++.mg-shell .mg-brand-side{display:none}
++.mg-shell .mg-tab{font-size:13px;padding:11px 10px;gap:8px}
++.welcome-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:6px 0 22px}
++.welcome-row h2{font-size:23px;line-height:1.45;color:#111827;margin:0;font-weight:700}
++.welcome-row p{color:#596779;margin:2px 0 0;font-size:14px}
++.welcome-row .pill-select{min-width:164px}
++.hm-grid{gap:18px}
++.hm-stats{gap:14px}
++.dash-extra{border:1px solid #e4eaf1;border-radius:14px;background:#fff;padding:10px 14px;color:#354153}
++.dash-extra summary{cursor:pointer;font-weight:600;font-size:13px}
++.extra-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;padding-top:12px}
++.extra-stats>div{display:flex;flex-direction:column;gap:3px;padding:10px 12px;background:#f7f9fb;border-radius:10px}
++.extra-stats small{color:#687587;font-size:12px}
++.extra-stats b{color:#173d30;font-size:17px;font-variant-numeric:tabular-nums}
++.stat{min-height:116px;border-radius:17px;box-shadow:0 5px 18px rgba(20,45,65,.045)}
++.card{border:1px solid #e4eaf1;border-radius:18px;box-shadow:0 5px 18px rgba(20,45,65,.045);padding:20px}
++.chart-card2{min-height:320px}
++.ch-head h3{font-size:18px;color:#111827}
++.acts-card,.feed-card{padding:20px}
++.act{background:#f9fafc;border-color:#e4eaf1;border-radius:15px;min-height:82px}
++.act-ic{border-radius:50%}
++.feed-row{min-height:58px}
++.mg-shell.mg-dark .mg-topbar,.mg-shell.mg-dark .card,.mg-shell.mg-dark .act{background:#16221d;border-color:#26372f}
++.mg-shell.mg-dark .dash-extra{background:#16221d;border-color:#26372f;color:#dcefe6}.mg-shell.mg-dark .extra-stats>div{background:#1d2b25}.mg-shell.mg-dark .extra-stats b{color:#dcefe6}
++.mg-shell.mg-dark .welcome-row h2,.mg-shell.mg-dark .ch-head h3,.mg-shell.mg-dark .act-t b,.mg-shell.mg-dark .feed-t{color:#dcefe6}
++.mg-shell.mg-dark .welcome-row p,.mg-shell.mg-dark .act-t small,.mg-shell.mg-dark .feed-time{color:#9fb5ab}
++@media(max-width:900px){
++  .mg-shell{grid-template-columns:minmax(0,1fr);grid-template-rows:72px auto minmax(0,1fr)}
++  .mg-shell .mg-topbar{grid-column:1;grid-row:1;padding:10px 14px}
++  .mg-shell .mg-tabs{grid-column:1;grid-row:2;position:fixed;top:0;bottom:0;inset-inline-start:0;width:264px;height:100vh;min-height:0;border-radius:0;transform:translateX(105%);z-index:60}
++  .mg-shell .mg-tabs.open{transform:none}
++  .mg-shell .mg-main{grid-column:1;grid-row:3;padding:14px}
++  .mg-shell .mg-burger{display:inline-flex}
++  .welcome-row{align-items:flex-start}
++}
++@media(max-width:520px){.welcome-row{flex-direction:column}.welcome-row .pill-select{width:100%}.mg-shell .mg-main{padding:12px}.stat{padding:12px}.stat b{font-size:22px}}
+diff --git a/public/app.js b/public/app.js
+index 88c05d0..d5e8f59 100644
+--- a/public/app.js
++++ b/public/app.js
+@@ -389,9 +389,9 @@ let curUser=((initial&&/^user\/(\d+)$/.exec(initial))||[])[1]||null;let curChat=
+ let tab=curUser?'users':curChat?'chat':['home','users','orders','cats','fin','acc','ads','audit','rate','pts','rpt','rep','chat','disp','supply','verify','staff','sys'].includes(initial)?initial:'home',homeDays=30;
+ app.innerHTML=`<style>@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap');
+ #mgBody,#mgNav,.mg-tabs{font-family:'IBM Plex Sans Arabic',Tahoma,system-ui,sans-serif;color:#1d2a25}
+-.mg-shell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh;background:#f5f7f6}
+-.mg-tabs{display:flex;flex-direction:column;gap:4px;background:#0f3327;color:#fff;padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;scrollbar-width:thin}
+-.mg-main{padding:22px 24px;min-width:0}
++.mg-shell{display:grid;grid-template-columns:164px minmax(0,1fr);grid-template-rows:82px minmax(0,1fr);min-height:100vh;background:#f5f7f6}
++.mg-tabs{display:flex;flex-direction:column;gap:4px;background:#0f3327;color:#fff;padding:18px 12px;position:sticky;top:0;height:calc(100vh - 82px);overflow-y:auto;scrollbar-width:thin}
++.mg-main{grid-column:2;grid-row:2;padding:22px 24px;min-width:0}
+ .mg-burger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #cfcbbf;background:#fff;border-radius:10px;font-size:18px;cursor:pointer;margin:10px 14px 0 auto}
+ .mg-tab{border:0;background:none;padding:10px 12px;font:inherit;font-size:14px;color:#cfe3da;cursor:pointer;text-align:start;border-radius:10px;white-space:nowrap}
+ .mg-tab:hover{background:rgba(255,255,255,.08);color:#fff}
+@@ -420,7 +420,7 @@ app.innerHTML=`<style>@import url('https://fonts.googleapis.com/css2?family=IBM+
+ @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+ </style>
+ 
+-<div class=mg-shell><nav class=mg-tabs id=mgNav aria-label="أقسام الإدارة"></nav><main class=mg-main><div class=mg-topbar><div class=mg-brand><img src="/logo.png" alt="" width=34 height=34><b>المساعد</b></div><div class=mg-tb-end><button class=mg-theme id=mgTheme type=button aria-pressed=false>🌙 داكن</button><span class=mg-bell aria-hidden=true>🔔</span><span class=mg-avatar aria-hidden=true>A</span><button class=mg-burger id=mgBurger type=button aria-label="فتح القائمة">☰</button></div></div><header class=mg-page-head id=mgHead></header><div id=mgBody></div></main></div>`;
++<div class=mg-shell><div class=mg-topbar><div class=mg-brand><img src="/logo.png" alt="" width=34 height=34><b>المساعد</b></div><div class=mg-tb-end><button class=mg-theme id=mgTheme type=button aria-pressed=false>🌙 داكن</button><span class=mg-bell aria-hidden=true>🔔</span><span class=mg-avatar aria-hidden=true>A</span><button class=mg-burger id=mgBurger type=button aria-label="فتح القائمة">☰</button></div></div><nav class=mg-tabs id=mgNav aria-label="أقسام الإدارة"></nav><main class=mg-main><header class=mg-page-head id=mgHead></header><div id=mgBody></div></main></div>`;
+ const body=()=>$('#mgBody');
+ const TABS=[['home','الرئيسية','admin'],['users','المستخدمون','support'],['orders','الطلبات','support'],['cats','الأقسام والكلمات','admin'],['fin','المالية','finance'],['acc','المحاسبة','accounting'],['ads','الإعلانات','admin'],['audit','سجل العمليات','admin'],['admins','المشرفون','admin'],['perf','أداء المساعدين','support'],['rep','الشكاوى','support'],['chat','المحادثات','support'],['rate','التقييمات','support'],['pts','النقاط','finance'],['rpt','التقارير','admin'],['disp','النزاعات','support'],['supply','التوريدات','admin'],['verify','التوثيق','admin'],['staff','الموظفون','admin'],['sys','النظام','admin']];
+ const shown=TABS.filter(t=>canA(t[2]));if(!shown.length){body().innerHTML='<small>لا توجد أقسام متاحة لصلاحياتك.</small>';return}
+@@ -544,7 +544,7 @@ const areaChart=(vals,labels)=>{const W=640,H=230,PL=40,PR=18,PT=18,PB=34;const
+ const pts=vals.map((v,i)=>[x(i),y(v)]);
+ let d='';pts.forEach((p,i)=>{if(!i){d+=`M${p[0].toFixed(1)} ${p[1].toFixed(1)}`;return}const q=pts[i-1];const cx=(q[0]+p[0])/2;d+=` C${cx.toFixed(1)} ${q[1].toFixed(1)} ${cx.toFixed(1)} ${p[1].toFixed(1)} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`});
+ const area=d+` L${pts[n-1][0].toFixed(1)} ${H-PB} L${pts[0][0].toFixed(1)} ${H-PB} Z`;
+-const grid=[0,1,2,3].map(g=>{const yy=y(g);return `<line x1="${PL}" x2="${W-PR}" y1="${yy}" y2="${yy}" stroke="#e5ebe8" stroke-dasharray="4 5"/><text x="${W-PR+6}" y="${yy+4}" font-size="12" fill="#8a9a93">${g}</text>`}).join('');
++const grid=[0,1,2,3].map(g=>{const yy=y(max*g/3),tick=Number(max*g/3).toLocaleString('ar-SA',{maximumFractionDigits:1});return `<line x1="${PL}" x2="${W-PR}" y1="${yy}" y2="${yy}" stroke="#e5ebe8" stroke-dasharray="4 5"/><text x="${W-PR+6}" y="${yy+4}" font-size="12" fill="#8a9a93">${tick}</text>`}).join('');
+ const xl=[0,Math.floor((n-1)/2),n-1].map(i=>`<text x="${x(i)}" y="${H-8}" font-size="12" fill="#8a9a93" text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${esc(labels[i]?String(labels[i]).slice(5).replace('-','/'):'')}</text>`).join('');
+ const last=pts[n-1];
+ return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="إحصائيات المنصة" style="width:100%;height:auto;display:block"><defs><linearGradient id="gA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2e9b72" stop-opacity=".28"/><stop offset="1" stop-color="#2e9b72" stop-opacity="0"/></linearGradient></defs>${grid}<path d="${area}" fill="url(#gA)"/><path d="${d}" fill="none" stroke="#1f7a5a" stroke-width="2.6" stroke-linecap="round"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="5" fill="#1f7a5a" stroke="#fff" stroke-width="2"/>${xl}</svg>`};
+@@ -552,21 +552,24 @@ const drawHome=async()=>{
+   const d=await api('/admin/dashboard?days='+homeDays);const t=d.totals;
+   const f=n=>Number(n||0).toLocaleString('ar-SA',{maximumFractionDigits:2});
+   const stat=(cls,icon,label,val)=>`<div class="stat ${cls}"><div class="stat-ic">${svgI(icon,22)}</div><div><small>${label}</small><b>${val}</b></div></div>`;
+-  const last=d.series.requests.length?d.series.requests[d.series.requests.length-1]:0;
+-  const tip=last?`<div class=chart-tip>${last} طلب</div>`:'';
++  let chartKey='requests';const seriesName={users:'المستخدمون',requests:'الطلبات',profit:'العمولات',helpers:'نشاط المساعدين'};
++  const chartMarkup=()=>{const vals=d.series[chartKey]||[],last=vals.length?vals[vals.length-1]:0;return `${areaChart(vals,d.labels)}${last?`<div class=chart-tip>${f(last)} ${seriesName[chartKey]}</div>`:''}`};
+   const acts=[['users','المستخدمون','إدارة المستخدمين والمساعدين','users'],['orders','الطلبات','متابعة الطلبات وإدارتها','orders'],['rpt','المخالفات','مراجعة البلاغات واتخاذ الإجراء','alert'],['cats','المهارات والتخصصات','إدارة التخصصات والمهارات','grid'],['sys','الإعدادات','تخصيص إعدادات المنصة','gear'],['fin','المدفوعات','متابعة المدفوعات والتحويلات','card']];
+   body().innerHTML=`
++  <div class=welcome-row><div><h2>مرحباً بك في لوحة الإدارة 👋</h2><p>إليك نظرة سريعة على إحصائيات المنصة</p></div><select id=hDays aria-label="الفترة الزمنية" class=pill-select><option value=7 ${homeDays===7?'selected':''}>آخر 7 أيام</option><option value=30 ${homeDays===30?'selected':''}>آخر 30 يومًا</option><option value=90 ${homeDays===90?'selected':''}>آخر 90 يومًا</option></select></div>
+   <div class="hm-grid">
+     <div class=hm-stats>
+       ${stat('s-red','alert','المخالفات',f(t.open_reports))}
+       ${stat('s-blue','card','التحويلات المعلقة',f(t.commissions_due_count))}
+-      ${stat('s-green','users','المستخدمون',f(t.users))}
+-      ${stat('s-mint','bolt','الطلبات النشطة',f(t.active_requests))}
++      ${stat('s-green','users','المساعدون',f(t.helpers))}
++      ${stat('s-mint','users','المستخدمون',f(t.users))}
+     </div>
++    <details class=dash-extra><summary>مؤشرات إضافية</summary><div class=extra-stats>
++      <div><small>إجمالي الطلبات</small><b>${f(t.requests)}</b></div><div><small>الطلبات النشطة</small><b>${f(t.active_requests)}</b></div><div><small>الطلبات المكتملة</small><b>${f(t.completed_requests)}</b></div><div><small>عمولات المنصة</small><b>${f(t.commissions_total)} ر.س</b></div><div><small>مبالغ معلقة</small><b>${f(t.commissions_due)} ر.س</b></div><div><small>مستخدمون جدد خلال الفترة</small><b>${f(t.new_users_period)}</b></div><div><small>طلبات جديدة خلال الفترة</small><b>${f(t.new_requests_period)}</b></div>
++    </div></details>
+     <section class="card chart-card2">
+-      <div class=ch-head><h3>${svgI('chart',18)} إحصائيات المنصة</h3>
+-      <select id=hDays aria-label="الفترة الزمنية" class=pill-select><option value=7 ${homeDays===7?'selected':''}>آخر 7 أيام</option><option value=30 ${homeDays===30?'selected':''}>آخر 30 يومًا</option><option value=90 ${homeDays===90?'selected':''}>آخر 90 يومًا</option></select></div>
+-      <div class=ch-wrap>${areaChart(d.series.requests,d.labels)}${tip}</div>
++      <div class=ch-head><h3 id=hChartTitle>${svgI('chart',18)} إحصائيات ${seriesName[chartKey]}</h3><select id=hSeries class=pill-select aria-label="مقياس الرسم البياني">${Object.entries(seriesName).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
++      <div class=ch-wrap id=hChart>${chartMarkup()}</div>
+     </section>
+     <section class="card acts-card">
+       <div class=ch-head><h3>${svgI('grid',18)} إدارة المنصة</h3></div>
+@@ -578,6 +581,7 @@ const drawHome=async()=>{
+     </section>
+   </div>`;
+   $('#hDays').onchange=e=>{homeDays=+e.target.value;draw()};
++  $('#hSeries').onchange=e=>{chartKey=e.target.value;$('#hChartTitle').innerHTML=`${svgI('chart',18)} إحصائيات ${seriesName[chartKey]}`;$('#hChart').innerHTML=chartMarkup()};
+ };
+ const ORD_ST={pending:'بانتظار القبول',agreed:'جارٍ التنفيذ',completion_requested:'بانتظار تأكيد الإنجاز',completed:'مكتمل',cancelled:'ملغي',disputed:'متنازع عليه',closed_disputed:'مغلق بعد المراجعة'};
+ const ORD_GROUPS=[['all','الكل'],['open','مفتوحة'],['active','نشطة'],['stuck','متعثرة'],['completed','مكتملة'],['cancelled','ملغاة'],['disputed','نزاعات']];
+diff --git a/test.mjs b/test.mjs
+index 4076c11..4e88908 100644
+--- a/test.mjs
++++ b/test.mjs
+@@ -5,9 +5,10 @@ import {DatabaseSync} from 'node:sqlite';
+ import {createHash,createHmac} from 'node:crypto';
+ import {existsSync,readdirSync,statSync} from 'node:fs';
+ import {join} from 'node:path';
++import {tmpdir} from 'node:os';
+ let DBF;
+ let srv;const B='http://localhost:3999';
+-before(async()=>{DBF='/tmp/t'+Date.now()+'.db';srv=spawn('node',['server.js'],{env:{...process.env,RESEND_API_KEY:'',REGISTER_PER_HOUR:'1000',ASSISTANT_PER_HOUR:'5000',PORT:3999,DB_FILE:DBF,ADMIN_EMAIL:'admin@t.sa',ADMIN_SETUP_TOKEN:'test-token',HALA_WEBHOOK_SECRET:'test-hala'},stdio:'ignore'});await new Promise(r=>setTimeout(r,1200))});
++before(async()=>{DBF=join(tmpdir(),'t'+Date.now()+'.db');srv=spawn('node',['server.js'],{env:{...process.env,RESEND_API_KEY:'',REGISTER_PER_HOUR:'1000',ASSISTANT_PER_HOUR:'5000',PORT:3999,DB_FILE:DBF,ADMIN_EMAIL:'admin@t.sa',ADMIN_SETUP_TOKEN:'test-token',HALA_WEBHOOK_SECRET:'test-hala'},stdio:'ignore'});await new Promise(r=>setTimeout(r,1200))});
+ after(()=>srv.kill());
+ const cl=()=>{let ck='';return async(p,m='GET',b)=>{const r=await fetch(B+'/api'+p,{method:m,headers:{'content-type':'application/json',cookie:ck},body:b?JSON.stringify(b):undefined});ck=r.headers.get('set-cookie')?.split(';')[0]||ck;return{s:r.status,j:await r.json().catch(()=>({}))}}};
+ let phSeq=0;const ph=()=>'05'+String(70000000+(++phSeq));
