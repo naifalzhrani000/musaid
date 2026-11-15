@@ -1,6 +1,5 @@
 import {route, all, get, err, can} from '../core.js';
 
-const VAT_RATE=0.15;
 const monthOk=m=>/^\d{4}-\d{2}$/.test(m||'');
 const needMonth=c=>{const m=String(c.q?.month||'');if(!monthOk(m))throw err(400,'الشهر غير صالح (YYYY-MM)');return m};
 const vatRegistered=()=>{const r=get("SELECT value FROM settings WHERE key='platform_vat_registered'");return !!(r&&r.value==='1')};
@@ -28,9 +27,11 @@ route('GET','/admin/accounting',c=>{
   const jExp=rows.filter(r=>r.type==='صادر').reduce((a,r)=>a+Number(r.amount),0);
   const reconciled=Math.abs(jIncome-s.income)<0.005&&Math.abs(jExp-s.expenses)<0.005;
   const reg=vatRegistered();
+  const pvat=String(get("SELECT value FROM settings WHERE key='platform_vat_number'")?.value||'');
+  const outVat=reg&&pvat?get('SELECT COALESCE(SUM(vat_amount),0) s FROM invoices WHERE issuer_vat=? AND substr(issued_at,1,7)=?',pvat,m).s:0;
   return{month:m,income:s.income,expenses:s.expenses,profit:s.income-s.expenses,
-    vat:reg?s.income*VAT_RATE:0,
-    vat_note:reg?'تقدير: 15% من العمولة المدفوعة، وتُحصّل من العميل فوق السعر':'المنصة غير مسجلة في ضريبة القيمة المضافة',
+    vat:outVat,
+    vat_note:reg?'ضريبة المخرجات الفعلية من مستندات المنصة هذا الشهر (فواتير العمولة وفواتير المورّد المفترض)':'المنصة غير مسجلة في ضريبة القيمة المضافة',
     invoices:s.invoices,invoices_total:s.invoices_total,payables:s.payables,
     entries:rows.length,reconciled};
 });

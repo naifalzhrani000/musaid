@@ -4,7 +4,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen} from '../core.js';
+import {route, supplyOf, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen} from '../core.js';
 import {ASSIST_CITIES} from '../../data.js';
 route('GET','/admin/reports',c=>{can(c,'support');const Q={user:'SELECT name t FROM users WHERE id=?'};
 return all("SELECT rp.*,u.name reporter FROM reports rp JOIN users u ON u.id=rp.reporter_id ORDER BY (rp.status='open') DESC,rp.id DESC LIMIT 100").map(r=>({...r,info:get(Q[r.type],r.target_id)?.t}))});
@@ -99,16 +99,16 @@ route('GET','/admin/supply-report',c=>{adm(c);const thr=Number(SET().vat_thresho
 const months=[];const now=new Date();for(let i=11;i>=0;i--){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1));months.push(d.toISOString().slice(0,7))}
 const rows=months.map(m=>{
 const comm=get("SELECT COALESCE(SUM(c.amount),0) s FROM agreement_commissions c JOIN agreements g ON g.id=c.agreement_id WHERE c.amount>0 AND strftime('%Y-%m',g.completed_at)=?",m).s;
-const value=get("SELECT COALESCE(SUM(g.amount),0) s FROM agreements g WHERE g.status='completed' AND strftime('%Y-%m',g.completed_at)=?",m).s;
+const agr=all("SELECT amount,a_id,b_id FROM agreements WHERE status='completed' AND strftime('%Y-%m',completed_at)=?",m);const value=agr.reduce((s,a)=>s+a.amount,0);const supply=agr.reduce((s,a)=>s+supplyOf(a),0);
 const freeCount=get("SELECT COUNT(*) n FROM agreement_commissions c JOIN agreements g ON g.id=c.agreement_id WHERE c.amount=0 AND strftime('%Y-%m',g.completed_at)=?",m).n;
 const cancelled=get("SELECT COUNT(*) n FROM agreements WHERE status='cancelled' AND strftime('%Y-%m',updated_at)=?",m).n;
 const disputes=get("SELECT COUNT(*) n FROM agreements WHERE disputed_at IS NOT NULL AND strftime('%Y-%m',disputed_at)=?",m).n;
-return{month:m,platform_commission:Math.round(comm*100)/100,task_value:value,free_month_completions:freeCount,cancelled,disputes}});
-const total=rows.reduce((s,r)=>s+r.task_value,0);const last3=rows.slice(-3).reduce((s,r)=>s+r.task_value,0)/3;const projected=Math.round(last3*12);
+return{month:m,platform_commission:Math.round(comm*100)/100,platform_supply:Math.round(supply*100)/100,task_value:value,free_month_completions:freeCount,cancelled,disputes}});
+const total=rows.reduce((s,r)=>s+r.platform_supply,0);const last3=rows.slice(-3).reduce((s,r)=>s+r.platform_supply,0)/3;const projected=Math.round(last3*12);
 const status=thr<=0?'not_set':total>=thr?'exceeded':(total>=thr*0.8?'near':'below');
 const expectedStatus=thr<=0?'not_set':(total+projected>=thr||projected>=thr?'expected_to_exceed':'below');
-return{threshold:thr,trailing_12_months_value:total,projected_next_12_months_value:projected,status,expected_status:expectedStatus,warn_at:Math.round(thr*0.8),rows,note:'تقدير داخلي للمتابعة. الحد الإلزامي يحدده المحاسب، وطلب التسجيل يقدَّم خلال 30 يومًا من نهاية الشهر المعني عند التجاوز أو توقعه.'}});
-route('POST','/admin/supply-threshold',c=>{const u=adm(c);const v=Number(c.b.value);if(!Number.isFinite(v)||v<0)throw err(400,'قيمة غير صالحة');run("INSERT INTO settings(key,value) VALUES('vat_threshold',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(v));audit(u.id,'vat_threshold',String(v));return{ok:1}});
+return{threshold:thr,trailing_12_months_value:total,projected_next_12_months_value:projected,status,expected_status:expectedStatus,warn_at:Math.round(thr*0.8),deemed_supply_counting:SET().deemed_supply_counting!=='0',rows,note:'تقدير داخلي للمتابعة. الحد الإلزامي يحدده المحاسب، وطلب التسجيل يقدَّم خلال 30 يومًا من نهاية الشهر المعني عند التجاوز أو توقعه.'}});
+route('POST','/admin/supply-threshold',c=>{const u=adm(c);const v=Number(c.b.value);if(!Number.isFinite(v)||v<0)throw err(400,'قيمة غير صالحة');if(c.b.deemed_supply_counting!==undefined)run("INSERT INTO settings(key,value) VALUES('deemed_supply_counting',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",c.b.deemed_supply_counting?'1':'0');run("INSERT INTO settings(key,value) VALUES('vat_threshold',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(v));audit(u.id,'vat_threshold',String(v));return{ok:1}});
 
 
 route('GET','/admin/verifications',c=>{adm(c);return{vat:all("SELECT id,name,email,helper_type,vat_number FROM users WHERE account_type='helper' AND helper_type IN ('establishment','company') AND vat_status='registered' AND vat_verified!=1"),type_requests:all("SELECT id,name,email,helper_type,helper_type_request FROM users WHERE helper_type_request IS NOT NULL")}});

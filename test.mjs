@@ -625,10 +625,36 @@ assert.equal((await admin('/admin/invoicing','POST',{platform_vat_registered:tru
 const a2=await deal(1000);
 const r2=(await admin('/admin/invoices')).j.find(x=>x.ref==='S-'+a2);
 assert.equal(r2.vat_amount,150,'الضريبة 15% على الخدمة كاملة');assert.equal(r2.total,1150,'الإجمالي 1150');
-assert.equal(r2.seq,r1.seq+1,'تسلسل متصل');assert.equal(r2.status,'pending_provider');
+const c1=(await admin('/admin/invoices')).j.find(x=>x.ref==='C-'+a1);assert.ok(c1,'مستند العمولة يُصدر عند الدفع');assert.equal(c1.seq,r1.seq+1,'مستند العمولة يلي فاتورة الخدمة مباشرة');assert.equal(r2.seq,c1.seq+1,'تسلسل متصل بين كل المستندات');assert.equal(r2.status,'pending_provider');
 const qr=Buffer.from(r2.qr||'','base64');assert.ok(qr.length>20,'رمز QR موجود');
 assert.ok(qr.includes(Buffer.from('مؤسسة المساعد')),'اسم البائع في الرمز');
 })
+
+test('توريدات المنصة: عمولة فقط للمساعد المسجل، والمهمة كاملة للمساعد غير المسجل عند تفعيل العد الاحتياطي',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='النجارة والأثاث').id;
+const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
+await admin('/admin/settings','POST',{bank_name:'بنك',account_name:'مؤسسة المساعد',iban:'SA0380000000608010167519',commission_percent:2,commission_grace_days:3,org_name:'مؤسسة المساعد',org_cr:'7054975474',dispute_clause:'تحكيم.',support_email:'support@almusaidgroup.shop'});
+const o=cl();await o('/register','POST',{name:'عميل توريد',email:'ts1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
+await o('/profile','POST',{name:'عميل توريد',phone:'0500009601'});
+const hr=cl();await hr('/register','POST',{name:'مساعد مسجل توريد',email:'ts2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+await hr('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد مسجل توريد',phone:'0500009602'});await vfy(hr);
+const hu=cl();await hu('/register','POST',{name:'مساعد فرد توريد',email:'ts3@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'individual',category_ids:[cat]});
+await hu('/profile','POST',{name:'مساعد فرد توريد',phone:'0500009603'});
+const hidR=(await hr('/me')).j.user.id,hidU=(await hu('/me')).j.user.id;
+const deal=async(hid,h,amt)=>{const id=(await o(`/direct/${hid}/agreements`,'POST',{amount:amt,description:'توريد'})).j.id;await h(`/agreements/${id}/approve`,'POST');await h(`/agreements/${id}/request-completion`,'POST');await o(`/agreements/${id}/confirm-completion`,'POST');await payHala(id);return id};
+const cur=()=>{const rows=admin('/admin/supply-report').then(r=>r.j);return rows};
+const base=(await cur()).rows.at(-1).platform_supply;
+await deal(hidR,hr,1000);
+const afterReg=(await cur()).rows.at(-1).platform_supply;
+assert.equal(Math.round((afterReg-base)*100)/100,20,'المساعد المسجل: المنصة تُحسب عمولتها فقط (2% من 1000)');
+await deal(hidU,hu,1000);
+const afterUnreg=(await cur()).rows.at(-1).platform_supply;
+assert.equal(Math.round((afterUnreg-afterReg)*100)/100,1000,'غير المسجل: قيمة المهمة كاملة كمورّد مفترض');
+assert.equal((await admin('/admin/supply-threshold','POST',{value:375000,deemed_supply_counting:false})).s,200);
+const off=(await cur()).rows.at(-1).platform_supply;
+assert.ok(Math.round((afterUnreg-off)*100)/100>=1000,'إيقاف العد الاحتياطي يُسقط قيمة كل غير المسجلين (بينها هذه المهمة)');
+assert.equal((await admin('/admin/supply-threshold','POST',{value:375000,deemed_supply_counting:true})).s,200);
+});
 
 test('الدفع عبر هلا فقط: لا سداد يدوي من العميل، والإشعار يتطلب السر المشترك',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='النجارة والأثاث').id;
