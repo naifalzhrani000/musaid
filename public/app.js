@@ -444,7 +444,34 @@ addEventListener('hashchange',route);boot();
 async function manage(){if(!me.user||!['admin','staff'].includes(me.user.role)){location.hash='#/profile';return}
 const isAdmin=me.user.role==='admin',perms=(me.user.perms||'').split(',');const canA=a=>isAdmin||perms.includes(a);
 let tab='home';
-app.innerHTML=`<style>.mg-tabs{display:flex;gap:8px;overflow-x:auto;margin:10px 0}.mg-tab{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:8px 14px;font:inherit;cursor:pointer;white-space:nowrap}.mg-tab.on{background:#0f6b4f;color:#fff;border-color:#0f6b4f}.mg-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mg-stat{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px}.mg-stat b{display:block;font-size:22px;color:#0f4f3c}.mg-row{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:center}.mg-chip{display:inline-flex;align-items:center;gap:4px;background:#eef7f2;border-radius:999px;padding:4px 10px;margin:3px;font-size:13px}.mg-chip button{border:0;background:none;color:#b91c1c;cursor:pointer;font-size:15px}</style>
+app.innerHTML=`<style>@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap');
+#mgBody,#mgNav,.mg-tabs{font-family:'IBM Plex Sans Arabic',Tahoma,system-ui,sans-serif;color:#1d2a25}
+.mg-tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid #d9d6cc;margin:14px 0 20px;scrollbar-width:none}
+.mg-tab{border:0;background:none;padding:10px 14px;font:inherit;color:#5d6b65;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px}
+.mg-tab:hover{color:#173d30}
+.mg-tab.on{color:#173d30;font-weight:600;border-bottom-color:#173d30}
+.mg-tab:focus-visible{outline:2px solid #173d30;outline-offset:-2px;border-radius:4px}
+.mg-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));background:#fff;border:1px solid #d9d6cc;border-radius:8px;overflow:hidden;margin-bottom:22px}
+.mg-stat{padding:14px 18px;border-inline-start:1px solid #ebe8df}
+.mg-stat:first-child{border-inline-start:0}
+.mg-stat small{display:block;color:#6b7a73;font-size:12.5px;margin-bottom:4px}
+.mg-stat b{display:block;font-size:24px;font-weight:600;color:#173d30;font-variant-numeric:tabular-nums;line-height:1.2}
+.mg-h{font-size:15px;font-weight:600;color:#173d30;margin:26px 0 8px;padding-bottom:8px;border-bottom:1px solid #d9d6cc}
+.mg-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 2px;border-bottom:1px solid #ebe8df;background:transparent;font-size:14px}
+.mg-row:hover{background:#fbfaf6}
+.mg-row b{font-variant-numeric:tabular-nums}
+.mg-row small{color:#6b7a73;font-size:12.5px}
+.mg-chip{display:inline-flex;align-items:center;gap:6px;background:#eef3f0;color:#173d30;border-radius:4px;padding:3px 8px;margin:3px;font-size:13px}
+.mg-chip button{border:0;background:none;color:#8a2b2b;cursor:pointer;font-size:14px;padding:0}
+#mgBody .btn{border-radius:6px;font-size:14px;padding:7px 14px;font-weight:500;background:#173d30;color:#fff;border:1px solid #173d30}
+#mgBody .btn.alt{background:#fff;color:#173d30;border:1px solid #173d30}
+#mgBody .btn:hover{filter:brightness(1.08)}
+#mgBody .btn:focus-visible,#mgBody input:focus-visible,#mgBody select:focus-visible,#mgBody textarea:focus-visible{outline:2px solid #c98a1b;outline-offset:2px}
+#mgBody input,#mgBody select,#mgBody textarea{border:1px solid #cfcbbf;border-radius:6px;padding:7px 10px;background:#fff;font:inherit;color:#1d2a25}
+#mgBody .warn{color:#8a5a00}
+@media (max-width:520px){.mg-stats{grid-template-columns:1fr 1fr}.mg-stat b{font-size:20px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
 <div><a class=lnk href="#/profile">‹ حسابي</a><h2 style="margin:6px 0 0;color:#0f4f3c">إدارة الموقع</h2></div>
 <nav class=mg-tabs id=mgNav></nav><div id=mgBody></div>`;
 const body=()=>$('#mgBody');
