@@ -303,3 +303,26 @@ header.mg-page-head,.mg-page-head{background:transparent;color:#0f3d2e;box-shado
   .welcome-row{align-items:flex-start}
 }
 @media(max-width:520px){.welcome-row{flex-direction:column}.welcome-row .pill-select{width:100%}.mg-shell .mg-main{padding:12px}.stat{padding:12px}.stat b{font-size:22px}}
+
+/* ===== توافق الشاشات (جوال، آيباد، لابتوب، شاشات كبيرة) ===== */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+img,video,svg{max-width:100%;height:auto}
+body{overflow-x:clip}
+table{max-width:100%}
+@media (min-width:600px) and (max-width:1024px){
+  main{padding:20px}
+  .mg-shell .mg-main{padding:20px}
+  .hm-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .acts{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:1600px){
+  main{max-width:1280px}
+  .mg-shell{grid-template-columns:260px minmax(0,1fr)}
+}
+@media (max-width:380px){
+  .mg-topbar{padding:10px}
+  .mg-brand b{font-size:17px}
+  .hm-stats{grid-template-columns:1fr}
+  .stat b{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
