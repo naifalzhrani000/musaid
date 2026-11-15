@@ -389,9 +389,9 @@ let curUser=((initial&&/^user\/(\d+)$/.exec(initial))||[])[1]||null;let curChat=
 let tab=curUser?'users':curChat?'chat':['home','users','orders','cats','fin','acc','ads','audit','rate','pts','rpt','rep','chat','disp','supply','verify','staff','sys'].includes(initial)?initial:'home',homeDays=30;
 app.innerHTML=`<style>@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap');
 #mgBody,#mgNav,.mg-tabs{font-family:'IBM Plex Sans Arabic',Tahoma,system-ui,sans-serif;color:#1d2a25}
-.mg-shell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh;background:#f5f7f6}
-.mg-tabs{display:flex;flex-direction:column;gap:4px;background:#0f3327;color:#fff;padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;scrollbar-width:thin}
-.mg-main{padding:22px 24px;min-width:0}
+.mg-shell{display:grid;grid-template-columns:164px minmax(0,1fr);grid-template-rows:82px minmax(0,1fr);min-height:100vh;background:#f5f7f6}
+.mg-tabs{display:flex;flex-direction:column;gap:4px;background:#0f3327;color:#fff;padding:18px 12px;position:sticky;top:0;height:calc(100vh - 82px);overflow-y:auto;scrollbar-width:thin}
+.mg-main{grid-column:2;grid-row:2;padding:22px 24px;min-width:0}
 .mg-burger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #cfcbbf;background:#fff;border-radius:10px;font-size:18px;cursor:pointer;margin:10px 14px 0 auto}
 .mg-tab{border:0;background:none;padding:10px 12px;font:inherit;font-size:14px;color:#cfe3da;cursor:pointer;text-align:start;border-radius:10px;white-space:nowrap}
 .mg-tab:hover{background:rgba(255,255,255,.08);color:#fff}
@@ -420,7 +420,7 @@ app.innerHTML=`<style>@import url('https://fonts.googleapis.com/css2?family=IBM+
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
-<div class=mg-shell><nav class=mg-tabs id=mgNav aria-label="أقسام الإدارة"></nav><main class=mg-main><div class=mg-topbar><div class=mg-brand><img src="/logo.png" alt="" width=34 height=34><b>المساعد</b></div><div class=mg-tb-end><button class=mg-theme id=mgTheme type=button aria-pressed=false>🌙 داكن</button><span class=mg-bell aria-hidden=true>🔔</span><span class=mg-avatar aria-hidden=true>A</span><button class=mg-burger id=mgBurger type=button aria-label="فتح القائمة">☰</button></div></div><header class=mg-page-head id=mgHead></header><div id=mgBody></div></main></div>`;
+<div class=mg-shell><div class=mg-topbar><div class=mg-brand><img src="/logo.png" alt="" width=34 height=34><b>المساعد</b></div><div class=mg-tb-end><button class=mg-theme id=mgTheme type=button aria-pressed=false>🌙 داكن</button><span class=mg-bell aria-hidden=true>🔔</span><span class=mg-avatar aria-hidden=true>A</span><button class=mg-burger id=mgBurger type=button aria-label="فتح القائمة">☰</button></div></div><nav class=mg-tabs id=mgNav aria-label="أقسام الإدارة"></nav><main class=mg-main><header class=mg-page-head id=mgHead></header><div id=mgBody></div></main></div>`;
 const body=()=>$('#mgBody');
 const TABS=[['home','الرئيسية','admin'],['users','المستخدمون','support'],['orders','الطلبات','support'],['cats','الأقسام والكلمات','admin'],['fin','المالية','finance'],['acc','المحاسبة','accounting'],['ads','الإعلانات','admin'],['audit','سجل العمليات','admin'],['admins','المشرفون','admin'],['perf','أداء المساعدين','support'],['rep','الشكاوى','support'],['chat','المحادثات','support'],['rate','التقييمات','support'],['pts','النقاط','finance'],['rpt','التقارير','admin'],['disp','النزاعات','support'],['supply','التوريدات','admin'],['verify','التوثيق','admin'],['staff','الموظفون','admin'],['sys','النظام','admin']];
 const shown=TABS.filter(t=>canA(t[2]));if(!shown.length){body().innerHTML='<small>لا توجد أقسام متاحة لصلاحياتك.</small>';return}
@@ -544,7 +544,7 @@ const areaChart=(vals,labels)=>{const W=640,H=230,PL=40,PR=18,PT=18,PB=34;const 
 const pts=vals.map((v,i)=>[x(i),y(v)]);
 let d='';pts.forEach((p,i)=>{if(!i){d+=`M${p[0].toFixed(1)} ${p[1].toFixed(1)}`;return}const q=pts[i-1];const cx=(q[0]+p[0])/2;d+=` C${cx.toFixed(1)} ${q[1].toFixed(1)} ${cx.toFixed(1)} ${p[1].toFixed(1)} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`});
 const area=d+` L${pts[n-1][0].toFixed(1)} ${H-PB} L${pts[0][0].toFixed(1)} ${H-PB} Z`;
-const grid=[0,1,2,3].map(g=>{const yy=y(g);return `<line x1="${PL}" x2="${W-PR}" y1="${yy}" y2="${yy}" stroke="#e5ebe8" stroke-dasharray="4 5"/><text x="${W-PR+6}" y="${yy+4}" font-size="12" fill="#8a9a93">${g}</text>`}).join('');
+const grid=[0,1,2,3].map(g=>{const yy=y(max*g/3),tick=Number(max*g/3).toLocaleString('ar-SA',{maximumFractionDigits:1});return `<line x1="${PL}" x2="${W-PR}" y1="${yy}" y2="${yy}" stroke="#e5ebe8" stroke-dasharray="4 5"/><text x="${W-PR+6}" y="${yy+4}" font-size="12" fill="#8a9a93">${tick}</text>`}).join('');
 const xl=[0,Math.floor((n-1)/2),n-1].map(i=>`<text x="${x(i)}" y="${H-8}" font-size="12" fill="#8a9a93" text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${esc(labels[i]?String(labels[i]).slice(5).replace('-','/'):'')}</text>`).join('');
 const last=pts[n-1];
 return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="إحصائيات المنصة" style="width:100%;height:auto;display:block"><defs><linearGradient id="gA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2e9b72" stop-opacity=".28"/><stop offset="1" stop-color="#2e9b72" stop-opacity="0"/></linearGradient></defs>${grid}<path d="${area}" fill="url(#gA)"/><path d="${d}" fill="none" stroke="#1f7a5a" stroke-width="2.6" stroke-linecap="round"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="5" fill="#1f7a5a" stroke="#fff" stroke-width="2"/>${xl}</svg>`};
@@ -552,21 +552,24 @@ const drawHome=async()=>{
   const d=await api('/admin/dashboard?days='+homeDays);const t=d.totals;
   const f=n=>Number(n||0).toLocaleString('ar-SA',{maximumFractionDigits:2});
   const stat=(cls,icon,label,val)=>`<div class="stat ${cls}"><div class="stat-ic">${svgI(icon,22)}</div><div><small>${label}</small><b>${val}</b></div></div>`;
-  const last=d.series.requests.length?d.series.requests[d.series.requests.length-1]:0;
-  const tip=last?`<div class=chart-tip>${last} طلب</div>`:'';
+  let chartKey='requests';const seriesName={users:'المستخدمون',requests:'الطلبات',profit:'العمولات',helpers:'نشاط المساعدين'};
+  const chartMarkup=()=>{const vals=d.series[chartKey]||[],last=vals.length?vals[vals.length-1]:0;return `${areaChart(vals,d.labels)}${last?`<div class=chart-tip>${f(last)} ${seriesName[chartKey]}</div>`:''}`};
   const acts=[['users','المستخدمون','إدارة المستخدمين والمساعدين','users'],['orders','الطلبات','متابعة الطلبات وإدارتها','orders'],['rpt','المخالفات','مراجعة البلاغات واتخاذ الإجراء','alert'],['cats','المهارات والتخصصات','إدارة التخصصات والمهارات','grid'],['sys','الإعدادات','تخصيص إعدادات المنصة','gear'],['fin','المدفوعات','متابعة المدفوعات والتحويلات','card']];
   body().innerHTML=`
+  <div class=welcome-row><div><h2>مرحباً بك في لوحة الإدارة 👋</h2><p>إليك نظرة سريعة على إحصائيات المنصة</p></div><select id=hDays aria-label="الفترة الزمنية" class=pill-select><option value=7 ${homeDays===7?'selected':''}>آخر 7 أيام</option><option value=30 ${homeDays===30?'selected':''}>آخر 30 يومًا</option><option value=90 ${homeDays===90?'selected':''}>آخر 90 يومًا</option></select></div>
   <div class="hm-grid">
     <div class=hm-stats>
       ${stat('s-red','alert','المخالفات',f(t.open_reports))}
       ${stat('s-blue','card','التحويلات المعلقة',f(t.commissions_due_count))}
-      ${stat('s-green','users','المستخدمون',f(t.users))}
-      ${stat('s-mint','bolt','الطلبات النشطة',f(t.active_requests))}
+      ${stat('s-green','users','المساعدون',f(t.helpers))}
+      ${stat('s-mint','users','المستخدمون',f(t.users))}
     </div>
+    <details class=dash-extra><summary>مؤشرات إضافية</summary><div class=extra-stats>
+      <div><small>إجمالي الطلبات</small><b>${f(t.requests)}</b></div><div><small>الطلبات النشطة</small><b>${f(t.active_requests)}</b></div><div><small>الطلبات المكتملة</small><b>${f(t.completed_requests)}</b></div><div><small>عمولات المنصة</small><b>${f(t.commissions_total)} ر.س</b></div><div><small>مبالغ معلقة</small><b>${f(t.commissions_due)} ر.س</b></div><div><small>مستخدمون جدد خلال الفترة</small><b>${f(t.new_users_period)}</b></div><div><small>طلبات جديدة خلال الفترة</small><b>${f(t.new_requests_period)}</b></div>
+    </div></details>
     <section class="card chart-card2">
-      <div class=ch-head><h3>${svgI('chart',18)} إحصائيات المنصة</h3>
-      <select id=hDays aria-label="الفترة الزمنية" class=pill-select><option value=7 ${homeDays===7?'selected':''}>آخر 7 أيام</option><option value=30 ${homeDays===30?'selected':''}>آخر 30 يومًا</option><option value=90 ${homeDays===90?'selected':''}>آخر 90 يومًا</option></select></div>
-      <div class=ch-wrap>${areaChart(d.series.requests,d.labels)}${tip}</div>
+      <div class=ch-head><h3 id=hChartTitle>${svgI('chart',18)} إحصائيات ${seriesName[chartKey]}</h3><select id=hSeries class=pill-select aria-label="مقياس الرسم البياني">${Object.entries(seriesName).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
+      <div class=ch-wrap id=hChart>${chartMarkup()}</div>
     </section>
     <section class="card acts-card">
       <div class=ch-head><h3>${svgI('grid',18)} إدارة المنصة</h3></div>
@@ -578,6 +581,7 @@ const drawHome=async()=>{
     </section>
   </div>`;
   $('#hDays').onchange=e=>{homeDays=+e.target.value;draw()};
+  $('#hSeries').onchange=e=>{chartKey=e.target.value;$('#hChartTitle').innerHTML=`${svgI('chart',18)} إحصائيات ${seriesName[chartKey]}`;$('#hChart').innerHTML=chartMarkup()};
 };
 const ORD_ST={pending:'بانتظار القبول',agreed:'جارٍ التنفيذ',completion_requested:'بانتظار تأكيد الإنجاز',completed:'مكتمل',cancelled:'ملغي',disputed:'متنازع عليه',closed_disputed:'مغلق بعد المراجعة'};
 const ORD_GROUPS=[['all','الكل'],['open','مفتوحة'],['active','نشطة'],['stuck','متعثرة'],['completed','مكتملة'],['cancelled','ملغاة'],['disputed','نزاعات']];
