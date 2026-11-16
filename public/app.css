@@ -453,3 +453,26 @@ label{font-size:15px;font-weight:600;color:var(--t)}
 .pstats{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:6px;font-size:14px;color:var(--t)}
 .pstat em{font-style:normal;color:var(--mu)}
 .pstat{font-weight:600}
+
+/* ==========================================================
+   إصلاح: الصفحة تنزلق يمينًا ويسارًا على الجوال
+   السبب: على الشاشات الصغيرة يصبح التخطيط عمودًا واحدًا، لكن
+   المحتوى الرئيسي كان ما زال مثبتًا في العمود الثاني فيتسع الصفحة.
+   ========================================================== */
+html,body{overflow-x:hidden}
+@supports (overflow:clip){html,body{overflow-x:clip}}
+@media (max-width:900px){
+  body .mg-shell{grid-template-rows:auto}
+  body .mg-shell .mg-main{grid-column:1 !important;grid-row:auto !important;max-width:100%}
+  body .mg-shell .mg-topbar{grid-column:1 !important}
+}
+body .mg-shell .mg-main,body .mg-shell .mg-topbar{min-width:0}
+body .mg-shell .mg-tabs{max-width:100vw}
+
+/* توحيد الترويسة: تُخفى الترويسة العامة داخل الإدارة، ويصبح شريط الإدارة بنفس الأخضر */
+body:has(.mg-shell) > header{display:none}
+body .mg-shell .mg-topbar{background:var(--g) !important;color:#fff;border-bottom:0 !important;min-height:64px}
+body .mg-shell .mg-topbar .mg-brand b{color:#fff}
+body .mg-shell .mg-theme{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35)}
+body .mg-shell .mg-theme:hover{background:rgba(255,255,255,.12)}
+body .mg-shell .mg-burger{border-color:rgba(255,255,255,.35);background:transparent;color:#fff}
