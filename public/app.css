@@ -584,3 +584,6 @@ header .logo .mark img{width:16px;height:16px;object-fit:contain}
   header .logo .mark{width:22px;height:22px;margin-inline-end:5px}
   header .logo .mark img{width:15px;height:15px}
 }
+
+.ctl-actions .hlogin{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:var(--r-sm,12px);background:var(--g);color:#fff;font-weight:600;font-size:14px;text-decoration:none;white-space:nowrap}
+.ctl-actions .hlogin:focus-visible{outline:3px solid var(--m);outline-offset:2px}
