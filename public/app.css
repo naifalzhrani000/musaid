@@ -516,3 +516,36 @@ body .mg-tabs > *{flex-shrink:0}
     min-height:0;align-items:stretch
   }
 }
+
+/* ==========================================================
+   صفحات الإدارة الداخلية تأخذ عرض الشاشة كاملًا
+   السبب: عنصر <main> العام محدّد بعرض أقصى ومركز، فتضيق أقسام
+   الإدارة (مثل الإعلانات) في منتصف الصفحة.
+   ========================================================== */
+body .mg-shell{justify-items:stretch}
+body .mg-shell main.mg-main,
+body .mg-shell .mg-main{
+  max-width:none !important;margin:0 !important;width:100%;
+  justify-self:stretch;box-sizing:border-box;display:block
+}
+body .mg-shell #mgBody,
+body .mg-shell #mgBody > *,
+body .mg-shell #mgBody section,
+body .mg-shell #mgBody .panel,
+body .mg-shell #mgBody .form{
+  max-width:100% !important;width:100%;margin-inline:0;box-sizing:border-box
+}
+body .mg-shell #mgBody .panel{max-width:100% !important}
+
+/* ==========================================================
+   قائمة الإدارة على الجوال: آخر العناصر (التوظيف، تسجيل الخروج)
+   تبقى فوق شريط المتصفح السفلي ويمكن الوصول إليها بالتمرير.
+   ========================================================== */
+@media (max-width:900px){
+  body .mg-tabs{padding-bottom:calc(132px + env(safe-area-inset-bottom,0px)) !important;scroll-padding-bottom:132px}
+  body .mg-tabs > a[href="#/logout"]{margin-top:28px !important}
+}
+
+[hidden]{display:none !important}
+#vatWrap{display:grid;gap:6px;margin:12px 0}
+#vatWrap:not([hidden]){display:grid}

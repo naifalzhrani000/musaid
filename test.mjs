@@ -534,14 +534,16 @@ const d2=new DatabaseSync(DBF);const st=d2.prepare('SELECT status FROM agreement
 assert.equal(st,'closed_disputed');assert.equal(nc,0,'لا عمولة عند عدم الثبوت');
 });
 
-test('الحالة الضريبية للمساعد: رقم 15 رقمًا يبدأ بـ 3 عند التسجيل، ولا يُحفظ رقم عند عدم التسجيل',async()=>{
+test('الرقم الضريبي: للمؤسسات والشركات فقط، عبر قسم خدماتك، ولا يُقبل من الملف الشخصي',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
-const h=cl();await h('/register','POST',{name:'مساعد ضريبي',email:'vat1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
-assert.equal((await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد ضريبي',vat_status:'registered',vat_number:'123'})).s,400,'رقم قصير مرفوض');
-assert.equal((await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد ضريبي',vat_status:'registered',vat_number:'312345678901234'})).s,200,'رقم صحيح');
+const h=cl();await h('/register','POST',{name:'شركة ضريبية',email:'vat1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'company',category_ids:[cat]});
+assert.equal((await h('/me/vat','POST',{vat_number:'123'})).s,400,'رقم قصير مرفوض');
+assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234'})).s,200,'رقم صحيح');
 assert.equal((await h('/me')).j.user.vat_number,'312345678901234');
-assert.equal((await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد ضريبي',vat_status:'not_registered'})).s,200);
-assert.equal((await h('/me')).j.user.vat_number,'','لا رقم عند عدم التسجيل');
+await h('/profile','POST',{name:'شركة ضريبية',vat_status:'not_registered',vat_number:'999999999999999'});
+assert.equal((await h('/me')).j.user.vat_number,'312345678901234','الملف الشخصي لا يغيّر الرقم الضريبي');
+const f=cl();await f('/register','POST',{name:'مساعد فرد',email:'vat2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'individual',category_ids:[cat]});
+assert.equal((await f('/me/vat','POST',{vat_number:'312345678901234'})).s,403,'الفرد لا يحتاج رقمًا ضريبيًا');
 });
 
 test('مهل النزاع التلقائية وتقرير التوريدات الشهري',async()=>{
