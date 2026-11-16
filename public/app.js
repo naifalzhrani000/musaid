@@ -1,4 +1,4 @@
-document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-act]');if(!t)return;e.preventDefault();const f={logout:()=>logout(),exportData:()=>exportData()}[t.dataset.act];if(f)f()});
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-act]');if(!t)return;e.preventDefault();const f={logout:()=>logout(),exportData:()=>exportData(),installApp:()=>installApp()}[t.dataset.act];if(f)f()});
 const $=s=>document.querySelector(s),app=$('#app');let me={user:null};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api=async(p,m='GET',b)=>{const r=await fetch('/api'+p,{method:m,headers:{'content-type':'application/json'},body:b?JSON.stringify(b):undefined});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'حدث خطأ');return j};
@@ -19,7 +19,7 @@ function closeMenu(){const m=$('#menu');if(m)m.hidden=true}
 document.addEventListener('click',e=>{if(e.target.closest('#mb,#hmb')){toggleMenu();return}if(!e.target.closest('#menu'))closeMenu()});
 function nav(){const u=me.user,h=location.hash||'#/',a=(l,t)=>`<a href="${l}" class="${h===l?'on':''}">${t}</a>`;
 $('#nav').innerHTML=`<a class=logo href="#/"><span class=mark><img loading=lazy decoding=async src=/hand.png alt=""></span>المساعد</a><div class=hact>${u?`<a class=bell href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?'<i class=dot></i>':''}</a>`:'<a class=hlogin href="#/login">تسجيل الدخول</a>'}<button id=mb aria-label="القائمة">${ic(I.menu)}</button></div>`;
-$('#menu').innerHTML=a('#/','المساعد الذكي')+a('#/feed','المنشورات العامة')+(u?a('#/chats','محادثاتي')+a('#/profile','حسابي')+(['admin','staff'].includes(u.role)?a('#/manage','الإدارة'):''):'')+a('#/complaints','سياسة الشكاوى')+a('#/about','من نحن')+a('#/contact','تواصل معنا')+a('#/terms','الشروط والأحكام')+a('#/privacy','سياسة الخصوصية')+(u?'<a href="#" data-act="exportData">تصدير بياناتي</a><a href="#/settings">الإعدادات</a><a href="#/profile">حذف حسابي</a>':'')+(u?'<a href="#" data-act="logout">تسجيل الخروج</a>':a('#/login','دخول / تسجيل'));
+$('#menu').innerHTML=a('#/','المساعد الذكي')+a('#/feed','المنشورات العامة')+(isStandalone()?'':'<a href="#" data-act=installApp>تثبيت التطبيق</a>')+(u?a('#/chats','محادثاتي')+a('#/profile','حسابي')+(['admin','staff'].includes(u.role)?a('#/manage','الإدارة'):''):'')+a('#/complaints','سياسة الشكاوى')+a('#/about','من نحن')+a('#/contact','تواصل معنا')+a('#/terms','الشروط والأحكام')+a('#/privacy','سياسة الخصوصية')+(u?'<a href="#" data-act="exportData">تصدير بياناتي</a><a href="#/settings">الإعدادات</a><a href="#/profile">حذف حسابي</a>':'')+(u?'<a href="#" data-act="logout">تسجيل الخروج</a>':a('#/login','دخول / تسجيل'));
 renderBottom(h);$('#menu').onclick=e=>{if(e.target.tagName==='A')closeMenu()}}
 async function insights(){location.hash='#/manage/insights'}
 async function drawInsights(){$('#mgBody').innerHTML=`<section class=panel><div class=sec-h><h3>تحليل الطلب</h3></div><div class=seg id=idays><button data-d=7>7 أيام</button><button data-d=30>30 يومًا</button><button data-d=0>الكل</button></div><div class=seg id=itabs><button data-t=demand>الأكثر طلبًا</button><button data-t=gap>الفجوة</button><button data-t=failed>بحث بلا نتيجة</button></div><div id=ibody></div></section>`;
@@ -376,7 +376,7 @@ document.body.append(d);
 $('#nbx').onclick=()=>{try{sessionStorage.setItem('nbx','1')}catch{}d.remove()};
 $('#nbo').onclick=async()=>{try{await api('/me/notify','POST',{enabled:true});me.user.notify_email=1;toast('تم تفعيل إشعارات البريد');d.remove()}catch(x){toast(x.message,1)}}}
 async function boot(){me=await api('/me');route();verifyBanner();notifyBanner();renderFooter()}
-addEventListener('hashchange',route);boot();
+addEventListener('hashchange',route);boot().catch(()=>{app.innerHTML='<section class=panel style="text-align:center"><h3>تعذّر الاتصال بالخادم</h3><small>تأكد من اتصالك بالإنترنت ثم أعد المحاولة.</small><p><button class=btn type=button onclick="location.reload()">إعادة المحاولة</button></p></section>'});
 
 async function manage(initial){if(!me.user||!['admin','staff'].includes(me.user.role)){location.hash='#/profile';return}
 const isAdmin=me.user.role==='admin',perms=(me.user.perms||'').split(',');const canA=a=>isAdmin||perms.includes(a);
@@ -729,3 +729,18 @@ document.addEventListener('click',async e=>{if(e.target&&e.target.id==='htSend')
 
 const b64uBytes=s=>{const p='='.repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(b,c=>c.charCodeAt(0))};
 async function enablePush(){try{if(!('serviceWorker' in navigator)||!('PushManager' in window)){toast('متصفحك لا يدعم إشعارات الدفع',1);return false}const k=(await api('/push/key')).key;if(!k){toast('إشعارات الدفع غير مفعّلة على الخادم',1);return false}if((await Notification.requestPermission())!=='granted'){toast('لم تُمنح صلاحية الإشعارات',1);return false}const reg=await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(k)});const j=sub.toJSON();await api('/push/subscribe','POST',{endpoint:j.endpoint,keys:j.keys});toast('تم تفعيل إشعارات الدفع على هذا الجهاز');return true}catch(x){toast(x.message||'تعذر التفعيل',1);return false}}
+
+/* ---- تثبيت التطبيق على الجوال (PWA) ---- */
+function isStandalone(){return (window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true}
+let deferredInstall=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e});
+window.addEventListener('appinstalled',()=>{deferredInstall=null;try{nav()}catch{}});
+async function installApp(){
+  if(deferredInstall){const p=deferredInstall;deferredInstall=null;p.prompt();try{await p.userChoice}catch{}return}
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const steps=ios?'<li>افتح الموقع في متصفح <b>Safari</b>.</li><li>اضغط زر المشاركة <b>⬆︎</b> في أسفل الشاشة.</li><li>اختر <b>إضافة إلى الشاشة الرئيسية</b>.</li><li>اضغط <b>إضافة</b>.</li>':'<li>افتح قائمة المتصفح <b>⋮</b> في الأعلى.</li><li>اختر <b>تثبيت التطبيق</b> أو <b>إضافة إلى الشاشة الرئيسية</b>.</li><li>أكّد بالضغط على <b>تثبيت</b>.</li>';
+  const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:#0008;z-index:50;display:grid;place-items:end center';
+  o.innerHTML='<div style="background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:18px;display:grid;gap:10px;direction:rtl"><b>تثبيت المساعد على جوالك</b><ol style="margin:0;padding-inline-start:20px;line-height:2">'+steps+'</ol><button class=btn type=button data-close=1>تم</button></div>';
+  o.onclick=e=>{if(e.target===o||(e.target.dataset&&e.target.dataset.close))o.remove()};document.body.append(o)
+}
+if('serviceWorker' in navigator)window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})});
