@@ -36,7 +36,7 @@ route('GET','/admin/accounting',c=>{
     entries:rows.length,reconciled};
 });
 
-const csvCell=v=>{const t=v===null||v===undefined?'':String(v);return /[",\n]/.test(t)?`"${t.replace(/"/g,'""')}"`:t};
+const csvCell=v=>{let t=v===null||v===undefined?'':String(v);if(/^[=+\-@\t\r]/.test(t))t="'"+t;return /[",\n\r]/.test(t)?`"${t.replace(/"/g,'""')}"`:t};
 const toCsv=(head,rows)=>'\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');
 
 route('GET','/admin/accounting/export',c=>{

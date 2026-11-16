@@ -215,7 +215,7 @@ route('POST','/admin/orders/(\\d+)/nudge',c=>{
   return{ok:1};
 });
 // تصدير CSV للطلبات والمستخدمين (للمدير)
-const csvEsc=v=>{const t=v==null?'':String(v);return /[",\n]/.test(t)?`"${t.replace(/"/g,'""')}"`:t};
+const csvEsc=v=>{let t=v==null?'':String(v);if(/^[=+\-@\t\r]/.test(t))t="'"+t;return /[",\n\r]/.test(t)?`"${t.replace(/"/g,'""')}"`:t};
 route('GET','/admin/export',c=>{
   adm(c);
   const type=String(c.q?.type||'');
