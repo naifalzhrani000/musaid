@@ -476,3 +476,43 @@ body .mg-shell .mg-topbar .mg-brand b{color:#fff}
 body .mg-shell .mg-theme{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35)}
 body .mg-shell .mg-theme:hover{background:rgba(255,255,255,.12)}
 body .mg-shell .mg-burger{border-color:rgba(255,255,255,.35);background:transparent;color:#fff}
+
+/* ==========================================================
+   شريط الإدارة على الجوال: مضغوط ومتناسق، بلا تمدد
+   السبب: الصفحة تملأ ارتفاع الشاشة، فكان الصف الأول يتمدد ليملأ الفراغ.
+   ========================================================== */
+@media (max-width:900px){
+  body .mg-shell{align-content:start;grid-template-rows:auto auto;min-height:0}
+  body .mg-shell .mg-topbar{
+    height:auto !important;min-height:0 !important;align-self:start;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:10px 12px !important;position:sticky;top:0;z-index:20;
+    box-shadow:0 2px 10px rgba(0,0,0,.12)
+  }
+  body .mg-shell .mg-topbar .mg-brand{display:flex;align-items:center;gap:8px;min-width:0}
+  body .mg-shell .mg-topbar .mg-brand img{width:30px !important;height:30px !important;border-radius:8px;background:#fff;padding:2px}
+  body .mg-shell .mg-topbar .mg-brand b{font-size:17px;line-height:1;white-space:nowrap}
+  body .mg-shell .mg-tb-end{display:flex;align-items:center;gap:6px}
+  body .mg-shell .mg-theme{padding:5px 10px;font-size:13px;line-height:1.4;border-radius:999px;white-space:nowrap}
+  body .mg-shell .mg-bell{font-size:17px;width:30px;height:30px;display:inline-grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.12)}
+  body .mg-shell .mg-avatar{width:30px;height:30px;font-size:13px;display:inline-grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-weight:700}
+  body .mg-shell .mg-burger{width:36px;height:36px;margin:0 !important;font-size:17px;border-radius:9px}
+  body .mg-shell .mg-main{padding:14px 14px 40px !important}
+}
+
+/* ==========================================================
+   قائمة الإدارة المنزلقة على الجوال: تُمرَّر عموديًا بالإصبع
+   السبب: الوسم <nav> كان يرث من التنسيق العام flex-wrap، فتتوزع
+   الأقسام في أعمدة أفقية بدل قائمة عمودية، ولا يبقى ما يُمرَّر.
+   ========================================================== */
+body .mg-tabs{flex-wrap:nowrap;max-width:none;margin:0;flex-direction:column}
+body .mg-tabs > *{flex-shrink:0}
+@media (max-width:900px){
+  body .mg-tabs{
+    width:264px;max-width:86vw;height:100vh;height:100dvh;
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;touch-action:pan-y;
+    padding:18px 12px calc(24px + env(safe-area-inset-bottom,0px));
+    min-height:0;align-items:stretch
+  }
+}
