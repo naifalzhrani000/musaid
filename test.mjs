@@ -108,6 +108,7 @@ assert.equal((await w('/me/bio','POST',{bio:'نجار بخبرة 10 سنوات �
 const at=(await w('/upload','POST',{data:'data:image/png;base64,'+PNG3})).j.id;
 assert.equal((await w('/me/portfolio','POST',{attachment_id:at,caption:'باب خشب مصنوع يدويًا'})).s,200);
 const pid=(await w('/providers/'+wid)).j;
+assert.equal(pid.portfolio[0].kind,'post');const at2=(await w('/upload','POST',{data:'data:image/png;base64,'+PNG3})).j.id;assert.equal((await w('/me/portfolio','POST',{attachment_id:at2,kind:'reel'})).s,400);
 assert.equal(pid.bio.includes('10 سنوات'),true);assert.equal(pid.skills[0],'سباكة');assert.equal(pid.portfolio.length,1);
 const anon=await cl();assert.equal((await anon('/providers/'+wid)).s,401);
 const hit=(await w('/assistant','POST',{message:'أبي سباك يصلح تسريب'})).j;

@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS failed_searches(id INTEGER PRIMARY KEY,text TEXT NOT 
 const seedSections=()=>{if(get('SELECT COUNT(*) n FROM section_keywords').n>0)return;db.exec("INSERT OR IGNORE INTO section_keywords(category_id,word) SELECT s.category_id,k.word FROM skill_keywords k JOIN skills s ON s.id=k.skill_id WHERE s.status='approved'");for(const c of all('SELECT id,name FROM skill_categories'))run('INSERT OR IGNORE INTO section_keywords(category_id,word) VALUES(?,?)',c.id,normAr(c.name))};
 seedSections();
 
+if(!db.prepare("SELECT 1 x FROM pragma_table_info('portfolio') WHERE name='kind'").get())db.exec("ALTER TABLE portfolio ADD COLUMN kind TEXT NOT NULL DEFAULT 'post'");
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name='perms'").get())db.exec("ALTER TABLE users ADD COLUMN perms TEXT NOT NULL DEFAULT ''");
 for(const [col,def] of [['reason',"TEXT NOT NULL DEFAULT 'no_category'"],['city','TEXT'],['category_id','INT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('failed_searches') WHERE name=?").get(col))db.exec(`ALTER TABLE failed_searches ADD COLUMN ${col} ${def}`)}
 for(const [col,def] of [['completion_requested_at','TEXT'],['completion_by','INT'],['completed_at','TEXT'],['disputed_at','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}

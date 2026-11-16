@@ -588,3 +588,7 @@ header .logo .mark img{width:16px;height:16px;object-fit:contain}
 .hact .hlogin{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:var(--r-sm,12px);background:var(--g);color:#fff;font-weight:600;font-size:14px;text-decoration:none;white-space:nowrap}
 .hact .hlogin:focus-visible{outline:3px solid var(--m);outline-offset:2px}
 .hact .hlogin{background:#fff;color:var(--g);margin-inline-end:8px;min-height:40px}
+.acc-tabs nav button{flex:1;background:none;border:0;padding:10px 8px;color:var(--mu);font:inherit;font-weight:600;position:relative;cursor:pointer;min-height:44px}
+.acc-tabs nav button.on{color:var(--g)}
+.acc-tabs nav button.on::after{content:"";position:absolute;inset-inline:10%;bottom:-1px;height:3px;background:var(--g);border-radius:3px}
+.acc-grid[hidden]{display:none}
