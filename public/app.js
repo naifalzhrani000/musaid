@@ -1,4 +1,4 @@
-document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-act]');if(!t)return;e.preventDefault();const f={logout:()=>logout(),exportData:()=>exportData(),installApp:()=>installApp()}[t.dataset.act];if(f)f()});
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-act]');if(!t)return;e.preventDefault();const f={logout:()=>logout(),exportData:()=>exportData(),installApp:()=>installApp(),toggleAllNotify:()=>toggleAllNotify()}[t.dataset.act];if(f)f()});
 const $=s=>document.querySelector(s),app=$('#app');let me={user:null};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api=async(p,m='GET',b)=>{const r=await fetch('/api'+p,{method:m,headers:{'content-type':'application/json'},body:b?JSON.stringify(b):undefined});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'حدث خطأ');return j};
@@ -18,8 +18,9 @@ function toggleMenu(){const m=$('#menu');m.hidden=!m.hidden}
 function closeMenu(){const m=$('#menu');if(m)m.hidden=true}
 document.addEventListener('click',e=>{if(e.target.closest('#mb,#hmb')){toggleMenu();return}if(!e.target.closest('#menu'))closeMenu()});
 function nav(){const u=me.user,h=location.hash||'#/',a=(l,t)=>`<a href="${l}" class="${h===l?'on':''}">${t}</a>`;
-$('#nav').innerHTML=`<a class=logo href="#/"><span class=mark><img loading=lazy decoding=async src=/hand.png alt=""></span>المساعد</a><div class=hact>${u?`<a class=bell href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?'<i class=dot></i>':''}</a>`:'<a class=hlogin href="#/login">تسجيل الدخول</a>'}<button id=mb aria-label="القائمة">${ic(I.menu)}</button></div>`;
-$('#menu').innerHTML=a('#/','المساعد الذكي')+a('#/feed','المنشورات العامة')+(isStandalone()?'':'<a href="#" data-act=installApp>تثبيت التطبيق</a>')+(u?a('#/chats','محادثاتي')+a('#/profile','حسابي')+(['admin','staff'].includes(u.role)?a('#/manage','الإدارة'):''):'')+a('#/complaints','سياسة الشكاوى')+a('#/about','من نحن')+a('#/contact','تواصل معنا')+a('#/terms','الشروط والأحكام')+a('#/privacy','سياسة الخصوصية')+(u?'<a href="#" data-act="exportData">تصدير بياناتي</a><a href="#/settings">الإعدادات</a><a href="#/profile">حذف حسابي</a>':'')+(u?'<a href="#" data-act="logout">تسجيل الخروج</a>':a('#/login','دخول / تسجيل'));
+$('#nav').innerHTML=`<a class=logo href="#/"><span class=mark><img loading=lazy decoding=async src=/hand.png alt=""></span>المساعد</a><div class=hact>${u?`<a class=bell href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<a class=hlogin href="#/login">تسجيل الدخول</a>'}<button id=mb aria-label="القائمة">${ic(I.menu)}</button></div>`;
+$('#menu').innerHTML=a('#/','المساعد الذكي')+a('#/feed','المنشورات العامة')+(isStandalone()?'':'<a href="#" data-act=installApp>تثبيت التطبيق</a>')+(u?a('#/chats','محادثاتي')+a('#/profile','حسابي')+`<a href="#" data-act=toggleAllNotify>${allNotifyOn()?'🔕 إيقاف كل الإشعارات':'🔔 تفعيل كل الإشعارات'}</a>`+(['admin','staff'].includes(u.role)?a('#/manage','الإدارة'):''):'')+a('#/complaints','سياسة الشكاوى')+a('#/about','من نحن')+a('#/contact','تواصل معنا')+a('#/terms','الشروط والأحكام')+a('#/privacy','سياسة الخصوصية')+(u?'<a href="#" data-act="exportData">تصدير بياناتي</a><a href="#/settings">الإعدادات</a><a href="#/profile">حذف حسابي</a>':'')+(u?'<a href="#" data-act="logout">تسجيل الخروج</a>':a('#/login','دخول / تسجيل'));
+try{if(me.user&&navigator.setAppBadge){me.unread?navigator.setAppBadge(me.unread):navigator.clearAppBadge()}}catch{}
 renderBottom(h);$('#menu').onclick=e=>{if(e.target.tagName==='A')closeMenu()}}
 async function insights(){location.hash='#/manage/insights'}
 async function drawInsights(){$('#mgBody').innerHTML=`<section class=panel><div class=sec-h><h3>تحليل الطلب</h3></div><div class=seg id=idays><button data-d=7>7 أيام</button><button data-d=30>30 يومًا</button><button data-d=0>الكل</button></div><div class=seg id=itabs><button data-t=demand>الأكثر طلبًا</button><button data-t=gap>الفجوة</button><button data-t=failed>بحث بلا نتيجة</button></div><div id=ibody></div></section>`;
@@ -33,7 +34,7 @@ $('#ibody').innerHTML=note+body}catch(x){$('#ibody').innerHTML=`<div class=empty
 document.querySelectorAll('#idays button').forEach(b=>b.onclick=()=>{st.d=+b.dataset.d;paint()});
 document.querySelectorAll('#itabs button').forEach(b=>b.onclick=()=>{st.t=b.dataset.t;paint()});paint()}
 
-async function home(){const feedBtn=`<a class=hbtn href="#/feed" aria-label="المنشورات العامة">${ic(I.feed)}</a>`;const bell=me.user?`<a class=hbtn href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?'<i class=dot></i>':''}</a>`:'<span class=hbtn></span>',avatar=`<button class=hbtn id=hmb type=button aria-label="القائمة">${ic(I.menu)}</button>`;
+async function home(){const feedBtn=`<a class=hbtn href="#/feed" aria-label="المنشورات العامة">${ic(I.feed)}</a>`;const bell=me.user?`<a class=hbtn href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<span class=hbtn></span>',avatar=`<button class=hbtn id=hmb type=button aria-label="القائمة">${ic(I.menu)}</button>`;
 app.innerHTML=`<section class=chat-wrap><div class=chat-top><div class=ctitle><img loading=lazy decoding=async class=ctl-logo src=/hand.png alt=""><div><b>منصة المساعد</b><small>خدمتك تبدأ من هنا</small></div></div><div class=ctl-actions>${feedBtn}${bell}${avatar}</div></div><div id=msgs class=chat-msgs aria-live=polite></div><div class=sugs>${['أبي سباك يصلح تسريب مياه','أبي كهربائي يصلح قاطع الكهرباء'].map(s=>`<button type=button class=sug>${esc(s)}</button>`).join('')}</div><form id=cf class=chat-in><input name=m maxlength=500 required placeholder="اكتب رسالتك هنا..." aria-label="اكتب رسالتك"><button class=send aria-label="إرسال"><svg class=ic viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></form></section>`;
 const msgs=$('#msgs'),now=()=>new Date().toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'});
 const bot=(html)=>{const r=document.createElement('div');r.className='brow';r.innerHTML=`<img loading=lazy decoding=async class=bav src=/hand.png alt=""><div class=bcol><div class="bub b">${html}</div><small class=btime>${now()}</small></div>`;msgs.append(r);msgs.scrollTop=msgs.scrollHeight;return r};
@@ -744,3 +745,27 @@ async function installApp(){
   o.onclick=e=>{if(e.target===o||(e.target.dataset&&e.target.dataset.close))o.remove()};document.body.append(o)
 }
 if('serviceWorker' in navigator)window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})});
+
+/* ---- زر واحد لتفعيل/إيقاف كل الإشعارات (دفع + طلبات/رسائل عبر البريد) ---- */
+function allNotifyOn(){return !!(me.user&&me.user.push_enabled&&me.user.notify_email)}
+async function toggleAllNotify(){
+  if(!me.user)return;
+  const turnOn=!allNotifyOn();
+  try{
+    if(turnOn){
+      if(!(await enablePush()))return;
+      await api('/me/notify','POST',{enabled:true});
+      me.user.notify_email=1;me.user.push_enabled=1;
+      toast('تم تفعيل الإشعارات: الدفع والطلبات والرسائل');
+    }else{
+      await api('/push/pref','POST',{enabled:false});
+      await api('/me/notify','POST',{enabled:false});
+      me.user.push_enabled=0;me.user.notify_email=0;
+      toast('أُوقفت كل الإشعارات');
+    }
+  }catch(x){toast(x.message||'تعذّر التغيير',1)}
+  nav();
+}
+
+/* تحديث عداد الإشعارات كل دقيقة (يظهر على أيقونة التطبيق وعلى الجرس) */
+setInterval(async()=>{if(!me.user)return;try{const m=await api('/me');const n=m.unread||0;if(n!==(me.unread||0)){me.unread=n;nav()}}catch{}},60000);

@@ -1,4 +1,4 @@
-import {route, db, all, get, run, need, adm, str, own, hitOr429, err, audit} from '../core.js';
+import {route, db, all, get, run, need, verified, adm, str, own, hitOr429, err, audit} from '../core.js';
 
 db.exec(`CREATE TABLE IF NOT EXISTS post_likes(post_id INT NOT NULL REFERENCES posts(id),user_id INT NOT NULL REFERENCES users(id),PRIMARY KEY(post_id,user_id));
 CREATE TABLE IF NOT EXISTS post_comments(id INTEGER PRIMARY KEY,post_id INT NOT NULL REFERENCES posts(id),user_id INT NOT NULL REFERENCES users(id),body TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
@@ -20,7 +20,7 @@ route('GET','/feed',c=>{
 
 // إعجاب أو إلغاؤه (تبديل): المسجلون فقط
 route('POST','/feed/(\\d+)/like',c=>{
-  const u=need(c),id=+c.p[0];
+  const u=verified(c),id=+c.p[0];
   if(!get('SELECT 1 x FROM posts WHERE id=? AND hidden=0',id))throw err(404,'المنشور غير موجود');
   hitOr429('like|'+u.id,+(process.env.LIKE_PER_HOUR)||300);
   const was=!!get('SELECT 1 x FROM post_likes WHERE post_id=? AND user_id=?',id,u.id);
@@ -37,7 +37,7 @@ route('GET','/feed/(\\d+)/comments',c=>{
     WHERE k.post_id=? AND u.active=1 ORDER BY k.id ASC LIMIT 200`,id);
 });
 route('POST','/feed/(\\d+)/comments',c=>{
-  const u=need(c),id=+c.p[0];
+  const u=verified(c),id=+c.p[0];
   if(!get('SELECT 1 x FROM posts WHERE id=? AND hidden=0',id))throw err(404,'المنشور غير موجود');
   hitOr429('comment|'+u.id,+(process.env.COMMENT_PER_HOUR)||60);
   const body=str(c.b.body,1,300,'التعليق');
@@ -57,7 +57,7 @@ route('POST','/feed/comments/(\\d+)/delete',c=>{
 
 // Registered users only
 route('POST','/feed',c=>{
-  const u=need(c);
+  const u=verified(c);
   hitOr429('post|'+u.id,+(process.env.POST_PER_HOUR)||30);
   const body=str(c.b.body,1,500,'المنشور');
   const att=own(u,c.b.attachment_id);

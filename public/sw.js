@@ -26,14 +26,16 @@ self.addEventListener('fetch', (e) => {
 self.addEventListener('push', (e) => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch {}
-  e.waitUntil(self.registration.showNotification(String(d.title || 'المساعد'), {
+  const n = Number(d.count) || 0;
+  const badge = (self.navigator && self.navigator.setAppBadge) ? (n > 0 ? self.navigator.setAppBadge(n) : self.navigator.clearAppBadge()) : null;
+  e.waitUntil(Promise.resolve(badge).catch(() => {}).then(() => self.registration.showNotification(String(d.title || 'المساعد'), {
     body: String(d.body || ''),
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     lang: 'ar',
     dir: 'rtl',
     data: { url: String(d.url || '/') },
-  }));
+  })));
 });
 
 self.addEventListener('notificationclick', (e) => {

@@ -14,8 +14,8 @@ const acct=b.account_type==='helper'?'helper':'client',spec=b.skill_ids!==undefi
 if(acct==='helper'){const ht=['individual','establishment','company'].includes(b.helper_type)?b.helper_type:'individual';run('UPDATE users SET helper_type=? WHERE id=?',ht,id)}
 run("UPDATE users SET age_ok=1,terms_version=?,terms_at=datetime('now') WHERE id=?",TERMS_VERSION,id);run('UPDATE users SET phone=? WHERE id=?',phone,id);if(spec)saveSpecialties(id,spec.skillIds,spec.catIds);else saveSections(id,secIds);if(VERIFY_REQUIRED)issueVerify(id,email).then(ok=>{if(!ok)console.error('verify: تعذّر إرسال رابط التفعيل عند التسجيل، المستخدم',id)}).catch(e=>console.error('verify:',e.message));startSession(c.res,id);return{ok:1}});
 route('POST','/login',c=>{const email=String(c.b.email||'').toLowerCase(),k=c.ip+'|'+email;let f=get('SELECT n,t FROM login_attempts WHERE k=?',k)||{n:0,t:Date.now()};if(Date.now()-f.t>9e5)f={n:0,t:Date.now()};
-if(f.n>=8)throw err(429,'محاولات كثيرة، حاول بعد قليل');const u=get('SELECT * FROM users WHERE email=?',email);
-if(!u||!check(String(c.b.password||''),u.pass)){run('INSERT INTO login_attempts(k,n,t) VALUES(?,?,?) ON CONFLICT(k) DO UPDATE SET n=excluded.n,t=excluded.t',k,f.n+1,f.t);throw err(401,'البريد أو كلمة المرور غير صحيحة')}
+if(f.n>=8)throw err(429,'محاولات كثيرة، حاول بعد قليل');const ipK=c.ip+'|*',fi=get('SELECT n,t FROM login_attempts WHERE k=?',ipK);if(fi&&fi.n>=40&&Date.now()-fi.t<9e5)throw err(429,'محاولات كثيرة من هذا الجهاز، حاول بعد قليل');const u=get('SELECT * FROM users WHERE email=?',email);
+if(!u||!check(String(c.b.password||''),u.pass)){run('INSERT INTO login_attempts(k,n,t) VALUES(?,?,?) ON CONFLICT(k) DO UPDATE SET n=excluded.n,t=excluded.t',k,f.n+1,f.t);const fi2=fi&&Date.now()-fi.t<9e5?fi:{n:0,t:Date.now()};run('INSERT INTO login_attempts(k,n,t) VALUES(?,?,?) ON CONFLICT(k) DO UPDATE SET n=excluded.n,t=excluded.t',ipK,fi2.n+1,fi2.t);throw err(401,'البريد أو كلمة المرور غير صحيحة')}
 if(!u.active)throw err(403,'الحساب معطّل');run('DELETE FROM login_attempts WHERE k=?',k);startSession(c.res,u.id);return{ok:1}});
 route('POST','/logout',c=>{run('DELETE FROM sessions WHERE token=?',sha(c.tok||''));return{ok:1}});
 route('GET','/me',c=>c.u?{user:c.u,unread:get('SELECT COUNT(*) n FROM notifications WHERE user_id=? AND read=0',c.u.id).n}:{user:null});
@@ -50,15 +50,18 @@ route('GET','/setup-status',()=>({needed:!!(process.env.ADMIN_SETUP_TOKEN&&!get(
 route('POST','/me/delete',c=>tx(()=>{const u=need(c),pw=String(c.b.password||'');if(c.b.confirm!=='حذف')throw err(400,'اكتب كلمة «حذف» للتأكيد');
 if(!check(pw,get('SELECT pass FROM users WHERE id=?',u.id).pass))throw err(403,'كلمة المرور غير صحيحة');
 run('DELETE FROM portfolio WHERE user_id=?',u.id);run('DELETE FROM settings WHERE key=?','avatar:'+u.id);run('DELETE FROM user_skills WHERE user_id=?',u.id);run('DELETE FROM sessions WHERE user_id=?',u.id);run('DELETE FROM notifications WHERE user_id=?',u.id);run('DELETE FROM direct_messages WHERE from_id=? OR to_id=?',u.id,u.id);run('DELETE FROM user_sections WHERE user_id=?',u.id);
+run('UPDATE posts SET hidden=1,attachment_id=NULL WHERE user_id=?',u.id);
 const orphanVids=all("SELECT id,ext_key FROM attachments WHERE user_id=? AND ext_key LIKE 'disk:%' AND id NOT IN (SELECT attachment_id FROM direct_messages WHERE attachment_id IS NOT NULL) AND id NOT IN (SELECT attachment_id FROM portfolio WHERE attachment_id IS NOT NULL)",u.id);
 for(const v of orphanVids)fs.rmSync(path.join(mediaDir(),path.basename(v.ext_key.slice(5))),{force:true});
 if(orphanVids.length)run("DELETE FROM attachments WHERE id IN ("+orphanVids.map(()=>'?').join(',')+')',...orphanVids.map(v=>v.id));
+run("DELETE FROM attachments WHERE user_id=? AND id NOT IN (SELECT attachment_id FROM direct_messages WHERE attachment_id IS NOT NULL)",u.id);
 run("UPDATE users SET name='مستخدم محذوف',email='deleted-'||id||'@deleted.invalid',pass=?,city=NULL,phone=NULL,national_id=NULL,address=NULL,iban=NULL,bio=NULL,active=0,flagged=0,suspended_until=NULL,role='user' WHERE id=?",hash(crypto.randomBytes(24).toString('hex')),u.id);
 audit(u.id,'account_delete',`user:${u.id}`);return{ok:1}}));
 route('POST','/forgot',async c=>{const email=String(c.b.email||'').trim().toLowerCase();const u=email?get('SELECT id,name,email FROM users WHERE email=? AND active=1',email):null;
+try{hitOr429('fgip|'+(c.ip||'x'),10)}catch{throw err(429,'محاولات كثيرة، حاول بعد قليل')}
 let allowed=false;if(u){try{hitOr429('fg|'+u.id,3);allowed=true}catch{}}
 if(allowed){const code=String(crypto.randomInt(0,10000)).padStart(4,'0');run("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts,created_at) VALUES(?,?,datetime('now','+10 minutes'),0,datetime('now'))",u.id,macOf(code+':'+u.id));
-await sendMail(u.email,'رمز استعادة كلمة المرور - المساعد',`<div dir="rtl"><p>أهلًا ${hx(u.name)}،</p><p>رمز استعادة كلمة المرور:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>الرمز صالح لمدة 10 دقائق، ويُستخدم مرة واحدة. إذا لم تطلب ذلك فتجاهل هذه الرسالة.</p></div>`).catch(()=>{})}
+sendMail(u.email,'رمز استعادة كلمة المرور - المساعد',`<div dir="rtl"><p>أهلًا ${hx(u.name)}،</p><p>رمز استعادة كلمة المرور:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>الرمز صالح لمدة 10 دقائق، ويُستخدم مرة واحدة. إذا لم تطلب ذلك فتجاهل هذه الرسالة.</p></div>`).catch(()=>{})}
 return{ok:1}});
 route('POST','/reset-code',c=>{const email=String(c.b.email||'').trim().toLowerCase(),code=String(c.b.code||'').trim();const bad=()=>{throw err(400,'الرمز غير صحيح أو منتهي، اطلب رمزًا جديدًا')};
 const u=email?get('SELECT id FROM users WHERE email=? AND active=1',email):null;if(!u)bad();
