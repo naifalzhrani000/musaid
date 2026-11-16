@@ -546,6 +546,15 @@ const f=cl();await f('/register','POST',{name:'مساعد فرد',email:'vat2@t.
 assert.equal((await f('/me/vat','POST',{vat_number:'312345678901234'})).s,403,'الفرد لا يحتاج رقمًا ضريبيًا');
 });
 
+test('لوحة المتابعة: التنبيهات وحالة النظام للمدير فقط',async()=>{
+const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
+const m=(await admin('/admin/monitor')).j;
+assert.equal(typeof m.alerts.open_reports,'number');assert.equal(typeof m.alerts.vat_pending,'number');
+assert.equal(m.system.database,'ok');assert.equal(typeof m.system.uptime_seconds,'number');
+assert.equal(typeof m.platform.active_users,'number');
+assert.equal((await cl()('/admin/monitor')).s,401,'غير المدير لا يقرأ المتابعة');
+});
+
 test('مهل النزاع التلقائية وتقرير التوريدات الشهري',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل مهل',email:'dl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});

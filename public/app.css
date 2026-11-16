@@ -549,3 +549,38 @@ body .mg-shell #mgBody .panel{max-width:100% !important}
 [hidden]{display:none !important}
 #vatWrap{display:grid;gap:6px;margin:12px 0}
 #vatWrap:not([hidden]){display:grid}
+
+/* ==========================================================
+   الصفحة الرئيسية: هيدر واحد فقط
+   الهيدر العام (الشعار والقائمة والإشعارات) يكفي، فيُخفى شريط
+   المحادثة المكرر. المنشورات أصبحت في القائمة الرئيسية.
+   ========================================================== */
+.chat-top{display:none !important}
+@media (max-width:700px){
+  .chat-wrap{height:calc(100dvh - 70px) !important}
+}
+
+/* ==========================================================
+   شعار الترويسة: نص «المساعد» فقط بخط أصغر، والترويسة أنحف
+   ترتفع الأيقونات والنص إلى محاذاة أعلى الصفحة.
+   ========================================================== */
+header nav{min-height:0;padding:6px 16px;align-items:center;flex-wrap:nowrap;gap:8px}
+header .logo{display:flex;align-items:center;gap:0;font-size:17px;font-weight:700;line-height:1.2;margin-inline-end:auto;padding:0}
+header .logo .mark{display:none !important}
+header .hact{display:flex;align-items:center;gap:6px}
+header .hbtn,header #mb{width:36px;height:36px;display:inline-grid;place-items:center;padding:0}
+header .hbtn svg,header #mb svg{width:20px;height:20px}
+@media (max-width:700px){
+  header nav{padding:6px 12px}
+  header .logo{font-size:16px}
+}
+
+/* ==========================================================
+   أيقونة الترويسة: تظهر بجوار الاسم وبحجم يقارب حجم الكلمة
+   ========================================================== */
+header .logo .mark{display:inline-grid !important;place-items:center;width:24px;height:24px;border-radius:7px;background:#ffffff1f;margin-inline-end:6px;flex:0 0 auto}
+header .logo .mark img{width:16px;height:16px;object-fit:contain}
+@media (max-width:700px){
+  header .logo .mark{width:22px;height:22px;margin-inline-end:5px}
+  header .logo .mark img{width:15px;height:15px}
+}

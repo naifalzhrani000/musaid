@@ -146,6 +146,45 @@ route('POST','/admin/ratings/(\\d+)/hidden',c=>{const a=can(c,'support'),x=get('
 
 // لوحة الرئيسية: أرقام وسلاسل زمنية من قاعدة البيانات الفعلية (لا بيانات تجريبية)
 const DASH_ACTIONS={settings:'تحديث إعدادات المنصة',expense:'تسجيل مصروف',lift:'رفع القيود عن مستخدم',post_hide:'إخفاء منشور',comment_delete:'حذف تعليق',vat_threshold:'تحديث حد التسجيل',invoicing:'تحديث إعدادات الفوترة'};
+route('GET','/admin/monitor',c=>{
+  adm(c);
+  const one=(sql,...a)=>{const r=get(sql,...a);return r?Number(r.n)||0:0};
+  const backupDir=process.env.BACKUP_DIR||path.join(path.dirname(path.resolve(DB_PATH)),'backups');
+  let lastBackup=null;
+  try{
+    const files=fs.readdirSync(backupDir).filter(f=>/^backup-.*\.db$/.test(f)).sort();
+    if(files.length){const f=files[files.length-1];lastBackup={file:f,at:fs.statSync(path.join(backupDir,f)).mtime.toISOString()}}
+  }catch{}
+  let dbOk=true;try{get('SELECT 1 x')}catch{dbOk=false}
+  let dbSize=0;try{dbSize=fs.statSync(DB_PATH).size}catch{}
+  return{
+    alerts:{
+      open_reports:one("SELECT COUNT(*) n FROM reports WHERE status='open'"),
+      disputes:one("SELECT COUNT(*) n FROM agreements WHERE status='disputed'"),
+      vat_pending:one("SELECT COUNT(*) n FROM users WHERE account_type='helper' AND vat_status='registered' AND vat_verified=0"),
+      type_requests:one("SELECT COUNT(*) n FROM users WHERE helper_type_request IS NOT NULL"),
+      stuck_pending:one("SELECT COUNT(*) n FROM agreements WHERE status='pending' AND created_at<datetime('now','-3 days')"),
+      stuck_completion:one("SELECT COUNT(*) n FROM agreements WHERE status='completion_requested' AND updated_at<datetime('now','-7 days')"),
+      failed_week:one("SELECT COUNT(*) n FROM failed_searches WHERE at>=datetime('now','-7 days')")
+    },
+    system:{
+      database:dbOk?'ok':'error',
+      db_size_bytes:dbSize,
+      uptime_seconds:Math.round(process.uptime()),
+      node:process.version,
+      last_backup:lastBackup,
+      mail:!!process.env.RESEND_API_KEY,
+      push:!!process.env.VAPID_PUBLIC_KEY,
+      payments:!!process.env.HALA_WEBHOOK_SECRET
+    },
+    platform:{
+      active_users:one("SELECT COUNT(*) n FROM users WHERE active=1"),
+      active_helpers:one("SELECT COUNT(*) n FROM users WHERE active=1 AND account_type='helper'"),
+      new_users_week:one("SELECT COUNT(*) n FROM users WHERE created_at>=datetime('now','-7 days')"),
+      open_agreements:one("SELECT COUNT(*) n FROM agreements WHERE status IN ('pending','agreed','completion_requested')")
+    }
+  };
+});
 route('GET','/admin/dashboard',c=>{
   adm(c);
   const days=[7,30,90].includes(+c.q?.days)?+c.q.days:30;
