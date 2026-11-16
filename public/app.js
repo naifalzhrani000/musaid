@@ -69,13 +69,13 @@ $('#a').onsubmit=sub(async b=>{if(reg){if(b.password!==b.confirm)throw new Error
 function DCHAT_MARKUP(){return `<section class=panel id=dchat><h3 style="margin-top:0">محادثة مباشرة</h3><small>للاستفسار قبل الطلب. إثبات التحويل والدفع يكون داخل الطلب فقط.</small><div id=dagr class=agr></div><form id=aform class=agr-form><small>اقترح اتفاقًا على الخدمة والمبلغ، ولا يُعد الاتفاق نافذًا حتى يوافق الطرف الآخر.</small><input name=description maxlength=300 placeholder="وصف الخدمة، مثل: تركيب باب" aria-label="وصف الخدمة" required><input name=amount type=number min=1 max=100000 placeholder="المبلغ بالريال" aria-label="المبلغ" required><button class=btn>اقترح الاتفاق</button></form><div id=dmsgs class=dmsgs></div><form id=dform class=row style="gap:8px"><input name=body maxlength=1000 placeholder="اكتب استفسارك" aria-label="اكتب استفسارك" style="flex:1"><button type=button class="btn alt" id=dpic aria-label="إرفاق صورة">${ic(I.clip)}</button><button class=btn>إرسال</button></form></section>`}
 async function directChat(id){if(!me.user){location.hash='#/login';return}const peer=await api('/users/'+id).catch(()=>null);const name=(peer&&peer.name)||'المستخدم';app.innerHTML=`<section class=panel style="padding-bottom:6px"><div class=row><h3 style="margin:0">محادثة مع ${esc(name)}</h3><a class=lnk href="#/p/${id}">عرض الملف</a></div></section>`+DCHAT_MARKUP();dchatInit(id)}
 async function chats(){const l=await api('/chats');app.innerHTML=`<h2 style="margin:8px 0">صندوق الوارد</h2><div class=panel style="padding:0">${l.map(c=>{const href=c.request_id?`#/chat/${esc(c.request_id)}/${esc(c.peer)}`:`#/direct/${esc(c.peer)}`;const t=String(c.created_at||'');return `<a href="${href}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #eef0f2;text-decoration:none;color:inherit"><i style="width:52px;height:52px;border-radius:50%;background:#0f6b4f;color:#fff;display:grid;place-items:center;font-style:normal;font-weight:700;flex:0 0 auto">${esc((c.peer_name||'؟')[0])}</i><span style="flex:1;min-width:0"><b>${esc(c.peer_name)}</b><small style="display:block;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.title||'')}${c.body?' · '+esc(c.body.slice(0,50)):''}</small></span><small style="color:#9ca3af;flex:0 0 auto">${esc(t.slice(11,16))}</small></a>`}).join('')||'<div class=empty style="padding:20px">لا توجد محادثات بعد. تبدأ المحادثة من صفحة المساعد.</div>'}</div>`}
-const askKind=()=>new Promise(ok=>{const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:#0008;z-index:50;display:grid;place-items:end center';o.innerHTML='<div style="background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:18px;display:grid;gap:10px;direction:rtl"><b>أين تريد نشر هذا المقطع؟</b><button class=btn type=button data-k=reel>ريلز</button><button class="btn alt" type=button data-k=post>منشور (يظهر للجميع في المنشورات)</button></div>';o.onclick=e=>{const k=e.target.dataset&&e.target.dataset.k;if(k||e.target===o){o.remove();ok(k||null)}};document.body.append(o)});
+const askKind=()=>new Promise(ok=>{const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:#0008;z-index:50;display:grid;place-items:end center';o.innerHTML='<div style="background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:18px;display:grid;gap:10px;direction:rtl"><b>أين تريد نشر هذا المقطع؟</b><button class=btn type=button data-k=reel>ريلز (يظهر للجميع)</button><button class="btn alt" type=button data-k=post>منشور (يظهر للجميع)</button></div>';o.onclick=e=>{const k=e.target.dataset&&e.target.dataset.k;if(k||e.target===o){o.remove();ok(k||null)}};document.body.append(o)});
 const accTabs=pics=>{const posts=pics.filter(x=>x.kind!=='reel'),reels=pics.filter(x=>x.kind==='reel'),tl=a=>a.map(x=>`<figure>${mediaTag(x)}${x.caption?`<figcaption>${esc(x.caption)}</figcaption>`:''}</figure>`).join('');return `<div class=acc-tabs><nav><button type=button class=on data-tab=posts>المنشورات</button><button type=button data-tab=reels>ريلز</button></nav><div class=acc-grid id=tg-posts>${tl(posts)}<button class=acc-add id=addWork type=button aria-label="إضافة صورة أو فيديو">+</button>${posts.length?'':'<div class=acc-empty>لم تضف أعمالًا بعد. ابدأ بإضافة صورة لعملك.</div>'}</div><div class=acc-grid id=tg-reels hidden>${tl(reels)}<button class=acc-add id=addWork2 type=button aria-label="إضافة ريلز">+</button>${reels.length?'':'<div class=acc-empty>لا توجد ريلز بعد. ارفع فيديو واختر «ريلز».</div>'}</div></div>`};
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-tab]');if(!b)return;document.querySelectorAll('.acc-tabs nav [data-tab]').forEach(x=>x.classList.toggle('on',x===b));const r=b.dataset.tab==='reels';const g1=document.getElementById('tg-posts'),g2=document.getElementById('tg-reels');if(g1)g1.hidden=r;if(g2)g2.hidden=!r});
 const pickMedia=()=>new Promise((ok,no)=>{const i=document.createElement('input');i.type='file';i.accept='image/*,video/mp4,video/quicktime,video/webm';i.onchange=()=>{const f=i.files[0];if(!f)return no(new Error('لم تختر ملفًا'));pickMedia.last=f.type||(/\.(mov|mp4|webm)$/i.test(f.name)?'video/x':'');if(f.type.startsWith('video/')){(async()=>{try{const mime=f.type||(/\.mov$/i.test(f.name)?'video/quicktime':'video/mp4');const r0=await api('/upload-video/init','POST',{mime,size:f.size});if(r0.mode==='disk'){if(f.size>30e6)throw new Error('حجم الفيديو يجب ألا يتجاوز 30 ميجابايت');const rr=await fetch('/api/upload-raw',{method:'POST',headers:{'content-type':'application/octet-stream','x-video-mime':mime},body:f});const j=await rr.json().catch(()=>({}));if(!rr.ok)throw new Error(j.error||'تعذّر رفع الفيديو');return ok(j.id)}
 if(r0.mode==='external'){const put=await fetch(r0.url,{method:'PUT',headers:{'content-type':mime},body:f});if(!put.ok)throw new Error('تعذّر رفع الفيديو، حاول مرة أخرى');const c=await api('/upload-video/complete','POST',{key:r0.key,mime});return ok(c.id)}if(f.size>8e6)throw new Error('حجم الفيديو يجب ألا يتجاوز 8 ميجابايت');const data=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=()=>rej(new Error('تعذّر قراءة الفيديو'));rd.readAsDataURL(f)});const x=await api('/upload-video','POST',{data});ok(x.id)}catch(e){no(e)}})();return}const im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);api('/upload','POST',{data:c.toDataURL('image/jpeg',.8)}).then(r=>ok(r.id),no)};im.onerror=()=>no(new Error('الملف ليس صورة'));im.src=URL.createObjectURL(f)};i.click()});
 const pick=()=>new Promise((ok,no)=>{const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>{const f=i.files[0];if(!f)return no(new Error('لم تختر صورة'));const im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);api('/upload','POST',{data:c.toDataURL('image/jpeg',.8)}).then(r=>ok(r.id),no)};im.onerror=()=>no(new Error('الملف ليس صورة'));im.src=URL.createObjectURL(f)};i.click()});
-document.addEventListener('click',async e=>{const t=e.target.closest&&e.target.closest('#addWork,#addWork2,#addPh,#avEdit,#avDel');if(!t)return;e.preventDefault();try{if(t.id==='avDel'){if(!confirm('حذف الصورة الشخصية؟'))return;await api('/me/avatar/delete','POST');toast('تم حذف الصورة الشخصية')}else if(t.id==='avEdit'){const id=await pick();await api('/me/avatar','POST',{attachment_id:id});toast('تم تحديث الصورة الشخصية')}else{const id=await pickMedia();let kind='post';if(/^video\//.test(pickMedia.last||'')){kind=await askKind();if(!kind)return}const caption=prompt('وصف قصير للعمل (اختياري):')||'';await api('/me/portfolio','POST',{attachment_id:id,caption,kind});toast(kind==='reel'?'أُضيف إلى الريلز':'تم النشر وسيظهر للجميع في المنشورات')}await route()}catch(x){if(!/^لم تختر/.test(x.message))toast(x.message,1)}});
+document.addEventListener('click',async e=>{const t=e.target.closest&&e.target.closest('#addWork,#addWork2,#addPh,#avEdit,#avDel');if(!t)return;e.preventDefault();try{if(t.id==='avDel'){if(!confirm('حذف الصورة الشخصية؟'))return;await api('/me/avatar/delete','POST');toast('تم حذف الصورة الشخصية')}else if(t.id==='avEdit'){const id=await pick();await api('/me/avatar','POST',{attachment_id:id});toast('تم تحديث الصورة الشخصية')}else{const id=await pickMedia();let kind='post';if(/^video\//.test(pickMedia.last||'')){kind=await askKind();if(!kind)return}const caption=prompt('وصف قصير للعمل (اختياري):')||'';await api('/me/portfolio','POST',{attachment_id:id,caption,kind});toast(kind==='reel'?'أُضيف إلى الريلز وسيظهر للجميع':'تم النشر وسيظهر للجميع في المنشورات')}await route()}catch(x){if(!/^لم تختر/.test(x.message))toast(x.message,1)}});
 const report=async(type,id)=>{const reason=prompt('سبب البلاغ:');if(!reason)return;try{await api('/report','POST',{type,id,reason});toast('تم إرسال البلاغ')}catch(x){toast(x.message,1)}};
 const star=n=>'★'.repeat(n)+'☆'.repeat(5-n);
 async function profileSub(k){await profile();const map={password:['pw-wrap'],data:['pf-wrap'],city:['pf-wrap'],specs:['skf-wrap','conv-wrap','vat-wrap'],gallery:['gal-wrap'],email:['emf-wrap'],points:['pts'],ledger:['ledger'],notify:['ntf'],type:['toHelper','toClient'],danger:['delF'],admin:['bootF'],faq:['faq-wrap'],bio:['bioF']};
@@ -417,7 +417,7 @@ app.innerHTML=`<style>
 
 <div class=mg-shell><div class=mg-topbar><div class=mg-brand><img loading=lazy decoding=async src="/logo.png" alt="" width=34 height=34><b>المساعد</b></div><div class=mg-tb-end><button class=mg-theme id=mgTheme type=button aria-pressed=false>🌙 داكن</button><span class=mg-bell aria-hidden=true>🔔</span><span class=mg-avatar aria-hidden=true>A</span><button class=mg-burger id=mgBurger type=button aria-label="فتح القائمة">☰</button></div></div><nav class=mg-tabs id=mgNav aria-label="أقسام الإدارة"></nav><main class=mg-main><header class=mg-page-head id=mgHead></header><div id=mgBody></div></main></div>`;
 const body=()=>$('#mgBody');
-const TABS=[['home','الرئيسية','admin'],['users','المستخدمون','support'],['orders','الطلبات','support'],['cats','الأقسام والكلمات','admin'],['fin','المالية','finance'],['acc','المحاسبة','accounting'],['ads','الإعلانات','admin'],['audit','سجل العمليات','admin'],['admins','المشرفون','admin'],['perf','أداء المساعدين','support'],['rep','الشكاوى','support'],['chat','المحادثات','support'],['rate','التقييمات','support'],['pts','النقاط','finance'],['rpt','التقارير','admin'],['insights','تحليل الطلب','admin'],['disp','النزاعات','support'],['supply','التوريدات','admin'],['verify','التوثيق','admin'],['staff','الموظفون','admin'],['sys','النظام','admin']];
+const TABS=[['home','المتابعة','admin'],['users','المستخدمون','support'],['orders','الطلبات','support'],['cats','الأقسام والكلمات','admin'],['fin','المالية','finance'],['acc','المحاسبة','accounting'],['ads','الإعلانات','admin'],['audit','سجل العمليات','admin'],['admins','المشرفون','admin'],['perf','أداء المساعدين','support'],['rep','الشكاوى','support'],['chat','المحادثات','support'],['rate','التقييمات','support'],['pts','النقاط','finance'],['rpt','التقارير','admin'],['insights','تحليل الطلب','admin'],['disp','النزاعات','support'],['supply','التوريدات','admin'],['verify','التوثيق','admin'],['staff','الموظفون','admin'],['sys','النظام','admin']];
 const shown=TABS.filter(t=>canA(t[2]));if(!shown.length){body().innerHTML='<small>لا توجد أقسام متاحة لصلاحياتك.</small>';return}
 const NAV_ICON={home:'home',users:'users',orders:'orders',rpt:'alert',cats:'grid',fin:'card',sys:'gear',insights:'chart'};const PRIMARY=['home','users','orders','rpt','cats','fin','sys'];const navBtn=([k,l])=>`<button class=mg-tab data-t=${k} type=button${k===tab?' aria-current="page"':''}>${NAV_ICON[k]?svgI(NAV_ICON[k],18):''}<span>${l}</span></button>`;
 $('#mgNav').innerHTML=`<div class=mg-brand-side><img loading=lazy decoding=async src="/logo.png" alt="" width=40 height=40><b>المساعد</b></div>`+shown.filter(x=>PRIMARY.includes(x[0])).map(navBtn).join('')+(shown.some(x=>!PRIMARY.includes(x[0]))?`<div class=mg-sep>أقسام أخرى</div>`+shown.filter(x=>!PRIMARY.includes(x[0])).map(navBtn).join(''):'')+`<a class=mg-tab href="#/logout" style="margin-top:auto">${svgI('out',18)}<span>تسجيل الخروج</span></a>`;const mgNavEl=()=>$('#mgNav'),mgBtn=()=>$('#mgBurger');const mgSetMenu=o=>{mgNavEl().classList.toggle('open',o);mgBtn().setAttribute('aria-expanded',String(o));mgBtn().setAttribute('aria-label',o?'إغلاق القائمة':'فتح القائمة')};mgBtn().onclick=()=>mgSetMenu(!mgNavEl().classList.contains('open'));mgNavEl().addEventListener('click',e=>{if(e.target.closest('.mg-tab'))mgSetMenu(false)});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&mgNavEl().classList.contains('open')){mgSetMenu(false);mgBtn().focus()}});$('#mgBody').addEventListener('click',()=>{if(mgNavEl().classList.contains('open'))mgSetMenu(false)});$('#mgTheme').onclick=()=>{const d=!document.querySelector('.mg-shell').classList.contains('mg-dark');try{localStorage.setItem('mgTheme',d?'dark':'light')}catch{}applyMgTheme(d)};applyMgTheme(localStorage.getItem('mgTheme')==='dark');
@@ -548,42 +548,72 @@ const xl=[0,Math.floor((n-1)/2),n-1].map(i=>`<text x="${x(i)}" y="${H-8}" font-s
 const last=pts[n-1];
 return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="إحصائيات المنصة" style="width:100%;height:auto;display:block"><defs><linearGradient id="gA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2e9b72" stop-opacity=".28"/><stop offset="1" stop-color="#2e9b72" stop-opacity="0"/></linearGradient></defs>${grid}<path d="${area}" fill="url(#gA)"/><path d="${d}" fill="none" stroke="#1f7a5a" stroke-width="2.6" stroke-linecap="round"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="5" fill="#1f7a5a" stroke="#fff" stroke-width="2"/>${xl}</svg>`};
 const monHtml=(m)=>{
-  if(!m)return '<div class=empty>تعذّر تحميل التنبيهات والمتابعة</div>';
-  const A=m.alerts,S=m.system,P=m.platform;
-  const alerts=[
-    ['rpt','بلاغات مفتوحة',A.open_reports],
-    ['disp','نزاعات قيد المراجعة',A.disputes],
-    ['verify','أرقام ضريبية بانتظار التوثيق',A.vat_pending],
-    ['verify','طلبات تغيير نوع الحساب',A.type_requests],
-    ['orders','اتفاقات معلّقة منذ أكثر من 3 أيام',A.stuck_pending],
-    ['orders','طلبات إتمام بلا تأكيد منذ أكثر من 7 أيام',A.stuck_completion],
-    ['cats','بحث بلا نتيجة خلال 7 أيام',A.failed_week]
-  ];
-  const pending=alerts.filter(x=>x[2]>0);
-  const alertRows=pending.length?pending.map(x=>'<a class=mg-row href="#/manage/'+x[0]+'"><span>'+x[1]+'</span><b>'+x[2]+'</b></a>').join(''):'<div class=empty>لا توجد تنبيهات تحتاج إجراءً الآن</div>';
-  const lb=(ok,label,val)=>'<div class=mg-row><span>'+label+'</span><b class="'+(ok?'pill':'pill-warn')+'">'+val+'</b></div>';
+  if(!m)return '<div class=empty>تعذّر تحميل بيانات المتابعة</div>';
+  const A=m.alerts,S=m.system,P=m.platform,F=m.performance||{},AC=m.activity||{},N=m.notifications||{};
+  const f=n=>Number(n||0).toLocaleString('ar-SA',{maximumFractionDigits:1});
+  const ST={ok:['ok','كل شيء يعمل بشكل طبيعي'],warn:['warn','هناك أمور تحتاج انتباهك'],critical:['crit','يوجد خلل يحتاج تدخلًا عاجلًا']}[m.status]||['ok',''];
+  const order={critical:0,warn:1,info:2},LV={critical:'عاجل',warn:'تنبيه',info:'للعلم'};
+  const al=(m.alerts_list||[]).slice().sort((a,b)=>order[a.level]-order[b.level]);
+  const alRows=al.length?al.map(x=>{const t=`<span class=mon-lv>${LV[x.level]}</span><span class=mon-tx>${esc(x.text)}</span>`;return x.link&&x.link!=='home'?`<a class="mon-al lv-${x.level}" href="#/manage/${x.link}">${t}<i>‹</i></a>`:`<div class="mon-al lv-${x.level}">${t}</div>`}).join(''):'<div class=empty>لا توجد تنبيهات الآن</div>';
+  const kp=(label,val,tone,sub)=>`<div class="mon-k ${tone||''}"><small>${label}</small><b>${val}</b>${sub?`<em>${sub}</em>`:''}</div>`;
+  const up=S.uptime_seconds>=86400?Math.floor(S.uptime_seconds/86400)+' يوم':Math.floor(S.uptime_seconds/3600)+' ساعة';
+  const mb=(S.db_size_bytes/1048576).toFixed(1)+' م.ب';
   const bk=S.last_backup?new Date(S.last_backup.at).toLocaleString('ar-SA'):'لا توجد نسخة بعد';
-  const up=Math.floor(S.uptime_seconds/3600)+' ساعة';
-  const mb=(S.db_size_bytes/1048576).toFixed(1)+' ميغابايت';
-  return '<h3 class=mg-h>التنبيهات والمتابعة</h3>'
-    +'<div class=mg-stats>'
-      +'<div class=mg-stat><small>المستخدمون النشطون</small><b>'+P.active_users+'</b></div>'
-      +'<div class=mg-stat><small>المساعدون النشطون</small><b>'+P.active_helpers+'</b></div>'
-      +'<div class=mg-stat><small>مستخدمون جدد (7 أيام)</small><b>'+P.new_users_week+'</b></div>'
-      +'<div class=mg-stat><small>اتفاقات مفتوحة</small><b>'+P.open_agreements+'</b></div>'
-    +'</div>'
-    +'<div class=hm-grid style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">'
-      +'<section class=panel><div class=sec-h><h3>تحتاج إجراءً</h3></div>'+alertRows+'</section>'
-      +'<section class=panel><div class=sec-h><h3>حالة النظام</h3></div>'
-        +lb(S.database==='ok','قاعدة البيانات',S.database==='ok'?'تعمل':'خطأ')
-        +lb(!!S.last_backup,'آخر نسخة احتياطية',bk)
-        +lb(S.mail,'البريد الإلكتروني',S.mail?'مفعّل':'غير مفعّل')
-        +lb(S.push,'إشعارات الدفع',S.push?'مفعّلة':'غير مفعّلة')
-        +lb(S.payments,'بوابة الدفع',S.payments?'مفعّلة':'غير مفعّلة')
-        +'<div class=mg-row><span>مدة التشغيل</span><b>'+up+'</b></div>'
-        +'<div class=mg-row><span>حجم القاعدة</span><b>'+mb+'</b></div>'
-      +'</section>'
-    +'</div>';
+  const pm=F.per_minute||[],mx=Math.max(1,...pm.map(x=>x.req));
+  const bars=pm.map((x,i)=>{const h=Math.round(x.req/mx*56),e=x.err?Math.max(2,Math.round(x.err/mx*56)):0;return `<g><rect x="${i*10+2}" y="${60-h}" width="7" height="${h}" rx="2" fill="#2e9b72" opacity=".85"/>${e?`<rect x="${i*10+2}" y="${60-e}" width="7" height="${e}" rx="2" fill="#d64545"/>`:''}</g>`}).join('');
+  const chart=`<svg viewBox="0 0 302 64" role="img" aria-label="الطلبات في آخر 30 دقيقة" style="width:100%;height:auto;display:block">${bars}</svg>`;
+  const rt=(rows,col)=>rows&&rows.length?`<div class=mon-rt>${rows.map(r=>`<div class=mon-rr><code dir=ltr>${esc(r.route)}</code><b>${col==='e'?f(r.errors)+' خطأ':f(r.avg_ms)+' م.ث'}</b></div>`).join('')}</div>`:'<div class=empty>لا بيانات كافية بعد</div>';
+  const ico={user:'👤',report:'🚩',dispute:'⚖️',order:'📦',broadcast:'📣'};
+  const evs=(m.events||[]).length?m.events.map(e=>`<a class=mon-ev href="#/manage/${e.link}"><span>${esc(e.text)}</span><small>${relTime(e.at)}</small></a>`).join(''):'<div class=empty>لا توجد أحداث بعد</div>';
+  const lb=(ok,label,val)=>'<div class=mg-row><span>'+label+'</span><b class="'+(ok?'pill':'pill-warn')+'">'+val+'</b></div>';
+  return `<div class="mon-banner b-${ST[0]}"><span class=mon-dot></span><div><b>${ST[1]}</b><small>آخر تحديث ${new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · يتجدد تلقائيًا كل 30 ثانية</small></div></div>
+  <div class=hm-grid style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
+    <section class=panel><div class=sec-h><h3>التنبيهات (${al.length})</h3></div>${alRows}</section>
+    <section class=panel><div class=sec-h><h3>أداء الموقع</h3><small>منذ آخر تشغيل للخادم</small></div>
+      <div class=mon-ks>
+        ${kp('الطلبات',f(F.requests),'', 'أخطاء العميل '+f(F.errors_4xx))}
+        ${kp('متوسط الاستجابة',f(F.avg_ms)+' م.ث',F.avg_ms>800?'warn':'')}
+        ${kp('أبطأ 5% من الطلبات',f(F.p95_ms)+' م.ث',F.p95_ms>1500?'warn':'')}
+        ${kp('نسبة أخطاء الخادم',f(F.error_rate)+'%',F.error_rate>=5?'crit':F.error_rate>0?'warn':'',f(F.errors_5xx)+' خطأ')}
+        ${kp('الذاكرة',f((F.memory||{}).heap_pct)+'%',(F.memory||{}).heap_pct>=90?'warn':'',((F.memory||{}).rss/1048576).toFixed(0)+' م.ب')}
+        ${kp('تأخر المعالجة',f(F.loop_lag_p99_ms)+' م.ث',F.loop_lag_p99_ms>200?'warn':'')}
+      </div>
+      <div class=mon-ch><small>الطلبات في آخر 30 دقيقة <span class=mon-lg>الأحمر = أخطاء خادم</span></small>${chart}</div>
+    </section>
+    <section class=panel><div class=sec-h><h3>أبطأ المسارات</h3></div>${rt(F.slow_routes)}<div class=sec-h style="margin-top:14px"><h3>مسارات فيها أخطاء</h3></div>${rt(F.error_routes,'e')}</section>
+    <section class=panel><div class=sec-h><h3>النشاط خلال 24 ساعة</h3></div>
+      <div class=mon-ks>
+        ${kp('جلسات نشطة الآن',f(AC.sessions_now))}
+        ${kp('مستخدمون جدد',f(AC.new_users_24h))}
+        ${kp('طلبات جديدة',f(AC.agreements_24h))}
+        ${kp('رسائل',f(AC.messages_24h))}
+        ${kp('منشورات وريلز',f(AC.posts_24h))}
+        ${kp('دخول محظور مؤقتًا',f(AC.login_blocked),AC.login_blocked?'warn':'')}
+      </div>
+      <div class=mon-ks style="margin-top:10px">
+        ${kp('المستخدمون النشطون',f(P.active_users))}
+        ${kp('المساعدون النشطون',f(P.active_helpers))}
+        ${kp('اتفاقات مفتوحة',f(P.open_agreements))}
+      </div>
+    </section>
+    <section class=panel><div class=sec-h><h3>الإشعارات</h3><a class=pill-btn href="#/manage/ads">إرسال إشعار عام</a></div>
+      <div class=mon-ks>
+        ${kp('أُرسلت خلال 24 ساعة',f(N.sent_24h))}
+        ${kp('غير مقروءة',f(N.unread_total))}
+        ${kp('إشعارات عامة (7 أيام)',f(N.broadcasts_week))}
+      </div>
+      <div class=sec-h style="margin-top:14px"><h3>آخر الأحداث</h3></div>${evs}
+    </section>
+    <section class=panel><div class=sec-h><h3>حالة النظام</h3></div>
+      ${lb(S.database==='ok','قاعدة البيانات',S.database==='ok'?'تعمل':'خطأ')}
+      ${lb(!!S.last_backup,'آخر نسخة احتياطية',bk)}
+      ${lb(S.mail,'البريد الإلكتروني',S.mail?'مفعّل':'غير مفعّل')}
+      ${lb(S.push,'إشعارات الدفع',S.push?'مفعّلة':'غير مفعّلة')}
+      ${lb(S.payments,'بوابة الدفع',S.payments?'مفعّلة':'غير مفعّلة')}
+      <div class=mg-row><span>مدة التشغيل</span><b>${up}</b></div>
+      <div class=mg-row><span>حجم القاعدة</span><b>${mb}</b></div>
+    </section>
+  </div>`;
 };
 const drawHome=async()=>{
   const [d,mon]=await Promise.all([api('/admin/dashboard?days='+homeDays),api('/admin/monitor').catch(()=>null)]);const t=d.totals;
@@ -593,8 +623,8 @@ const drawHome=async()=>{
   const chartMarkup=()=>{const vals=d.series[chartKey]||[],last=vals.length?vals[vals.length-1]:0;return `${areaChart(vals,d.labels)}${last?`<div class=chart-tip>${f(last)} ${seriesName[chartKey]}</div>`:''}`};
   const acts=[['users','المستخدمون','إدارة المستخدمين والمساعدين','users'],['orders','الطلبات','متابعة الطلبات وإدارتها','orders'],['rpt','المخالفات','مراجعة البلاغات واتخاذ الإجراء','alert'],['cats','المهارات والتخصصات','إدارة التخصصات والمهارات','grid'],['sys','الإعدادات','تخصيص إعدادات المنصة','gear'],['fin','المدفوعات','متابعة المدفوعات والتحويلات','card']];
   body().innerHTML=`
-  <div class=welcome-row><div><h2>مرحباً بك في لوحة الإدارة 👋</h2><p>إليك نظرة سريعة على إحصائيات المنصة</p></div><select id=hDays aria-label="الفترة الزمنية" class=pill-select><option value=7 ${homeDays===7?'selected':''}>آخر 7 أيام</option><option value=30 ${homeDays===30?'selected':''}>آخر 30 يومًا</option><option value=90 ${homeDays===90?'selected':''}>آخر 90 يومًا</option></select></div>
-  ${monHtml(mon)}
+  <div class=welcome-row><div><h2>المتابعة الشاملة للمنصة</h2><p>أداء الموقع والتنبيهات والإشعارات في مكان واحد</p></div><select id=hDays aria-label="الفترة الزمنية" class=pill-select><option value=7 ${homeDays===7?'selected':''}>آخر 7 أيام</option><option value=30 ${homeDays===30?'selected':''}>آخر 30 يومًا</option><option value=90 ${homeDays===90?'selected':''}>آخر 90 يومًا</option></select></div>
+  <div id=monBox>${monHtml(mon)}</div>
   <div class="hm-grid">
     <div class=hm-stats>
       ${stat('s-red','alert','المخالفات',f(t.open_reports))}
@@ -619,6 +649,7 @@ const drawHome=async()=>{
     </section>
   </div>`;
   $('#hDays').onchange=e=>{homeDays=+e.target.value;draw()};
+  clearInterval(window.__monT);window.__monT=setInterval(async()=>{const bx=document.getElementById('monBox');if(!bx){clearInterval(window.__monT);return}try{bx.innerHTML=monHtml(await api('/admin/monitor'))}catch{}},30000);
   $('#hSeries').onchange=e=>{chartKey=e.target.value;$('#hChartTitle').innerHTML=`${svgI('chart',18)} إحصائيات ${seriesName[chartKey]}`;$('#hChart').innerHTML=chartMarkup()};
 };
 const ORD_ST={pending:'بانتظار القبول',agreed:'جارٍ التنفيذ',completion_requested:'بانتظار تأكيد الإنجاز',completed:'مكتمل',cancelled:'ملغي',disputed:'متنازع عليه',closed_disputed:'مغلق بعد المراجعة'};
@@ -684,11 +715,11 @@ const drawPerf=async()=>{
 function applyMgTheme(dark){const sh=document.querySelector('.mg-shell');if(sh)sh.classList.toggle('mg-dark',dark);const b=$('#mgTheme');if(b){b.textContent=dark?'☀ فاتح':'🌙 داكن';b.setAttribute('aria-pressed',dark?'true':'false')}}
 
 const recTable=(heads,rowsHtml,empty)=>rowsHtml.length?`<div class=tbl-wrap><table class=tbl><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`:`<div class=empty>${empty}</div>`;
-const PAGE_SUB={home:'نظرة عامة على أداء المنصة',users:'الحسابات والبحث والتصنيف والملفات',orders:'متابعة الطلبات والمتعثرة والتذكير',cats:'الأقسام والكلمات المفتاحية واختبار المطابقة',fin:'التحويلات والمستحقات والعمولات',acc:'الإيرادات والمصروفات والفوترة',ads:'إرسال الإعلانات وسجلها',audit:'كل العمليات الإدارية المسجلة',admins:'حسابات المشرفين الكاملة الصلاحيات',perf:'تقييم المساعدين وطلباتهم وبلاغاتهم',rate:'التقييمات والمراجعات المبلغ عنها',pts:'النقاط والمكافآت',rpt:'البلاغات والمخالفات',chat:'المحادثات المبلغ عنها',disp:'النزاعات والاعتراضات',supply:'توريدات المنصة وحد التسجيل',verify:'توثيق الحسابات والسجلات',staff:'الموظفون وصلاحياتهم',sys:'إعدادات المنصة والنسخ الاحتياطي'};
+const PAGE_SUB={home:'متابعة شاملة لأداء الموقع والتنبيهات والإشعارات',users:'الحسابات والبحث والتصنيف والملفات',orders:'متابعة الطلبات والمتعثرة والتذكير',cats:'الأقسام والكلمات المفتاحية واختبار المطابقة',fin:'التحويلات والمستحقات والعمولات',acc:'الإيرادات والمصروفات والفوترة',ads:'إرسال الإعلانات وسجلها',audit:'كل العمليات الإدارية المسجلة',admins:'حسابات المشرفين الكاملة الصلاحيات',perf:'تقييم المساعدين وطلباتهم وبلاغاتهم',rate:'التقييمات والمراجعات المبلغ عنها',pts:'النقاط والمكافآت',rpt:'البلاغات والمخالفات',chat:'المحادثات المبلغ عنها',disp:'النزاعات والاعتراضات',supply:'توريدات المنصة وحد التسجيل',verify:'توثيق الحسابات والسجلات',staff:'الموظفون وصلاحياتهم',sys:'إعدادات المنصة والنسخ الاحتياطي'};
 const setPageHead=()=>{const h=$('#mgHead');if(!h)return;if(tab==='home'){h.innerHTML='';return}const t=TABS.find(x=>x[0]===tab);h.innerHTML=`<div><h2>${esc(t?t[1]:'')}</h2><small>${esc(PAGE_SUB[tab]||'')}</small></div>`};
 const draw=async()=>{document.querySelectorAll('.mg-tab').forEach(x=>x.classList.toggle('on',x.dataset.t===tab));$('#mgNav').classList.remove('open');setPageHead();body().innerHTML='<small>جاري التحميل…</small>';
 try{body().innerHTML=skel(4);if(tab==='home')await drawHome();
-if(tab==='chat'&&curChat)await drawChatPage(curChat);else if(tab==='users'&&curUser)await drawUserProfile(curUser);else if(tab==='users')await drawUsersPage();else if(tab==='orders')await drawOrders();else if(tab==='ads')await drawAds();else if(tab==='audit')await drawAudit();else if(tab==='admins')await drawAdmins();else if(tab==='perf')await drawPerf();else if(tab==='rate')await drawRatings();else if(tab==='fin')await drawFinance();else if(tab==='acc')await drawAcc();else if(tab==='rep')await drawReports();else if(tab==='chat')await drawChats();else if(tab==='pts')await drawPoints();else if(tab==='rpt')await drawGrowth();else if(tab==='insights')await drawInsights();else if(tab==='disp')await drawDisputes();else if(tab==='supply'){await drawSupply();await drawCoverage()}else if(tab==='verify')await drawVerify();else if(tab==='staff')await drawStaff();else if(tab==='sys')await drawSystem();else await drawCatsWithTest();
+else if(tab==='chat'&&curChat)await drawChatPage(curChat);else if(tab==='users'&&curUser)await drawUserProfile(curUser);else if(tab==='users')await drawUsersPage();else if(tab==='orders')await drawOrders();else if(tab==='ads')await drawAds();else if(tab==='audit')await drawAudit();else if(tab==='admins')await drawAdmins();else if(tab==='perf')await drawPerf();else if(tab==='rate')await drawRatings();else if(tab==='fin')await drawFinance();else if(tab==='acc')await drawAcc();else if(tab==='rep')await drawReports();else if(tab==='chat')await drawChats();else if(tab==='pts')await drawPoints();else if(tab==='rpt')await drawGrowth();else if(tab==='insights')await drawInsights();else if(tab==='disp')await drawDisputes();else if(tab==='supply'){await drawSupply();await drawCoverage()}else if(tab==='verify')await drawVerify();else if(tab==='staff')await drawStaff();else if(tab==='sys')await drawSystem();else await drawCatsWithTest();
 }catch(x){body().innerHTML=`<small>${esc(x.message)}</small>`}};
 document.querySelectorAll('.mg-tab').forEach(x=>x.onclick=()=>{tab=x.dataset.t;curUser=null;curChat=null;history.replaceState(null,'','#/manage/'+tab);draw()});
 await draw()}

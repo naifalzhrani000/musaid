@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import {route, supplyOf, matchSections, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen} from '../core.js';
 import {ASSIST_CITIES} from '../../data.js';
+import {snapshot as perfSnapshot} from '../metrics.js';
 route('GET','/admin/reports',c=>{can(c,'support');const Q={user:'SELECT name t FROM users WHERE id=?'};
 return all("SELECT rp.*,u.name reporter FROM reports rp JOIN users u ON u.id=rp.reporter_id ORDER BY (rp.status='open') DESC,rp.id DESC LIMIT 100").map(r=>({...r,info:get(Q[r.type],r.target_id)?.t}))});
 route('POST','/admin/reports/(\\d+)/resolve',c=>{const a=can(c,'support'),r=get('SELECT * FROM reports WHERE id=?',c.p[0]);if(!r)throw err(404,'غير موجود');const note=str(c.b.note,3,300,'الملاحظة');if(c.b.hide&&r.type==='user'&&a.role!=='admin')throw err(403,'إيقاف الحسابات للمدير فقط');
@@ -157,8 +158,7 @@ route('GET','/admin/monitor',c=>{
   }catch{}
   let dbOk=true;try{get('SELECT 1 x')}catch{dbOk=false}
   let dbSize=0;try{dbSize=fs.statSync(DB_PATH).size}catch{}
-  return{
-    alerts:{
+  const A={
       open_reports:one("SELECT COUNT(*) n FROM reports WHERE status='open'"),
       disputes:one("SELECT COUNT(*) n FROM agreements WHERE status='disputed'"),
       vat_pending:one("SELECT COUNT(*) n FROM users WHERE account_type='helper' AND vat_status='registered' AND vat_verified=0"),
@@ -166,7 +166,53 @@ route('GET','/admin/monitor',c=>{
       stuck_pending:one("SELECT COUNT(*) n FROM agreements WHERE status='pending' AND created_at<datetime('now','-3 days')"),
       stuck_completion:one("SELECT COUNT(*) n FROM agreements WHERE status='completion_requested' AND updated_at<datetime('now','-7 days')"),
       failed_week:one("SELECT COUNT(*) n FROM failed_searches WHERE at>=datetime('now','-7 days')")
-    },
+  };
+  const perf=perfSnapshot();
+  const activity={
+    sessions_now:one('SELECT COUNT(*) n FROM sessions WHERE exp>?',Date.now()),
+    new_users_24h:one("SELECT COUNT(*) n FROM users WHERE created_at>=datetime('now','-1 day')"),
+    agreements_24h:one("SELECT COUNT(*) n FROM agreements WHERE created_at>=datetime('now','-1 day')"),
+    messages_24h:one("SELECT COUNT(*) n FROM direct_messages WHERE created_at>=datetime('now','-1 day')"),
+    posts_24h:one("SELECT COUNT(*) n FROM posts WHERE hidden=0 AND created_at>=datetime('now','-1 day')"),
+    login_blocked:one('SELECT COUNT(*) n FROM login_attempts WHERE n>=5 AND t>?',Date.now()-9e5)
+  };
+  const notifications={
+    sent_24h:one("SELECT COUNT(*) n FROM notifications WHERE created_at>=datetime('now','-1 day')"),
+    unread_total:one('SELECT COUNT(*) n FROM notifications WHERE read=0'),
+    broadcasts_week:one("SELECT COUNT(*) n FROM audit_log WHERE action='broadcast' AND at>=datetime('now','-7 days')")
+  };
+  const ev=[];
+  for(const r of all("SELECT name,created_at at FROM users ORDER BY id DESC LIMIT 5"))ev.push({kind:'user',text:'تسجيل مستخدم جديد: '+r.name,at:r.at,link:'users'});
+  for(const r of all("SELECT reason,created_at at FROM reports ORDER BY id DESC LIMIT 5"))ev.push({kind:'report',text:'بلاغ جديد: '+String(r.reason||'').slice(0,60),at:r.at,link:'rpt'});
+  for(const r of all("SELECT id,updated_at at FROM agreements WHERE status='disputed' ORDER BY updated_at DESC LIMIT 5"))ev.push({kind:'dispute',text:'نزاع على الطلب رقم '+r.id,at:r.at,link:'rpt'});
+  for(const r of all("SELECT id,created_at at FROM agreements ORDER BY id DESC LIMIT 5"))ev.push({kind:'order',text:'طلب جديد رقم '+r.id,at:r.at,link:'orders'});
+  for(const r of all("SELECT detail,at FROM audit_log WHERE action='broadcast' ORDER BY id DESC LIMIT 3"))ev.push({kind:'broadcast',text:'إشعار عام أُرسل: '+String(r.detail||'').split(':').slice(2).join(':').slice(0,60),at:r.at,link:'audit'});
+  const events=ev.sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,12);
+  const L=[],add=(level,text,link)=>L.push({level,text,link});
+  const bkAge=lastBackup?(Date.now()-new Date(lastBackup.at).getTime())/36e5:null;
+  if(!dbOk)add('critical','قاعدة البيانات لا تستجيب','sys');
+  if(perf.requests>=20&&perf.error_rate>=5)add('critical','نسبة أخطاء الخادم مرتفعة: '+perf.error_rate+'%','home');
+  else if(perf.errors_5xx>0)add('warn','أخطاء خادم منذ آخر تشغيل: '+perf.errors_5xx,'home');
+  if(perf.p95_ms>1500)add('warn','بطء في الاستجابة (الأبطأ 5%): '+perf.p95_ms+' مللي ثانية','home');
+  if(perf.memory.heap_pct>=90)add('warn','استهلاك الذاكرة مرتفع: '+perf.memory.heap_pct+'%','home');
+  if(perf.loop_lag_p99_ms>200)add('warn','تأخر في معالجة الطلبات: '+perf.loop_lag_p99_ms+' مللي ثانية','home');
+  if(bkAge===null)add('warn','لا توجد نسخة احتياطية بعد','sys');
+  else if(bkAge>48)add('warn','آخر نسخة احتياطية قبل '+Math.round(bkAge)+' ساعة','sys');
+  if(activity.login_blocked>0)add('warn','محاولات دخول محظورة مؤقتًا: '+activity.login_blocked,'users');
+  if(A.disputes)add('warn','نزاعات قيد المراجعة: '+A.disputes,'rpt');
+  if(A.open_reports)add('warn','بلاغات مفتوحة: '+A.open_reports,'rpt');
+  if(A.stuck_pending)add('warn','اتفاقات معلّقة منذ أكثر من 3 أيام: '+A.stuck_pending,'orders');
+  if(A.stuck_completion)add('warn','طلبات إتمام بلا تأكيد منذ أكثر من 7 أيام: '+A.stuck_completion,'orders');
+  if(A.vat_pending)add('info','أرقام ضريبية بانتظار التوثيق: '+A.vat_pending,'verify');
+  if(A.type_requests)add('info','طلبات تغيير نوع الحساب: '+A.type_requests,'verify');
+  if(A.failed_week)add('info','عمليات بحث بلا نتيجة خلال 7 أيام: '+A.failed_week,'cats');
+  if(!process.env.RESEND_API_KEY)add('info','البريد الإلكتروني غير مفعّل','sys');
+  if(!process.env.VAPID_PUBLIC_KEY)add('info','إشعارات الدفع غير مفعّلة','sys');
+  if(!process.env.HALA_WEBHOOK_SECRET)add('info','بوابة الدفع غير مفعّلة','sys');
+  const status=L.some(x=>x.level==='critical')?'critical':L.some(x=>x.level==='warn')?'warn':'ok';
+  return{
+    status,alerts_list:L,performance:perf,activity,notifications,events,
+    alerts:A,
     system:{
       database:dbOk?'ok':'error',
       db_size_bytes:dbSize,
