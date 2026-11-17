@@ -260,6 +260,7 @@ const hid=(await h('/me')).j.user.id;const oid=(await o('/me')).j.user.id;
 assert.equal((await o(`/direct/${hid}/agreements`,'POST',{amount:0,description:'تركيب باب'})).s,400);
 const r=await o(`/direct/${hid}/agreements`,'POST',{amount:150,description:'تركيب باب خشب'});assert.equal(r.s,200);
 const aid=r.j.id;
+assert.ok((await h('/notifications')).j.some(n=>String(n.text).includes('اقترح عليك اتفاقًا')&&n.link==='#/direct/'+oid),'اقتراح الاتفاق يصل المساعد كإشعار داخلي (ومنه الدفع) وليس بالبريد فقط');
 assert.equal((await o(`/agreements/${aid}/approve`,'POST')).s,403,'المقترح لا يعتمد اتفاقه بنفسه');
 assert.equal((await h(`/agreements/${aid}/approve`,'POST')).s,200);
 const list=(await o(`/direct/${hid}/agreements`)).j;assert.equal(list[0].status,'agreed');
@@ -829,6 +830,21 @@ test('إشعارات الدفع: الاشتراك والتشفير وفق RFC 82
   const plain=Buffer.concat([d.update(ct.subarray(0,ct.length-16)),d.final()]);
   assert.equal(plain[plain.length-1],2,'محدد آخر سجل');
   assert.equal(plain.subarray(0,plain.length-1).toString(),msg,'فك التشفير يعيد الرسالة');
+});
+
+test('إشعارات الدفع: فحص مفاتيح VAPID وتنظيفها وقراءة سبب رفض خدمة الدفع',async()=>{
+  const {vapidProblem,cleanKey,pushFailure}=await import('./src/push-crypto.js');
+  const {generateKeyPairSync}=await import('node:crypto');
+  const mk=()=>{const {publicKey,privateKey}=generateKeyPairSync('ec',{namedCurve:'P-256'});const j=publicKey.export({format:'jwk'}),d=privateKey.export({format:'jwk'});return{publicKey:Buffer.concat([Buffer.from([4]),Buffer.from(j.x,'base64url'),Buffer.from(j.y,'base64url')]).toString('base64url'),privateKey:d.d}};
+  const A=mk(),B=mk();
+  assert.equal(vapidProblem(A),'','زوج صحيح');
+  assert.ok(vapidProblem({publicKey:A.publicKey,privateKey:B.privateKey}),'زوج غير متطابق');
+  assert.ok(vapidProblem({publicKey:A.privateKey,privateKey:A.publicKey}),'مفتاحان مقلوبان');
+  assert.ok(vapidProblem({publicKey:'',privateKey:A.privateKey}),'مفتاح عام فارغ');
+  assert.equal(cleanKey(' \"'+A.publicKey+'\"\n'),A.publicKey,'يزيل الاقتباس والمسافات والأسطر');
+  assert.deepEqual(await pushFailure(new Response('{\"reason\":\"VapidPkHashMismatch\"}',{status:400})),{status:400,reason:'VapidPkHashMismatch',dead:true},'اشتراك بمفتاح قديم');
+  assert.equal((await pushFailure(new Response('',{status:410}))).dead,true,'منتهي');
+  assert.equal((await pushFailure(new Response('{\"reason\":\"BadJwtToken\"}',{status:403}))).dead,false,'403 لا يحذف الاشتراك');
 });
 
 test('إشعارات الدفع: تفضيل مستقل عن إشعارات البريد',async()=>{

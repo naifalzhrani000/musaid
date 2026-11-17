@@ -5,7 +5,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {pushTest, macOf, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, hitOr429, hx} from '../core.js';
+import {pushTest, pushCfg, pushKeyProblem, macOf, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, hitOr429, hx} from '../core.js';
 import {mediaDir} from '../storage.js';
 
 route('POST','/register',c=>{hitOr429('reg|'+c.ip,+(process.env.REGISTER_PER_HOUR)||20);const b=c.b,name=str(b.name,2,60,'الاسم'),email=str(b.email,5,120,'البريد').toLowerCase(),city=str(b.city||'',0,60,'المدينة');
@@ -105,7 +105,7 @@ return{ok:1}});
 
 route('POST','/me/helper-type-request',c=>{const u=need(c);if(u.account_type!=='helper')throw err(400,'للمساعدين فقط');const ht=c.b.helper_type;if(!['establishment','company'].includes(ht))throw err(400,'نوع غير صالح: المساعدون مؤسسات أو شركات فقط');if(ht===u.helper_type)throw err(400,'هذا هو نوعك الحالي');run('UPDATE users SET helper_type_request=? WHERE id=?',ht,u.id);return{ok:1,pending:ht}});
 
-route('GET','/push/key',c=>({key:process.env.VAPID_PUBLIC_KEY||null}));
+route('GET','/push/key',c=>({key:pushKeyProblem()?null:(pushCfg()?.publicKey||null)}));
 route('POST','/push/subscribe',c=>{const u=need(c),ep=c.b.endpoint,k=c.b.keys||{};if(typeof ep!=='string'||!/^https:\/\//.test(ep)||ep.length>2000)throw err(400,'اشتراك غير صالح');if(typeof k.p256dh!=='string'||typeof k.auth!=='string'||k.p256dh.length>200||k.auth.length>100)throw err(400,'مفاتيح الاشتراك غير صالحة');run('INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth) VALUES(?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id,p256dh=excluded.p256dh,auth=excluded.auth',u.id,ep,k.p256dh,k.auth);run('UPDATE users SET push_enabled=1 WHERE id=?',u.id);return{ok:1}});
 route('POST','/push/unsubscribe',c=>{const u=need(c);run('DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?',u.id,String(c.b.endpoint||''));return{ok:1}});
 route('POST','/push/test',async c=>{const u=need(c);return await pushTest(u.id)});
