@@ -544,7 +544,9 @@ test('الرقم الضريبي: للمؤسسات والشركات فقط، عب
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const h=cl();await h('/register','POST',{name:'شركة ضريبية',email:'vat1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'company',category_ids:[cat]});
 assert.equal((await h('/me/vat','POST',{vat_number:'123'})).s,400,'رقم قصير مرفوض');
-assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234'})).s,200,'رقم صحيح');
+assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234'})).s,400,'شهادة الضريبة مطلوبة عند أول حفظ');
+const vatImg=(await h('/upload','POST',{data:'data:image/png;base64,'+PNGDOC})).j.id;
+assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234',attachment_id:vatImg})).s,200,'رقم صحيح مع الشهادة');
 assert.equal((await h('/me')).j.user.vat_number,'312345678901234');
 await h('/profile','POST',{name:'شركة ضريبية',vat_status:'not_registered',vat_number:'999999999999999'});
 assert.equal((await h('/me')).j.user.vat_number,'312345678901234','الملف الشخصي لا يغيّر الرقم الضريبي');
@@ -899,3 +901,21 @@ test('بطاقات البحث: اسم المحل كاملًا مع صورته، 
   assert.equal(nameOf('ممتاز'), 'سعد', 'العميل: الاسم الأول فقط');
   assert.equal(nameOf('تعامل محترف'), 'شركة الأمان للسباكة', 'المساعد: الاسم كاملًا');
 });
+
+test('الأوراق الرسمية: السجل التجاري والعنوان الوطني بصورة ورقم، للمساعدين فقط',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='كهرباء').id;
+const h=cl();await h('/register','POST',{name:'مؤسسة الأوراق',email:'docs1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const img=(await h('/upload','POST',{data:'data:image/png;base64,'+PNGDOC})).j.id;
+assert.equal((await h('/me/docs','POST',{kind:'cr',number:'1010123456',attachment_id:img})).s,200,'سجل تجاري صحيح');
+assert.equal((await h('/me/docs','POST',{kind:'cr',number:'123',attachment_id:img})).s,400,'سجل قصير مرفوض');
+assert.equal((await h('/me/docs','POST',{kind:'cr',number:'1010123456'})).s,400,'الصورة مطلوبة');
+assert.equal((await h('/me/docs','POST',{kind:'address',number:'abcd12',attachment_id:img})).s,400,'العنوان المختصر بصيغة خاطئة');
+assert.equal((await h('/me/docs','POST',{kind:'address',number:'abcd1234',attachment_id:img})).s,200,'العنوان الوطني صحيح');
+assert.equal((await h('/me/docs','POST',{kind:'vat',number:'312345678901234',attachment_id:img})).s,400,'نوع غير مسموح عبر هذا المسار');
+const rows=(await h('/me/docs')).j;assert.equal(rows.length,2);assert.ok(rows.find(r=>r.kind==='address').number==='ABCD1234');
+const c=cl();await c('/register','POST',{name:'عميل ورق',email:'docs2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض'});
+const cimg=(await c('/upload','POST',{data:'data:image/png;base64,'+PNGDOC})).j.id;
+assert.equal((await c('/me/docs','POST',{kind:'cr',number:'1010123456',attachment_id:cimg})).s,403,'العميل لا يرفع أوراق مساعد');
+});
+
+const PNGDOC='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
