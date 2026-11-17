@@ -13,7 +13,7 @@ after(()=>srv.kill());
 const cl=()=>{let ck='';return async(p,m='GET',b)=>{const r=await fetch(B+'/api'+p,{method:m,headers:{'content-type':'application/json',cookie:ck},body:b?JSON.stringify(b):undefined});ck=r.headers.get('set-cookie')?.split(';')[0]||ck;return{s:r.status,j:await r.json().catch(()=>({}))}}};
 let phSeq=0;const ph=()=>'05'+String(70000000+(++phSeq));
 const reg=async(e)=>{const c=cl();await c('/register','POST',{name:'مستخدم '+e,email:e+'@t.sa',password:'12345678',terms:1,age:1,phone:ph()}); await c('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مستخدم '+e,phone:ph()}); await vfy(c);return c};
-const asHelper=async c=>{const cats=(await c('/skills')).j.categories;return c('/me/account-type','POST',{type:'helper',category_ids:[cats[0].id]})};
+const asHelper=async c=>{const cats=(await c('/skills')).j.categories;return c('/me/account-type','POST',{type:'helper',helper_type:'establishment',vat_number:'3'+String(Math.floor(Math.random()*1e14)).padStart(14,'0'),category_ids:[cats[0].id]})};
 const backdateHelper=e=>{const d=new DatabaseSync(DBF);d.prepare("UPDATE users SET created_at=datetime('now','-40 days') WHERE email=?").run(e);d.close()};
 const vfy=async(c)=>{const id=(await c('/me')).j.user.id;const d=new DatabaseSync(DBF);d.prepare("UPDATE users SET email_verified=1,vat_verified=1,vat_status='registered',vat_number=CASE WHEN vat_number IS NULL OR vat_number='' THEN '312345678901234' ELSE vat_number END WHERE id=?").run(id);d.close();};
 const verifyEmail=async(c)=>{const id=(await c('/me')).j.user.id;const d=new DatabaseSync(DBF);d.prepare('UPDATE users SET email_verified=1 WHERE id=?').run(id);d.close();};
@@ -74,16 +74,16 @@ const c1=await cl();assert.equal((await c1('/register','POST',{name:'عميل ق
 const c2=await cl();assert.equal((await c2('/register','POST',{name:'عميل قسم',email:'cat2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),account_type:'client'})).s,200);
 assert.equal((await c2('/me/sections','POST',{category_ids:[tech.id]})).s,403);
 assert.equal((await c2('/me/account-type','POST',{type:'helper',category_ids:[]})).s,400);
-assert.equal((await c2('/me/account-type','POST',{type:'helper',category_ids:[tech.id]})).s,200);
+assert.equal((await c2('/me/account-type','POST',{type:'helper',helper_type:'establishment',vat_number:'399999999999993',category_ids:[tech.id]})).s,200);
 assert.equal((await c2('/me')).j.user.account_type,'helper');
 assert.equal((await c2('/me/account-type','POST',{type:'client'})).s,200);
 assert.equal((await c2('/me')).j.user.account_type,'client');
 assert.equal((await c2('/me/sections','POST',{category_ids:[tech.id]})).s,403);
 const u=await cl();
-assert.equal((await u('/register','POST',{name:'مصمم تجريبي',email:'sk0@t.sa',password:'12345678',terms:1,age:1,phone:ph(),account_type:'helper',category_ids:[]})).s,400);
-assert.equal((await u('/register','POST',{name:'مصمم تجريبي',email:'sk1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',category_ids:[tech.id]})).s,200);
+assert.equal((await u('/register','POST',{name:'مصمم تجريبي',email:'sk0@t.sa',password:'12345678',terms:1,age:1,phone:ph(),account_type:'helper',helper_type:'establishment',category_ids:[]})).s,400);
+assert.equal((await u('/register','POST',{name:'مصمم تجريبي',email:'sk1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',helper_type:'establishment',category_ids:[tech.id]})).s,200);
 assert.equal((await u('/me')).j.user.account_type,'helper');
-assert.equal((await u('/me/sections','POST',{category_ids:[cats[0].id,cats[1].id]})).s,400);
+assert.equal((await u('/me/sections','POST',{category_ids:[cats[0].id,cats[1].id]})).s,200,'قسمان مسموحان (سباكة وكهرباء)');
 assert.equal((await u('/me/sections','POST',{category_ids:[]})).s,400);
 assert.equal((await u('/me/sections','POST',{category_ids:[tech.id]})).s,200);
 assert.deepEqual([...(await u('/me/sections')).j],[tech.id]);
@@ -103,7 +103,7 @@ test('صفحة المساعد: النبذة والأعمال والتقييما�
 const PNG3='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 const w=await cl();
 const cat=(await w('/skills')).j.categories.find(c=>c.name==='سباكة');
-await w('/register','POST',{name:'نجار تجريبي',email:'carp@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',category_ids:[cat.id]}); await w('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'نجار تجريبي',phone:ph()}); await vfy(w);
+await w('/register','POST',{name:'نجار تجريبي',email:'carp@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',helper_type:'establishment',category_ids:[cat.id]}); await w('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'نجار تجريبي',phone:ph()}); await vfy(w);
 const wid=(await w('/me')).j.user.id;
 assert.equal((await w('/me/bio','POST',{bio:'نجار بخبرة 10 سنوات في تركيب الأبواب والخزائن'})).s,200);
 const at=(await w('/upload','POST',{data:'data:image/png;base64,'+PNG3})).j.id;
@@ -235,10 +235,14 @@ assert.equal(last.status,429);
 
 test('القسم: المساعد يختار قسمًا واحدًا، ويظهر في صفحته',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة');
-const c=await cl();await c('/register','POST',{name:'قسم واحد',email:'sp1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat.id,cat.id+1]}).then(()=>{});
-const r=await c('/register','POST',{name:'قسم واحد ب',email:'sp2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat.id]});assert.equal(r.s,200);
+const c=await cl();await c('/register','POST',{name:'قسم واحد',email:'sp1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat.id,cat.id+1]}).then(()=>{});
+const r=await c('/register','POST',{name:'قسم واحد ب',email:'sp2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat.id]});assert.equal(r.s,200);
 assert.deepEqual([...(await c('/me/sections')).j],[cat.id]);
-assert.equal((await c('/me/sections','POST',{category_ids:[cat.id,cat.id+1]})).s,400,'قسم واحد فقط');
+{const d0=new DatabaseSync(DBF);if(!d0.prepare("SELECT 1 x FROM skill_categories WHERE name='قسم ثالث للاختبار'").get())d0.prepare("INSERT INTO skill_categories(name,sort) VALUES('قسم ثالث للاختبار',99)").run();d0.close()}
+const all3=(await cl()('/skills')).j.categories.slice(0,3).map(x=>x.id);assert.equal(all3.length,3);
+assert.equal((await c('/me/sections','POST',{category_ids:all3.slice(0,2)})).s,200,'قسمان مسموحان');
+assert.deepEqual([...(await c('/me/sections')).j].sort(),all3.slice(0,2).sort());
+assert.equal((await c('/me/sections','POST',{category_ids:all3})).s,400,'ثلاثة أقسام مرفوضة');{const d1=new DatabaseSync(DBF);d1.prepare("DELETE FROM skill_categories WHERE name='قسم ثالث للاختبار'").run();d1.close()}
 });
 test('الامتثال: التسجيل يتطلب تأكيد العمر، ويُحفظ إصدار الشروط، والتصدير يعيد بيانات المستخدم',async()=>{
 const c=await cl();assert.equal((await c('/register','POST',{name:'امتثال تجريبي',email:'cp1@t.sa',password:'12345678',terms:1})).s,400);
@@ -250,7 +254,7 @@ test('الاتفاق في المحادثة: يقترحه طرف، ويعتمده
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=await cl();await o('/register','POST',{name:'عميل اتفاق',email:'ag1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل اتفاق',phone:'0500000991'}); await vfy(o);
-const h=await cl();await h('/register','POST',{name:'مساعد اتفاق',email:'ag2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+const h=await cl();await h('/register','POST',{name:'مساعد اتفاق',email:'ag2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد اتفاق',phone:'0500000992'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;const oid=(await o('/me')).j.user.id;
 assert.equal((await o(`/direct/${hid}/agreements`,'POST',{amount:0,description:'تركيب باب'})).s,400);
@@ -266,7 +270,7 @@ test('عمولة الاتفاق: تظهر للمساعد فقط',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=await cl();await o('/register','POST',{name:'عميل عمولة',email:'cm1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل عمولة',phone:'0500000881'}); await vfy(o);
-const h=await cl();await h('/register','POST',{name:'مساعد عمولة',email:'cm2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+const h=await cl();await h('/register','POST',{name:'مساعد عمولة',email:'cm2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 backdateHelper('cm2@t.sa');
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد عمولة',phone:'0500000882'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
@@ -282,7 +286,7 @@ test('محفظة المساعد: العمولة تُخصم تلقائيًا عن
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=await cl();await o('/register','POST',{name:'عميل محفظة',email:'wl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل محفظة',phone:'0500000771'}); await vfy(o);
-const h=await cl();await h('/register','POST',{name:'مساعد محفظة',email:'wl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+const h=await cl();await h('/register','POST',{name:'مساعد محفظة',email:'wl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 backdateHelper('wl2@t.sa');
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد محفظة',phone:'0500000772'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
@@ -332,7 +336,7 @@ assert.equal((await adm('/admin/restore/cancel','POST')).s,200);
 assert.equal((await adm('/admin/restore/apply','POST',{confirm:'استعادة'})).s,400,'لا تطبيق بعد الإلغاء');
 });
 
-test('استعادة بالرمز: 4 أرقام، محدودة المحاولات، ثم كلمة مرور جديدة',async()=>{
+test('استعادة بالرمز: 6 أرقام، محدودة المحاولات، ثم كلمة مرور جديدة',async()=>{
 const c=await cl();await c('/register','POST',{name:'رمز استعادة',email:'otp1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
 const uid=(await c('/me')).j.user.id;
 await c('/logout','POST');
@@ -340,32 +344,32 @@ await cl()('/forgot','POST',{email:'otp1@t.sa'});
 const db=new DatabaseSync(DBF);const row=db.prepare('SELECT code_hash FROM reset_codes WHERE user_id=?').get(uid);db.close();
 assert.ok(row,'الرمز محفوظ');
 const sh=s=>createHash('sha256').update(s).digest('hex');
-const code='4821';
+const code='482193';
 const db2=new DatabaseSync(DBF);db2.prepare('UPDATE reset_codes SET code_hash=?,attempts=0 WHERE user_id=?').run(macFor(DBF,code+':'+uid),uid);db2.close();
 const x=cl();
-assert.equal((await x('/reset-code','POST',{email:'otp1@t.sa',code:'0000'})).s,400);
+assert.equal((await x('/reset-code','POST',{email:'otp1@t.sa',code:'000000'})).s,400);
 assert.equal((await x('/reset-code','POST',{email:'otp1@t.sa',code})).s,200,'الرمز الصحيح يعمل');
 const t=(await x('/reset-code','POST',{email:'otp1@t.sa',code})).j;assert.equal(t.s,undefined);
 });
 
-test('الرمز المكوّن من 4 أرقام يُقفل بعد 5 محاولات خاطئة',async()=>{
+test('الرمز المكوّن من 6 أرقام يُقفل بعد 5 محاولات خاطئة',async()=>{
 const c=await cl();await c('/register','POST',{name:'قفل الرمز',email:'lock1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
 const uid=(await c('/me')).j.user.id;const sh=s=>createHash('sha256').update(s).digest('hex');
-const db=new DatabaseSync(DBF);db.prepare("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,macFor(DBF,'7777:'+uid));db.close();
+const db=new DatabaseSync(DBF);db.prepare("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,macFor(DBF,'777777:'+uid));db.close();
 const x=cl();
-for(let i=0;i<5;i++)assert.equal((await x('/reset-code','POST',{email:'lock1@t.sa',code:'0000'})).s,400);
-assert.equal((await x('/reset-code','POST',{email:'lock1@t.sa',code:'7777'})).s,400,'بعد 5 محاولات حتى الرمز الصحيح لا يعمل');
+for(let i=0;i<5;i++)assert.equal((await x('/reset-code','POST',{email:'lock1@t.sa',code:'000000'})).s,400);
+assert.equal((await x('/reset-code','POST',{email:'lock1@t.sa',code:'777777'})).s,400,'بعد 5 محاولات حتى الرمز الصحيح لا يعمل');
 });
 
 test('تفعيل البريد بالرمز: الرمز الصحيح يفعّل، والخاطئ يُقفل بعد 5 محاولات',async()=>{
 const c=await cl();await c('/register','POST',{name:'تفعيل بالرمز',email:'vc1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
 const uid=(await c('/me')).j.user.id;const sh=s=>createHash('sha256').update(s).digest('hex');
 const db=new DatabaseSync(DBF);db.prepare('UPDATE users SET email_verified=0 WHERE id=?').run(uid);
-db.prepare("INSERT OR REPLACE INTO verify_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,macFor(DBF,'3141:'+uid));db.close();
-for(let i=0;i<5;i++)assert.equal((await c('/verify-code','POST',{code:'0000'})).s,400);
-assert.equal((await c('/verify-code','POST',{code:'3141'})).s,400,'بعد 5 محاولات يُقفل');
+db.prepare("INSERT OR REPLACE INTO verify_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,macFor(DBF,'314159:'+uid));db.close();
+for(let i=0;i<5;i++)assert.equal((await c('/verify-code','POST',{code:'000000'})).s,400);
+assert.equal((await c('/verify-code','POST',{code:'314159'})).s,400,'بعد 5 محاولات يُقفل');
 const db2=new DatabaseSync(DBF);db2.prepare("UPDATE verify_codes SET attempts=0 WHERE user_id=?").run(uid);db2.close();
-assert.equal((await c('/verify-code','POST',{code:'3141'})).s,200,'الرمز الصحيح يفعّل');
+assert.equal((await c('/verify-code','POST',{code:'314159'})).s,200,'الرمز الصحيح يفعّل');
 assert.equal((await c('/me')).j.user.email_verified,1);
 });
 
@@ -455,7 +459,7 @@ test('مختبر الطلبات: مساعد مناسب لا ينشئ سجلًا�
 const cats=(await cl()('/skills')).j.categories;const cat=cats.find(c=>c.name==='سباكة');
 const adm0=cl();await adm0('/login','POST',{email:'admin@t.sa',password:'12345678'});assert.equal((await adm0('/admin/cities/open','POST',{city:'جدة'})).s,200,'فتح المدينة يدويًا');
 const askc=cl();await askc('/register','POST',{name:'باحث مختبر ٢',email:'askl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
-const hp=cl();await hp('/register','POST',{name:'نجار مختبر',email:'lab1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat.id]});
+const hp=cl();await hp('/register','POST',{name:'نجار مختبر',email:'lab1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat.id]});
 await hp('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'نجار مختبر',phone:'0500007777'}); await vfy(hp);await hp('/pledge','POST',{accept:true,name:'نجار مختبر'});
 const dbx=new DatabaseSync(DBF);dbx.prepare("UPDATE users SET email_verified=1 WHERE email='lab1@t.sa'").run();dbx.close();
 const cnt=()=>{const d=new DatabaseSync(DBF);const n=d.prepare("SELECT COUNT(*) n FROM failed_searches WHERE text LIKE '%باب مختبر%'").get().n;d.close();return n};
@@ -484,7 +488,7 @@ test('الاستحقاق: العمولة بعد التأكيد فقط، والا
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل استحقاق',email:'es1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل استحقاق',phone:'0500005001'}); await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد استحقاق',email:'es2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد استحقاق',email:'es2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد استحقاق',phone:'0500005002'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
 const S={bank_name:'بنك',account_name:'مؤسسة المساعد',iban:'SA0380000000608010167519',commission_percent:2,commission_grace_days:3};
@@ -512,7 +516,7 @@ test('حل النزاع: قرار أولي من مسؤول غير طرف، ثم 
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل نزاع',email:'dsp1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل نزاع',phone:'0500006001'}); await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد نزاع',email:'dsp2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد نزاع',email:'dsp2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد نزاع',phone:'0500006002'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
 const d0=new DatabaseSync(DBF);d0.prepare("UPDATE users SET created_at=datetime('now','-40 days') WHERE id=?").run(hid);d0.close();
@@ -544,8 +548,8 @@ assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234'})).s,200,'�
 assert.equal((await h('/me')).j.user.vat_number,'312345678901234');
 await h('/profile','POST',{name:'شركة ضريبية',vat_status:'not_registered',vat_number:'999999999999999'});
 assert.equal((await h('/me')).j.user.vat_number,'312345678901234','الملف الشخصي لا يغيّر الرقم الضريبي');
-const f=cl();await f('/register','POST',{name:'مساعد فرد',email:'vat2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'individual',category_ids:[cat]});
-assert.equal((await f('/me/vat','POST',{vat_number:'312345678901234'})).s,403,'الفرد لا يحتاج رقمًا ضريبيًا');
+const f=cl();assert.equal((await f('/register','POST',{name:'مساعد فرد',email:'vat2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'individual',category_ids:[cat]})).s,400,'الأفراد لا يُقبلون كمساعدين');
+assert.equal((await f('/register','POST',{name:'بلا نوع',email:'vat3@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]})).s,400,'يلزم تحديد مؤسسة أو شركة');
 });
 
 test('لوحة المتابعة: التنبيهات وحالة النظام للمدير فقط',async()=>{
@@ -561,7 +565,7 @@ test('مهل النزاع التلقائية وتقرير التوريدات ا�
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل مهل',email:'dl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل مهل',phone:'0500007001'}); await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد مهل',email:'dl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد مهل',email:'dl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد مهل',phone:'0500007002'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
 const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
@@ -581,7 +585,7 @@ test('استحقاق متقدم: وسيلة التواصل بعد الاعتما
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();const rg=await o('/register','POST',{name:'عميل شكوى',email:'ztc1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});assert.equal(rg.s,200,'تسجيل العميل');
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل شكوى',phone:'0500008001'}); await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد شكوى',email:'ztc2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد شكوى',email:'ztc2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد شكوى',phone:'0500008002'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
 const d0=new DatabaseSync(DBF);d0.prepare("UPDATE users SET created_at=datetime('now','-40 days') WHERE id=?").run(hid);d0.close();
@@ -609,11 +613,11 @@ assert.equal(st().status,'refund_due','عمولة مدفوعة تنتظر الا
 
 test('توثيق المدير للرقم الضريبي، وتغيير نوع المساعد يُرفع للإدارة',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
-const h=cl();await h('/register','POST',{name:'مساعد توثيق',email:'vf1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'individual',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد توثيق',email:'vf1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await h('/profile','POST',{name:'مساعد توثيق',phone:'0500009301'});
 const hid=(await h('/me')).j.user.id;
 assert.equal((await h('/me/helper-type-request','POST',{helper_type:'company'})).s,200,'طلب التغيير يُرسل');
-assert.equal((await h('/me')).j.user.helper_type,'individual','لا يتغير النوع قبل موافقة الإدارة');
+assert.equal((await h('/me/helper-type-request','POST',{helper_type:'individual'})).s,400,'لا يمكن التحويل إلى فرد');assert.equal((await h('/me')).j.user.helper_type,'establishment','لا يتغير النوع قبل موافقة الإدارة');
 const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
 assert.equal((await admin('/admin/helper-type/'+hid+'/decide','POST',{decision:'approve'})).s,200);
 assert.equal((await h('/me')).j.user.helper_type,'company','بعد موافقة الإدارة يتغير النوع');
@@ -625,7 +629,7 @@ const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id
 const o=cl();await o('/register','POST',{name:'عميل فوترة',email:'bl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await verifyEmail(o);
 await o('/profile','POST',{name:'عميل فوترة',phone:'0500009401'});
-const h=cl();await h('/register','POST',{name:'مساعد فوترة',email:'bl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'individual',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد فوترة',email:'bl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await verifyEmail(h);
 await h('/profile','POST',{name:'مساعد فوترة',phone:'0500009402'});
 const hid=(await h('/me')).j.user.id;
@@ -653,10 +657,10 @@ await admin('/admin/settings','POST',{bank_name:'بنك',account_name:'مؤسس�
 const o=cl();await o('/register','POST',{name:'عميل توريد',email:'ts1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await verifyEmail(o);
 await o('/profile','POST',{name:'عميل توريد',phone:'0500009601'});
-const hr=cl();await hr('/register','POST',{name:'مساعد مسجل توريد',email:'ts2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+const hr=cl();await hr('/register','POST',{name:'مساعد مسجل توريد',email:'ts2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await verifyEmail(hr);
 await hr('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد مسجل توريد',phone:'0500009602'});await vfy(hr);
-const hu=cl();await hu('/register','POST',{name:'مساعد فرد توريد',email:'ts3@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'individual',category_ids:[cat]});
+const hu=cl();await hu('/register','POST',{name:'مساعد فرد توريد',email:'ts3@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await verifyEmail(hu);
 await hu('/profile','POST',{name:'مساعد فرد توريد',phone:'0500009603'});
 const hidR=(await hr('/me')).j.user.id,hidU=(await hu('/me')).j.user.id;
@@ -759,7 +763,7 @@ const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id
 const o=cl();await o('/register','POST',{name:'عميل هلا',email:'hl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await verifyEmail(o);
 await o('/profile','POST',{name:'عميل هلا',phone:'0500009501'});
-const h=cl();await h('/register','POST',{name:'مساعد هلا',email:'hl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد هلا',email:'hl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await verifyEmail(h);
 await h('/profile','POST',{name:'مساعد هلا',phone:'0500009502'});await h('/pledge','POST',{accept:true,name:'مساعد هلا'});
 const hid=(await h('/me')).j.user.id;
@@ -771,6 +775,8 @@ assert.equal((await o(`/agreements/${aid}/record-payment`,'POST')).s,403,'لا �
 assert.equal((await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agreement_id:aid,amount:1150})})).status,401,'الإشعار بلا سر مرفوض');
 const wh=b=>fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body:JSON.stringify(b)}).then(r=>r.status);
 assert.equal(await wh({agreement_id:aid}),400,'إشعار بلا مبلغ مرفوض');assert.equal(await wh({agreement_id:aid,amount:'abc'}),400,'مبلغ غير رقمي مرفوض');assert.equal(await wh({agreement_id:aid,amount:100}),400,'مبلغ ناقص مرفوض');
+const hm=async(b,sig)=>{const body=JSON.stringify(b);const s=sig??createHmac('sha256','test-hala').update(body).digest('hex');return (await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-signature':s},body})).status};
+assert.equal(await hm({agreement_id:aid,amount:100}),400,'توقيع HMAC صحيح يُقبل ثم يُرفض المبلغ الناقص');assert.equal(await hm({agreement_id:aid,amount:100},'0'.repeat(64)),401,'توقيع HMAC خاطئ مرفوض');
 const pl=(await o(`/agreements/${aid}/payment`)).j;assert.equal(pl.amount,1150);assert.equal(pl.status,'not_configured','رابط الدفع ينتظر ربط هلا');
 });
 
@@ -785,7 +791,7 @@ test('الدفع: لا يُسجَّل سداد على اتفاق غير قائم
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل دفع',email:'pay1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل دفع',phone:'0500007001'}); await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد دفع',email:'pay2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد دفع',email:'pay2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد دفع',phone:'0500007002'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
 const pending=(await o(`/direct/${hid}/agreements`,'POST',{amount:120,description:'اتفاق معلّق للدفع'})).j.id;
@@ -848,4 +854,48 @@ test('إصلاحات الأمان: غير المؤكد لا ينشر، ومنش�
   const del = await w('/me/delete', 'POST', { password: '12345678', confirm: 'حذف' });
   assert.equal(del.s, 200);
   assert.ok(!(await cl()('/feed')).j.find(p => p.body === 'منشور سيُحذف'), 'المنشور مخفي بعد الحذف');
+});
+
+test('بطاقات البحث: اسم المحل كاملًا مع صورته، وأسماء المقيّمين في الملف', async () => {
+  const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const cat = (await cl()('/skills')).j.categories.find(c => c.name === 'سباكة');
+  const mk = async (email, name, helper) => {
+    const c = cl();
+    await c('/register', 'POST', { name, email, password: '12345678', terms: 1, age: 1, phone: ph(), city: 'الرياض', ...(helper ? { account_type: 'helper', helper_type: 'establishment', category_ids: [cat.id] } : {}) });
+    await c('/profile', 'POST', { vat_status: 'registered', vat_number: '312345678901234', name, phone: ph() });
+    await vfy(c);
+    return c;
+  };
+  const shop1 = await mk('card1@t.sa', 'مؤسسة النور للسباكة', true);
+  const shop2 = await mk('card2@t.sa', 'شركة الأمان للسباكة', true);
+  const cust = await mk('card3@t.sa', 'سعد بن فهد العتيبي', false);
+  const idOf = async c => (await c('/me')).j.user.id;
+  const [s1, s2, cu] = [await idOf(shop1), await idOf(shop2), await idOf(cust)];
+
+  // صورة للمحل الأول فقط
+  const at = (await shop1('/upload', 'POST', { data: 'data:image/png;base64,' + PNG })).j.id;
+  assert.equal((await shop1('/me/avatar', 'POST', { attachment_id: at })).s, 200);
+
+  // اتفاقات منجزة لرفع ترتيب المحلين في نتائج البحث (الحد 10 نتائج)، وتقييمان للمحل الأول
+  const d = new DatabaseSync(DBF);
+  const ag = d.prepare("INSERT INTO agreements(a_id,b_id,amount,description,status) VALUES(?,?,100,'اختبار','completed')");
+  for (let i = 0; i < 40; i++) { ag.run(cu, s1); ag.run(cu, s2); }
+  const g1 = Number(ag.run(cu, s1).lastInsertRowid), g2 = Number(ag.run(s2, s1).lastInsertRowid);
+  const rv = d.prepare('INSERT INTO ratings(agreement_id,rater_id,ratee_id,stars,comment) VALUES(?,?,?,?,?)');
+  rv.run(g1, cu, s1, 5, 'ممتاز'); rv.run(g2, s2, s1, 4, 'تعامل محترف');
+  d.close();
+
+  const hit = (await cust('/assistant', 'POST', { message: 'أبي سباك يصلح تسريب' })).j;
+  const p1 = hit.providers.find(x => x.id === s1), p2 = hit.providers.find(x => x.id === s2);
+  assert.ok(p1 && p2, 'المحلان ضمن النتائج');
+  assert.equal(p1.name, 'مؤسسة النور للسباكة', 'الاسم كاملًا وليس كلمته الأولى');
+  assert.equal(p2.name, 'شركة الأمان للسباكة');
+  assert.equal(p1.avatar, String(at), 'صورة المحل تصل مع النتيجة');
+  assert.equal(p2.avatar, null, 'المحل بلا صورة يرجع null');
+
+  // التقييمات: العميل بالاسم الأول فقط (خصوصية)، والمساعد (مؤسسة/شركة) باسمه كاملًا
+  const prof = (await cust('/providers/' + s1)).j;
+  const nameOf = txt => prof.reviews.find(r => r.comment === txt)?.name;
+  assert.equal(nameOf('ممتاز'), 'سعد', 'العميل: الاسم الأول فقط');
+  assert.equal(nameOf('تعامل محترف'), 'شركة الأمان للسباكة', 'المساعد: الاسم كاملًا');
 });

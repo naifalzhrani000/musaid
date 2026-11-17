@@ -49,7 +49,7 @@ export async function sendWebPush(sub, plaintext, cfg) {
       'Content-Encoding': 'aes128gcm',
       'Content-Type': 'application/octet-stream',
       TTL: '86400',
-      Urgency: 'normal',
+      Urgency: 'high',
     },
     body: encryptPayload(sub.p256dh, sub.auth, plaintext),
   });
