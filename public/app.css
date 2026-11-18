@@ -698,58 +698,10 @@ label.switch.switch input:disabled + .slider{opacity:.5}
 .inv-card.cancelled{opacity:.6}
 @media (max-width:480px){.inv-parties{grid-template-columns:1fr}}
 
-/* ===== المحادثة المباشرة: شكل حديث بأسلوب ChatGPT / Gemini =====
-   كل القواعد هنا محصورة بـ body.dchat-mode (تُضاف في directChat وتُزال في route)،
-   فلا تتأثر المحادثة مع المساعد الذكي ولا باقي الصفحات. */
+/* ===== المحادثة المباشرة: مطابقة للتصميم المعتمد (تُطبَّق فقط على body.dchat-mode) ===== */
+.dcs{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;display:block}
+.dcs-fill{width:22px;height:22px;fill:currentColor;display:block}
 .dc-ico{width:40px;height:40px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--g);flex:0 0 auto;padding:0;min-height:40px}
-.dc-ico:hover{background:#f1f5f3}
-.dc-ico .ic{width:22px;height:22px}
-
-body.dchat-mode{background:#fff;padding-bottom:0}
-body.dchat-mode .bnav{display:none!important}
-body.dchat-mode #app{display:flex;flex-direction:column;max-width:none;margin:0;padding:0;height:calc(100dvh - 64px);min-height:420px;overflow:hidden}
-
-body.dchat-mode .dc-top{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #eef1ef;background:#fff}
-body.dchat-mode .dc-title{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35}
-body.dchat-mode .dc-title b{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body.dchat-mode .dc-title .lnk{align-self:flex-start;padding:0;min-height:0;font-size:12px;text-decoration:none}
-
-body.dchat-mode #dchat{flex:1;min-height:0;display:flex;flex-direction:column;gap:0;width:100%;max-width:760px;margin:0 auto;padding:0 12px;background:none;box-shadow:none;border:0;border-radius:0}
-body.dchat-mode #dchat>h3{display:none}
-body.dchat-mode #dchat>small{flex:0 0 auto;padding:8px 4px 0;font-size:12px;color:var(--mu);text-align:center}
-body.dchat-mode #dagr{flex:0 0 auto;max-height:28vh;overflow:auto;margin-top:8px}
-body.dchat-mode #aform{flex:0 0 auto;display:grid;grid-template-columns:minmax(0,1fr) 150px auto;gap:6px;align-items:center;margin:8px 0 0;padding:8px;background:#f7f9f8;border:1px solid #e6ece9;border-radius:16px}
-body.dchat-mode #aform small{grid-column:1/-1;font-size:12px;line-height:1.5;padding:0 4px;text-align:start}
-body.dchat-mode #aform input{width:100%;min-width:0;min-height:40px;padding:8px 12px;margin:0}
-body.dchat-mode #aform .btn{min-height:40px;padding:8px 16px;white-space:nowrap}
-@media (max-width:480px){
-  body.dchat-mode #aform{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  body.dchat-mode #aform .btn{grid-column:1/-1}
-}
-
-body.dchat-mode #dmsgs{flex:1;min-height:0;max-height:none;overflow-y:auto;display:flex;flex-direction:column;gap:18px;padding:18px 4px}
-body.dchat-mode #dmsgs .bub{max-width:82%;padding:0;background:none;border:0;box-shadow:none;border-radius:0;color:var(--t);line-height:1.9;font-size:16px;word-break:break-word}
-body.dchat-mode #dmsgs .bub.b{align-self:flex-start}
-body.dchat-mode #dmsgs .bub.u{align-self:flex-end;background:#f0f2f1;color:var(--t);padding:10px 16px;border-radius:22px;max-width:78%}
-body.dchat-mode #dmsgs .btime{display:block;font-size:11px;color:#9aa5a0;padding:4px 2px 0}
-body.dchat-mode #dmsgs .bub.u .btime{text-align:end}
-body.dchat-mode #dmsgs .pic{max-width:240px;border-radius:14px;margin-bottom:6px}
-body.dchat-mode #dmsgs .topic-card small{color:var(--g)}
-body.dchat-mode #dmsgs .inv-card{align-self:stretch;max-width:520px;width:100%;border:1px solid #e5e9e7;border-radius:18px;box-shadow:0 2px 10px rgba(15,40,30,.05);padding:14px}
-
-body.dchat-mode .dc-empty{margin:auto;text-align:center;color:var(--mu);padding:24px 8px}
-body.dchat-mode .dc-empty b{display:block;font-size:20px;color:var(--t);margin-bottom:14px}
-body.dchat-mode .dc-sugs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-body.dchat-mode .dc-sug{background:#fff;border:1px solid #dfe6e2;border-radius:999px;padding:8px 14px;font:inherit;font-size:14px;color:var(--t);cursor:pointer;min-height:40px}
-body.dchat-mode .dc-sug:hover{background:#f1f7f4;border-color:#c9dcd3}
-
-body.dchat-mode #dform{flex:0 0 auto;display:flex;align-items:center;gap:4px;background:#f3f5f4;border:1px solid #e3e8e5;border-radius:999px;padding:6px 6px 6px 8px;margin:10px 0 14px;position:relative;box-shadow:0 4px 14px rgba(15,40,30,.06)}
-body.dchat-mode #dform input{border:0;background:transparent;box-shadow:none;padding:8px 6px;min-height:42px;flex:1;min-width:0}
-body.dchat-mode #dform input:focus{outline:none}
-body.dchat-mode #dform #plusBtn,body.dchat-mode #dform #dpic{width:40px;height:40px;min-height:40px;padding:0;border-radius:50%;background:transparent;color:var(--g);border:0;font-size:24px;line-height:1;display:grid;place-items:center}
-body.dchat-mode #dform #plusBtn:hover,body.dchat-mode #dform #dpic:hover{background:#e6ece9}
-body.dchat-mode #dform #dpic .ic{width:20px;height:20px}
-body.dchat-mode #dform>button:last-child{background:var(--g);color:#fff;border:0;border-radius:999px;padding:9px 18px;min-height:40px;font-weight:600}
 
 .dc-ov{position:fixed;inset:0;background:rgba(15,30,25,.35);z-index:80;display:flex;justify-content:flex-start}
 .dc-drawer{width:min(340px,86vw);height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:0 0 30px rgba(0,0,0,.15);animation:dcIn .2s ease-out}
@@ -763,7 +715,97 @@ body.dchat-mode #dform>button:last-child{background:var(--g);color:#fff;border:0
 .dc-item b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dc-item small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+body.dchat-mode{background:#f5f6f6;padding-bottom:0}
+body.dchat-mode>header,body.dchat-mode>footer,body.dchat-mode .bnav{display:none!important}
+body.dchat-mode #app{display:flex;flex-direction:column;max-width:none;margin:0;padding:0;height:100vh;height:100dvh;overflow:hidden}
+
+/* الشريط العلوي */
+body.dchat-mode .dc-top{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px max(14px,calc(50% - 380px));min-height:66px;background:#fff;border-bottom:1px solid #eceeed;position:relative;z-index:6}
+body.dchat-mode .dc-logo{width:46px;height:46px;border-radius:50%;background:var(--g);display:grid;place-items:center;flex:0 0 auto;overflow:hidden}
+body.dchat-mode .dc-logo img{width:26px;height:26px;object-fit:contain}
+body.dchat-mode .dc-title{flex:1;min-width:0}
+body.dchat-mode .dc-title b{display:block;font-size:19px;line-height:1.3;color:var(--g);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.dchat-mode .dc-plus-wrap{position:relative;flex:0 0 auto}
+body.dchat-mode .dc-plus{width:44px;height:44px;min-height:44px;border-radius:50%;border:0;background:var(--g);color:#fff;font-size:30px;line-height:1;display:grid;place-items:center;padding:0;cursor:pointer;font-weight:300}
+body.dchat-mode .dc-plus-wrap .plus-menu{top:calc(100% + 10px);bottom:auto;inset-inline-start:auto;inset-inline-end:auto;left:-10px;right:auto;min-width:300px;border-radius:18px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.14)}
+body.dchat-mode .plus-menu button{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:17px;padding:14px 16px;color:#111;min-height:52px}
+body.dchat-mode .plus-menu button .dcs{color:var(--g);width:24px;height:24px}
+body.dchat-mode .dc-dots{width:40px;height:40px;min-height:40px;border:0;background:transparent;color:#222;display:grid;place-items:center;cursor:pointer;padding:0;flex:0 0 auto}
+body.dchat-mode .dc-dots .dcs{width:26px;height:26px}
+
+/* المحتوى القابل للتمرير */
+body.dchat-mode #dchat{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;padding:0 max(14px,calc(50% - 380px));-webkit-overflow-scrolling:touch}
+body.dchat-mode #dagr{flex:0 0 auto}
+body.dchat-mode #dagr:not(:empty){padding-top:12px}
+body.dchat-mode #dmsgs{display:flex;flex-direction:column;gap:16px;padding:16px 0 12px;max-height:none;overflow:visible}
+
+/* الرسائل */
+body.dchat-mode .dc-row{display:flex;align-items:flex-end;gap:10px}
+body.dchat-mode .dc-row.me{justify-content:flex-start}
+body.dchat-mode .dc-row.them{justify-content:flex-end}
+body.dchat-mode .dc-av,body.dchat-mode .dc-av-me{width:44px;height:44px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;overflow:hidden}
+body.dchat-mode .dc-av{background:var(--g)}
+body.dchat-mode .dc-av img{width:24px;height:24px;object-fit:contain}
+body.dchat-mode .dc-av-me{background:#e4e7e6;color:#8d9592}
+body.dchat-mode .dc-av-me .dcs{width:24px;height:24px;stroke-width:1.6}
+body.dchat-mode .dc-col{display:flex;flex-direction:column;max-width:74%;min-width:0}
+body.dchat-mode .dc-row.me .dc-col{align-items:flex-start}
+body.dchat-mode .dc-row.them .dc-col{align-items:flex-end}
+body.dchat-mode .dc-bub{padding:12px 16px;border-radius:22px;font-size:17px;line-height:1.75;word-break:break-word;color:#111;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+body.dchat-mode .dc-row.me .dc-bub{background:#d9f6e5}
+body.dchat-mode .dc-bub .pic{max-width:240px;border-radius:14px;margin-bottom:6px;display:block}
+body.dchat-mode .dc-bub .topic-card small{color:var(--g)}
+body.dchat-mode .dc-time{display:flex;align-items:center;gap:4px;font-size:12px;color:#8a938f;padding:4px 6px 0}
+body.dchat-mode .dc-ticks{font-style:normal;color:#2fa57a;font-size:12px;letter-spacing:-2px}
+
+/* بطاقة الفاتورة */
+body.dchat-mode .dc-invrow{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
+body.dchat-mode .dc-inv{width:min(88%,560px);background:#fff;border:1px solid #e3e7e5;border-radius:22px;padding:0 0 10px;box-shadow:0 2px 10px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:10px}
+body.dchat-mode .dc-inv-head{position:relative;margin:26px 10px 0;background:#e7f5ee;border-radius:16px;padding:14px 12px 12px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+body.dchat-mode .dc-inv-head b{font-size:18px;color:#111}
+body.dchat-mode .dc-inv-head small{font-size:15px;color:#5f6f68}
+body.dchat-mode .dc-check{position:absolute;top:-24px;left:50%;transform:translateX(-50%);width:50px;height:50px;border-radius:50%;background:#1f9d66;border:4px solid #fff;display:grid;place-items:center}
+body.dchat-mode .dc-check .dcs{stroke:#fff;stroke-width:2.6;width:24px;height:24px}
+body.dchat-mode .dc-parties{display:grid;grid-template-columns:1fr 1fr;margin:0 10px;background:#f6f8f7;border-radius:16px;padding:12px 10px}
+body.dchat-mode .dc-parties>div{padding:0 6px;display:flex;flex-direction:column;gap:6px;min-width:0}
+body.dchat-mode .dc-parties>div:first-child{border-inline-end:1px solid #dfe5e2;padding-inline-end:12px}
+body.dchat-mode .dc-ph{display:flex;align-items:center;justify-content:flex-start;gap:6px;font-size:15px;color:#111;margin-bottom:2px}
+body.dchat-mode .dc-ph .dcs{width:18px;height:18px;color:var(--g)}
+body.dchat-mode .dc-kv{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px;color:#6b7572}
+body.dchat-mode .dc-kv b{color:#111;font-weight:600;text-align:left;overflow-wrap:anywhere;font-size:14px}
+body.dchat-mode .dc-det{margin:0 10px;background:#f6f8f7;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px}
+body.dchat-mode .dc-det .dc-kv{font-size:16px}
+body.dchat-mode .dc-det .dc-kv b{font-size:16px}
+body.dchat-mode .dc-det .dc-total b{font-size:18px;color:#111}
+body.dchat-mode .dc-acts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 10px 0}
+body.dchat-mode .dc-acts button{min-height:52px;border-radius:14px;font:inherit;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;padding:0 10px}
+body.dchat-mode .dc-pay{background:var(--g);color:#fff;border:0}
+body.dchat-mode .dc-cash{background:#fff;color:var(--g);border:1.5px solid var(--g)}
+body.dchat-mode .dc-inv>.dc-time{align-self:flex-start;padding:0 14px}
+body.dchat-mode .dc-note{width:min(80%,520px);background:#fff;border:1px solid #e4e9e6;border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+body.dchat-mode .dc-note small{color:#4b5752;font-size:14px}
+body.dchat-mode .dc-link{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid #e4e9e6;border-radius:12px;padding:12px 14px;font:inherit;color:var(--g);font-weight:600;cursor:pointer;min-height:50px}
+body.dchat-mode .dc-link b{font-size:22px;line-height:1;color:#7d8985}
+body.dchat-mode .dc-link .dcs{width:20px;height:20px}
+
+/* الحالة الفارغة والاقتراحات */
+body.dchat-mode .dc-empty{margin:auto;text-align:center;color:var(--mu);padding:24px 8px}
+body.dchat-mode .dc-empty b{display:block;font-size:20px;color:var(--t);margin-bottom:14px}
+body.dchat-mode .dc-sugs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+body.dchat-mode .dc-sug{background:#fff;border:1px solid #dfe6e2;border-radius:999px;padding:8px 14px;font:inherit;font-size:14px;color:var(--t);cursor:pointer;min-height:40px}
+
+/* نموذج الاتفاق داخل نافذة منبثقة */
+body.dchat-mode .mo-box label{display:grid;gap:6px;font-size:14px}
+
+/* صندوق الكتابة */
+body.dchat-mode #dform{flex:0 0 auto;position:relative;z-index:5;display:flex;align-items:center;gap:6px;margin:8px max(14px,calc(50% - 380px)) 14px;padding:8px;background:#fff;border:1px solid #e3e7e5;border-radius:999px;box-shadow:0 4px 16px rgba(0,0,0,.07)}
+body.dchat-mode #dform input{flex:1;min-width:0;border:0;background:transparent;box-shadow:none;padding:10px 8px;min-height:46px;font-size:16px;margin:0;width:auto;border-radius:0}
+body.dchat-mode #dform input:focus{outline:none}
+body.dchat-mode .dc-attach{width:44px;height:44px;min-height:44px;border:0;background:transparent;color:#4b5752;display:grid;place-items:center;padding:0;cursor:pointer;border-radius:50%}
+body.dchat-mode .dc-send{width:48px;height:48px;min-height:48px;border:0;border-radius:50%;background:var(--g);color:#fff;display:grid;place-items:center;padding:0;cursor:pointer}
+body.dchat-mode .dc-send .dcs-fill{width:20px;height:20px}
+
 @media (max-width:480px){
-  body.dchat-mode #dchat{padding:0 10px}
-  body.dchat-mode #dmsgs .bub.u{max-width:86%}
+  body.dchat-mode .dc-col{max-width:80%}
+  body.dchat-mode .dc-inv{width:94%}
 }
