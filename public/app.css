@@ -697,3 +697,73 @@ label.switch.switch input:disabled + .slider{opacity:.5}
 .inv-acts small{color:#6b7280;font-size:12px}
 .inv-card.cancelled{opacity:.6}
 @media (max-width:480px){.inv-parties{grid-template-columns:1fr}}
+
+/* ===== المحادثة المباشرة: شكل حديث بأسلوب ChatGPT / Gemini =====
+   كل القواعد هنا محصورة بـ body.dchat-mode (تُضاف في directChat وتُزال في route)،
+   فلا تتأثر المحادثة مع المساعد الذكي ولا باقي الصفحات. */
+.dc-ico{width:40px;height:40px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--g);flex:0 0 auto;padding:0;min-height:40px}
+.dc-ico:hover{background:#f1f5f3}
+.dc-ico .ic{width:22px;height:22px}
+
+body.dchat-mode{background:#fff;padding-bottom:0}
+body.dchat-mode .bnav{display:none!important}
+body.dchat-mode #app{display:flex;flex-direction:column;max-width:none;margin:0;padding:0;height:calc(100dvh - 64px);min-height:420px;overflow:hidden}
+
+body.dchat-mode .dc-top{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #eef1ef;background:#fff}
+body.dchat-mode .dc-title{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35}
+body.dchat-mode .dc-title b{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.dchat-mode .dc-title .lnk{align-self:flex-start;padding:0;min-height:0;font-size:12px;text-decoration:none}
+
+body.dchat-mode #dchat{flex:1;min-height:0;display:flex;flex-direction:column;gap:0;width:100%;max-width:760px;margin:0 auto;padding:0 12px;background:none;box-shadow:none;border:0;border-radius:0}
+body.dchat-mode #dchat>h3{display:none}
+body.dchat-mode #dchat>small{flex:0 0 auto;padding:8px 4px 0;font-size:12px;color:var(--mu);text-align:center}
+body.dchat-mode #dagr{flex:0 0 auto;max-height:28vh;overflow:auto;margin-top:8px}
+body.dchat-mode #aform{flex:0 0 auto;display:grid;grid-template-columns:minmax(0,1fr) 150px auto;gap:6px;align-items:center;margin:8px 0 0;padding:8px;background:#f7f9f8;border:1px solid #e6ece9;border-radius:16px}
+body.dchat-mode #aform small{grid-column:1/-1;font-size:12px;line-height:1.5;padding:0 4px;text-align:start}
+body.dchat-mode #aform input{width:100%;min-width:0;min-height:40px;padding:8px 12px;margin:0}
+body.dchat-mode #aform .btn{min-height:40px;padding:8px 16px;white-space:nowrap}
+@media (max-width:480px){
+  body.dchat-mode #aform{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  body.dchat-mode #aform .btn{grid-column:1/-1}
+}
+
+body.dchat-mode #dmsgs{flex:1;min-height:0;max-height:none;overflow-y:auto;display:flex;flex-direction:column;gap:18px;padding:18px 4px}
+body.dchat-mode #dmsgs .bub{max-width:82%;padding:0;background:none;border:0;box-shadow:none;border-radius:0;color:var(--t);line-height:1.9;font-size:16px;word-break:break-word}
+body.dchat-mode #dmsgs .bub.b{align-self:flex-start}
+body.dchat-mode #dmsgs .bub.u{align-self:flex-end;background:#f0f2f1;color:var(--t);padding:10px 16px;border-radius:22px;max-width:78%}
+body.dchat-mode #dmsgs .btime{display:block;font-size:11px;color:#9aa5a0;padding:4px 2px 0}
+body.dchat-mode #dmsgs .bub.u .btime{text-align:end}
+body.dchat-mode #dmsgs .pic{max-width:240px;border-radius:14px;margin-bottom:6px}
+body.dchat-mode #dmsgs .topic-card small{color:var(--g)}
+body.dchat-mode #dmsgs .inv-card{align-self:stretch;max-width:520px;width:100%;border:1px solid #e5e9e7;border-radius:18px;box-shadow:0 2px 10px rgba(15,40,30,.05);padding:14px}
+
+body.dchat-mode .dc-empty{margin:auto;text-align:center;color:var(--mu);padding:24px 8px}
+body.dchat-mode .dc-empty b{display:block;font-size:20px;color:var(--t);margin-bottom:14px}
+body.dchat-mode .dc-sugs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+body.dchat-mode .dc-sug{background:#fff;border:1px solid #dfe6e2;border-radius:999px;padding:8px 14px;font:inherit;font-size:14px;color:var(--t);cursor:pointer;min-height:40px}
+body.dchat-mode .dc-sug:hover{background:#f1f7f4;border-color:#c9dcd3}
+
+body.dchat-mode #dform{flex:0 0 auto;display:flex;align-items:center;gap:4px;background:#f3f5f4;border:1px solid #e3e8e5;border-radius:999px;padding:6px 6px 6px 8px;margin:10px 0 14px;position:relative;box-shadow:0 4px 14px rgba(15,40,30,.06)}
+body.dchat-mode #dform input{border:0;background:transparent;box-shadow:none;padding:8px 6px;min-height:42px;flex:1;min-width:0}
+body.dchat-mode #dform input:focus{outline:none}
+body.dchat-mode #dform #plusBtn,body.dchat-mode #dform #dpic{width:40px;height:40px;min-height:40px;padding:0;border-radius:50%;background:transparent;color:var(--g);border:0;font-size:24px;line-height:1;display:grid;place-items:center}
+body.dchat-mode #dform #plusBtn:hover,body.dchat-mode #dform #dpic:hover{background:#e6ece9}
+body.dchat-mode #dform #dpic .ic{width:20px;height:20px}
+body.dchat-mode #dform>button:last-child{background:var(--g);color:#fff;border:0;border-radius:999px;padding:9px 18px;min-height:40px;font-weight:600}
+
+.dc-ov{position:fixed;inset:0;background:rgba(15,30,25,.35);z-index:80;display:flex;justify-content:flex-start}
+.dc-drawer{width:min(340px,86vw);height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:0 0 30px rgba(0,0,0,.15);animation:dcIn .2s ease-out}
+@keyframes dcIn{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+.dc-dh{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eef1ef}
+.dc-dl{overflow:auto;flex:1;padding:6px}
+.dc-item{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;text-decoration:none;color:var(--t)}
+.dc-item:hover{background:#f3f6f4}
+.dc-item i{width:40px;height:40px;border-radius:50%;background:#0f6b4f;color:#fff;display:grid;place-items:center;font-style:normal;font-weight:700;flex:0 0 auto}
+.dc-item span{flex:1;min-width:0;display:flex;flex-direction:column}
+.dc-item b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-item small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+@media (max-width:480px){
+  body.dchat-mode #dchat{padding:0 10px}
+  body.dchat-mode #dmsgs .bub.u{max-width:86%}
+}
