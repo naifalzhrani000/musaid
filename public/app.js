@@ -17,8 +17,9 @@ async function exportData(){try{const d=await api('/me/export');const a=document
 function toggleMenu(){const m=$('#menu');m.hidden=!m.hidden}
 function closeMenu(){const m=$('#menu');if(m)m.hidden=true}
 document.addEventListener('click',e=>{if(e.target.closest('#mb,#hmb')){toggleMenu();return}if(!e.target.closest('#menu'))closeMenu()});
-function nav(){const u=me.user,h=location.hash||'#/',a=(l,t)=>`<a href="${l}" class="${h===l?'on':''}">${t}</a>`;
-$('#nav').innerHTML=`<a class=logo href="#/"><span class=mark><img loading=lazy decoding=async src=/hand.png alt=""></span>المساعد</a><div class=hact>${u?`<a class=bell href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<a class=hlogin href="#/login">تسجيل الدخول</a>'}<button id=mb aria-label="القائمة">${ic(I.menu)}</button></div>`;
+let pcHtml='';
+function nav(){const u=me.user,h=location.hash||'#/',a=(l,t)=>`<a href="${l}" class="${h===l?'on':''}">${t}</a>`;const isHome=h==='#/'||h==='#'||h==='';
+$('#nav').innerHTML=`<a class=logo href="#/"><span class=mark><img loading=lazy decoding=async src=/hand.png alt=""></span>المساعد</a>${isHome?`<div class=pcircles id=pc aria-label="آخر المنشورات">${pcHtml}</div>`:''}<div class=hact>${u?`<a class=bell href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<a class=hlogin href="#/login">تسجيل الدخول</a>'}<button id=mb aria-label="القائمة">${ic(I.menu)}</button></div>`;
 $('#menu').innerHTML=a('#/','المساعد الذكي')+(u?a('#/profile/data','ملفي الشخصي'):'')+a('#/feed','المنشورات العامة')+(isStandalone()?'':'<a href="#" data-act=installApp>تثبيت التطبيق</a>')+(u?a('#/chats','محادثاتي')+a('#/profile','حسابي')+`<a href="#" data-act=toggleAllNotify>${allNotifyOn()?'إيقاف كل الإشعارات':'تفعيل كل الإشعارات'}</a>`+(['admin','staff'].includes(u.role)?a('#/manage','الإدارة'):''):'')+(u?'<a href="#" data-act="exportData">تصدير بياناتي</a><a href="#/settings">الإعدادات</a>'+(u.account_type==='helper'?'':'<a href="#/profile">إدارة الحساب</a>')+'<a href="#" data-act="logout">تسجيل الخروج</a>':'')+'<div class=menu-legal>'+a('#/complaints','سياسة الشكاوى')+a('#/about','من نحن')+a('#/contact','تواصل معنا')+a('#/terms','الشروط والأحكام')+a('#/privacy','سياسة الخصوصية')+'</div>';
 try{if(me.user&&navigator.setAppBadge){me.unread?navigator.setAppBadge(me.unread):navigator.clearAppBadge()}}catch{}
 renderBottom(h);$('#menu').onclick=e=>{if(e.target.tagName==='A')closeMenu()}}
@@ -404,7 +405,7 @@ function plusSetup(id,reload,proposeAgr){const btn=$('#plusBtn'),menu=$('#plusMe
 const legal=kind=>{const t=kind==='terms'?'الشروط والأحكام':kind==='complaints'?'سياسة الشكاوى وفض النزاعات':'سياسة الخصوصية';app.innerHTML=`<section class=legal><div class=lg-art>${LG_ART[kind]||''}</div><h1>${t}</h1><p class=draft>مسودة: هذا النص لم يُعتمد بعد، ويجب مراجعته من محامٍ مختص قبل نشره رسميًا.</p><div id=lgs>${LEGAL[kind].map(([h,b])=>`<h2>${esc(h)}</h2><p>${esc(b).replace(/\n/g,'<br>')}</p>`).join('')}</div><p class=meta-l id=lo></p></section>`;
 orgInfo().then(o=>{const txt=kind==='complaints'?null:o[kind==='terms'?'terms_text':'privacy_text'];if(txt)$('#lgs').innerHTML=txt.split(/\n\s*\n/).map(x=>`<p>${esc(x.trim())}</p>`).join('');$('#lo').innerHTML=`المنشأة المالكة للمنصة: ${o.org_name?esc(o.org_name)+(o.org_cr?'، سجل تجاري رقم '+esc(o.org_cr):''):'[اسم المؤسسة ورقم السجل التجاري]'}`})};
 const routes=[[/^#\/(mine|new|r\/\d+|chat\/\d+\/\d+)$/,()=>{location.hash='#/'}],[/^#\/settings$/,settingsPage],[/^#\/wallet$/,walletPage],[/^#\/direct\/(\d+)$/,directChat],[/^#\/verify\/([0-9a-f]{64})$/,verifyPage],[/^#\/profile\/gallery$/,feedPage],[/^#\/profile\/(\w+)$/,profileSub],[/^#\/insights$/,insights],[/^#\/manage(?:\/([\w/]+))?$/,t=>loadAdmin().then(()=>manage(t))],[/^#\/chats$/,chats],[/^#\/profile$/,profileAccount],[/^#\/invoices$/,invoicesList],[/^#\/invoice\/(\d+)$/,invoiceView],[/^#\/notifs$/,notifs],[/^#\/login$/,()=>auth(false)],[/^#\/admin-login$/,()=>auth(false)],[/^#\/register$/,()=>auth(true)],[/^#\/complaints$/,()=>legal('complaints')],[/^#\/agreement\/(\d+)$/,agreementPage],[/^#\/about$/,about],[/^#\/contact$/,contact],[/^#\/forgot$/,forgot],[/^#\/reset\/([0-9a-f]{64})$/,resetPage],[/^#\/p\/(\d+)$/,provider],[/^#\/verify-email$/,verifyEmailPage],[/^#\/feed$/,feedPage],[/^#\/terms$/,()=>legal('terms')],[/^#\/privacy$/,()=>legal('privacy')],[/^#\/admin$/,()=>{location.hash='#/manage'}]];
-async function route(){const h=location.hash||'#/';document.body.classList.remove('dchat-mode');nav();$('#ft').hidden=true;document.body.classList.toggle('home',h==='#/'||h==='#'||h==='');if(/#\/(new|profile|notifs|admin(?!-login)|mine|chats|chat)/.test(h)&&!me.user)return location.hash='#/login';
+async function route(){const h=location.hash||'#/';document.body.classList.remove('dchat-mode');nav();$('#ft').hidden=true;document.body.classList.toggle('home',h==='#/'||h==='#'||h==='');if(document.body.classList.contains('home'))loadPC();if(/#\/(new|profile|notifs|admin(?!-login)|mine|chats|chat)/.test(h)&&!me.user)return location.hash='#/login';
 for(const[re,f]of routes){const m=re.exec(h);if(m){try{await f(m[1],m[2])}catch(e){app.innerHTML=`<div class=empty>${esc(e.message)}</div>`}return}}
 if(h==='#list'||h==='#/'||h==='#')return home();home()}
 const modal=(t,x)=>{const o=document.createElement('div');o.className='ov';o.innerHTML=`<div class=mo><h3 style="margin:0">${esc(t)}</h3><div class=pre>${esc(x)}</div><button class=btn>إغلاق</button></div>`;o.querySelector('button').onclick=()=>o.remove();document.body.append(o)};
@@ -502,6 +503,20 @@ async function toggleAllNotify(){
   }catch(x){toast(x.message||'تعذّر التغيير',1)}
   nav();
 }
+
+/* دائرتان في الشريط العلوي: آخر منشورين عامّين (صورة أو فيديو) */
+let pcSig='';
+async function loadPC(){
+  try{
+    const list=await api('/feed/recent');
+    const sig=list.map(p=>p.id).join(',');
+    if(sig===pcSig&&pcHtml)return;
+    pcSig=sig;
+    pcHtml=list.map(p=>{const src=`/api/files/${+p.attachment_id}`;const media=/^video\//.test(p.mime||'')?`<video src="${src}#t=0.1" muted playsinline preload=metadata></video>`:`<img loading=lazy decoding=async src="${src}" alt="">`;return `<a class=pc href="#/feed" aria-label="آخر المنشورات"><span>${media}</span></a>`}).join('');
+    const el=$('#pc');if(el)el.innerHTML=pcHtml;
+  }catch{}
+}
+setInterval(()=>{if(!document.hidden&&$('#pc'))loadPC()},15000);
 
 /* تحديث عداد الإشعارات كل دقيقة (يظهر على أيقونة التطبيق وعلى الجرس) */
 setInterval(async()=>{if(!me.user)return;try{const m=await api('/me');const n=m.unread||0;if(n!==(me.unread||0)){me.unread=n;nav()}}catch{}},60000);

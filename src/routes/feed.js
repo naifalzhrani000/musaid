@@ -18,6 +18,11 @@ route('GET','/feed',c=>{
     WHERE p.hidden=0 AND u.active=1 AND (?=0 OR p.id<?) ORDER BY p.id DESC LIMIT 30`,me,before,before).map(r=>({...r,liked:!!r.liked}));
 });
 
+// آخر منشورين عامّين فيهم صورة أو فيديو (لدوائر الشريط العلوي)
+route('GET','/feed/recent',()=>all(`SELECT p.id,p.attachment_id,a.mime FROM posts p
+    JOIN users u ON u.id=p.user_id JOIN attachments a ON a.id=p.attachment_id
+    WHERE p.hidden=0 AND u.active=1 ORDER BY p.id DESC LIMIT 2`));
+
 // إعجاب أو إلغاؤه (تبديل): المسجلون فقط
 route('POST','/feed/(\\d+)/like',c=>{
   const u=verified(c),id=+c.p[0];
