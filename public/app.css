@@ -809,3 +809,16 @@ body.dchat-mode .dc-send .dcs-fill{width:20px;height:20px}
   body.dchat-mode .dc-col{max-width:80%}
   body.dchat-mode .dc-inv{width:94%}
 }
+
+/* ===== بطاقة الاتفاق: تنسيق متجاوب للجوال ===== */
+.agr-card{min-width:0;display:flex;flex-direction:column;gap:6px}
+.agr-top{flex-wrap:wrap;gap:8px}
+.agr-amt{font-size:17px}
+.agr-meta{font-size:13px;color:#4b5563;overflow-wrap:anywhere}
+.agr-meta small{display:block;overflow-wrap:anywhere}
+.agr-desc{overflow-wrap:anywhere;margin:0}
+.agr-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.agr-act .btn{flex:1 1 auto;text-align:center;white-space:normal;line-height:1.4}
+@media (max-width:480px){
+  .agr-act .btn{flex:1 1 100%;min-height:44px}
+}
