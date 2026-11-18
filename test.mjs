@@ -832,6 +832,28 @@ test('إشعارات الدفع: الاشتراك والتشفير وفق RFC 82
   assert.equal(plain.subarray(0,plain.length-1).toString(),msg,'فك التشفير يعيد الرسالة');
 });
 
+test('الأوراق الرسمية: الآيبان والشعار والمؤسسة والحذف، وحماية الرقم الضريبي',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='كهرباء').id;
+const h=cl();await h('/register','POST',{name:'مؤسسة الآيبان',email:'extra1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const img=(await h('/upload','POST',{data:'data:image/png;base64,'+PNGDOC})).j.id;
+assert.equal((await h('/me/extra','POST',{kind:'iban',number:'SA0380000000608010167519'})).s,400,'الآيبان يحتاج صورة');
+assert.equal((await h('/me/extra','POST',{kind:'iban',number:'SA12',attachment_id:img})).s,400,'الآيبان القصير مرفوض');
+assert.equal((await h('/me/extra','POST',{kind:'iban',number:'sa03 8000 0000 6080 1016 7519',attachment_id:img})).s,200,'الآيبان الصحيح يُقبل مع المسافات');
+assert.equal((await h('/me/extra','POST',{kind:'logo'})).s,400,'الشعار يحتاج صورة');
+assert.equal((await h('/me/extra','POST',{kind:'logo',attachment_id:img})).s,200,'الشعار يُقبل');
+assert.equal((await h('/me/extra','POST',{kind:'org',number:'x'})).s,400,'اسم المؤسسة القصير مرفوض');
+assert.equal((await h('/me/extra','POST',{kind:'org',number:'مؤسسة الرياض للخدمات'})).s,200,'اسم المؤسسة يُقبل بلا صورة');
+assert.equal((await h('/me/extra','POST',{kind:'cr',number:'1010123456',attachment_id:img})).s,400,'السجل لا يمر من هذا المسار');
+let docs=(await h('/me/docs')).j;
+assert.ok(docs.some(d=>d.kind==='iban'&&d.number==='SA0380000000608010167519'),'الآيبان في القائمة');
+assert.ok(docs.some(d=>d.kind==='logo')&&docs.some(d=>d.kind==='org'),'الشعار والمؤسسة في القائمة');
+assert.equal((await h('/me/docs/delete','POST',{kind:'vat'})).s,400,'الرقم الضريبي لا يُحذف من هنا');
+assert.equal((await h('/me/docs/delete','POST',{kind:'iban'})).s,200,'حذف الآيبان');
+docs=(await h('/me/docs')).j;
+assert.ok(!docs.some(d=>d.kind==='iban'),'اختفى الآيبان بعد الحذف');
+const me=(await h('/me')).j.user;assert.ok(!me.iban,'حُذف الآيبان من بيانات الحساب أيضًا');
+});
+
 test('إشعارات الدفع: فحص مفاتيح VAPID وتنظيفها وقراءة سبب رفض خدمة الدفع',async()=>{
   const {vapidProblem,cleanKey,pushFailure}=await import('./src/push-crypto.js');
   const {generateKeyPairSync}=await import('node:crypto');

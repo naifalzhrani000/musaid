@@ -4,7 +4,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {route, pushKeyProblem, supplyOf, matchSections, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen} from '../core.js';
+import {route, supplyOf, matchSections, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen} from '../core.js';
 import {ASSIST_CITIES} from '../../data.js';
 import {snapshot as perfSnapshot} from '../metrics.js';
 route('GET','/admin/reports',c=>{can(c,'support');const Q={user:'SELECT name t FROM users WHERE id=?'};
@@ -207,7 +207,7 @@ route('GET','/admin/monitor',c=>{
   if(A.type_requests)add('info','طلبات تغيير نوع الحساب: '+A.type_requests,'verify');
   if(A.failed_week)add('info','عمليات بحث بلا نتيجة خلال 7 أيام: '+A.failed_week,'cats');
   if(!process.env.RESEND_API_KEY)add('info','البريد الإلكتروني غير مفعّل','sys');
-  if(!process.env.VAPID_PUBLIC_KEY)add('info','إشعارات الدفع غير مفعّلة','sys');else if(pushKeyProblem())add('warn','إشعارات الدفع معطّلة: '+pushKeyProblem(),'sys');
+  if(!process.env.VAPID_PUBLIC_KEY)add('info','إشعارات الدفع غير مفعّلة','sys');
   if(!process.env.HALA_WEBHOOK_SECRET)add('info','بوابة الدفع غير مفعّلة','sys');
   const status=L.some(x=>x.level==='critical')?'critical':L.some(x=>x.level==='warn')?'warn':'ok';
   return{
@@ -220,7 +220,7 @@ route('GET','/admin/monitor',c=>{
       node:process.version,
       last_backup:lastBackup,
       mail:!!process.env.RESEND_API_KEY,
-      push:!!process.env.VAPID_PUBLIC_KEY&&!pushKeyProblem(),
+      push:!!process.env.VAPID_PUBLIC_KEY,
       payments:!!process.env.HALA_WEBHOOK_SECRET
     },
     platform:{

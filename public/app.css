@@ -669,3 +669,5 @@ header .logo .mark img{width:16px;height:16px;object-fit:contain}
 .switch input:checked + .slider::before{transform:translateX(22px)}
 [dir=rtl] .switch input:checked + .slider::before{transform:translateX(-22px)}
 [dir=rtl] .switch .slider::before{left:auto;right:3px}
+
+.doc-list{display:grid;gap:8px;margin:8px 0}.doc-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px}.doc-pic{width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center}.doc-pic img{max-width:48px;max-height:48px;object-fit:contain}.doc-txt{display:flex;flex-direction:column;gap:2px}.doc-txt small{color:#5b6b64}

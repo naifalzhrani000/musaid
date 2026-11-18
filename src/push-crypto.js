@@ -54,32 +54,3 @@ export async function sendWebPush(sub, plaintext, cfg) {
     body: encryptPayload(sub.p256dh, sub.auth, plaintext),
   });
 }
-
-// تنظيف قيمة مفتاح لُصقت من لوحة الاستضافة: مسافات وأسطر جديدة وعلامات اقتباس زائدة
-export const cleanKey = (s) => String(s || '').trim().replace(/^["']+|["']+$/g, '').trim();
-
-// يتحقق أن المفتاحين بالصيغة الصحيحة وأنهما زوج واحد. يعيد وصف المشكلة أو '' إن كانا سليمين
-export function vapidProblem({ publicKey, privateKey }) {
-  try {
-    const pub = unb64(publicKey), d = unb64(privateKey);
-    if (pub.length !== 65 || pub[0] !== 4) return 'المفتاح العام غير صالح: يجب أن يكون 65 بايت بصيغة base64url ويبدأ بـ 0x04';
-    if (d.length !== 32) return 'المفتاح الخاص غير صالح: يجب أن يكون 32 بايت بصيغة base64url';
-    const ecdh = crypto.createECDH('prime256v1');
-    ecdh.setPrivateKey(d);
-    if (!ecdh.getPublicKey().equals(pub)) return 'المفتاح الخاص لا يطابق المفتاح العام (ليسا من زوج واحد)';
-    return '';
-  } catch (e) {
-    return 'صيغة مفاتيح VAPID غير صالحة: ' + e.message;
-  }
-}
-
-// يقرأ سبب رفض خدمة الدفع (آبل تعيد JSON فيه reason). dead = اشتراك لا يصلح بعد الآن:
-// منتهٍ (404/410) أو أُنشئ بمفتاح VAPID مختلف عن مفتاح الخادم الحالي، ولا يُصلحه إلا إعادة الاشتراك من الجهاز
-export async function pushFailure(r) {
-  const raw = (await r.text().catch(() => '')).slice(0, 300);
-  let reason = '';
-  try { reason = String(JSON.parse(raw).reason || ''); } catch {}
-  if (!reason) reason = raw.replace(/\s+/g, ' ').trim().slice(0, 120);
-  const dead = r.status === 404 || r.status === 410 || /VapidPkHashMismatch|do not correspond to the credentials/i.test(raw);
-  return { status: r.status, reason, dead };
-}
