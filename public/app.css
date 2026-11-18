@@ -660,14 +660,15 @@ header .logo .mark img{width:16px;height:16px;object-fit:contain}
 .sc[aria-pressed=true]{border-color:var(--g);color:var(--g);font-weight:700}
 @media (max-width:360px){.spec-choice{grid-template-columns:1fr}}
 
-/* مفتاح تفعيل وضع المساعد */
-.switch{position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0}
-.switch input{opacity:0;width:0;height:0}
-.switch .slider{position:absolute;inset:0;background:#cbd5e1;border-radius:28px;transition:.2s;cursor:pointer}
-.switch .slider::before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
-.switch input:checked + .slider{background:#0f4f3c}
-.switch input:checked + .slider::before{transform:translateX(22px)}
-[dir=rtl] .switch input:checked + .slider::before{transform:translateX(-22px)}
-[dir=rtl] .switch .slider::before{left:auto;right:3px}
+/* مفتاح التفعيل المنزلق (موحّد لكل الشاشات) */
+label.switch.switch{position:relative;display:inline-block;flex:0 0 auto;width:52px;min-width:52px;height:30px;min-height:0;margin:0;padding:0;gap:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+label.switch.switch input{position:absolute;inset:0;width:100%;height:100%;min-height:0;margin:0;padding:0;border:0;opacity:0;cursor:pointer;z-index:2}
+label.switch.switch .slider{position:absolute;inset:0;background:#cbd5e1;border-radius:999px;transition:background .2s ease;box-shadow:inset 0 0 0 1px rgba(15,23,42,.06)}
+label.switch.switch .slider::before{content:"";position:absolute;top:3px;inset-inline-start:3px;width:24px;height:24px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.28);transition:inset-inline-start .2s ease}
+label.switch.switch input:checked + .slider{background:#0f6b4f}
+label.switch.switch input:checked + .slider::before{inset-inline-start:25px}
+label.switch.switch input:focus-visible + .slider{outline:3px solid rgba(15,107,79,.35);outline-offset:2px}
+label.switch.switch input:disabled + .slider{opacity:.5}
+@media (prefers-reduced-motion:reduce){label.switch.switch .slider,label.switch.switch .slider::before{transition:none}}
 
 .doc-list{display:grid;gap:8px;margin:8px 0}.doc-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px}.doc-pic{width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center}.doc-pic img{max-width:48px;max-height:48px;object-fit:contain}.doc-txt{display:flex;flex-direction:column;gap:2px}.doc-txt small{color:#5b6b64}
