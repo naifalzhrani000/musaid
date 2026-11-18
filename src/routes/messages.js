@@ -76,3 +76,35 @@ route('POST','/agreements/(\\d+)/rate',c=>{const u=need(c),id=+c.p[0];const g=ge
 const invRow=id=>get('SELECT i.*,a.a_id,a.b_id FROM invoices i LEFT JOIN agreements a ON a.id=i.agreement_id WHERE i.id=?',id);
 route('GET','/invoices/(\\d+)',c=>{const u=need(c);const r=invRow(+c.p[0]);if(!r)throw err(404,'الفاتورة غير موجودة');if(!(u.role==='admin'||u.id===r.a_id||u.id===r.b_id))throw err(403,'غير مصرح');const com=get('SELECT amount FROM agreement_commissions WHERE agreement_id=?',r.agreement_id);const {a_id,b_id,...pub}=r;return{...pub,commission:com?com.amount:null,commission_pct:commissionPctFor()}});
 route('GET','/me/invoices',c=>{const u=need(c);return all('SELECT i.id,i.kind,i.ref,i.total,i.issued_at,i.issuer_name,i.buyer_name FROM invoices i JOIN agreements a ON a.id=i.agreement_id WHERE a.a_id=? OR a.b_id=? ORDER BY i.id DESC LIMIT 100',u.id,u.id)});
+
+// ---- فواتير المحادثة ----
+// يصدرها المساعد فقط، بعد اتفاق نافذ على الخدمة والمبلغ، ولا يعدّلها أي طرف
+const CHAT_INV_AGREED=['agreed','completion_requested','completed'];
+const partySnap=uid=>{const x=get('SELECT name,phone,email,city,address,vat_status,vat_number FROM users WHERE id=?',uid)||{};const cr=get("SELECT number FROM helper_docs WHERE user_id=? AND kind='cr'",uid);const ad=get("SELECT number FROM helper_docs WHERE user_id=? AND kind='address'",uid);return{name:x.name||'',phone:x.phone||'',email:x.email||'',city:x.city||'',address:(ad&&ad.number)||x.address||'',cr:cr?cr.number:'',vat:x.vat_status==='registered'?(x.vat_number||''):'',vat_status:x.vat_status||''}};
+const invView=r=>{const {helper_snapshot,client_snapshot,ag_paid,ag_via,...pub}=r;return{...pub,helper:JSON.parse(helper_snapshot),client:JSON.parse(client_snapshot),status:r.status==='cancelled'?'cancelled':ag_paid?'paid_online':'awaiting_payment',paid_at:ag_paid||null,paid_via:ag_via||null}};
+const invSelect='SELECT ci.*,a.paid_at ag_paid,a.paid_via ag_via FROM chat_invoices ci JOIN agreements a ON a.id=ci.agreement_id';
+
+route('POST','/direct/(\\d+)/invoices',c=>tx(()=>{const u=verified(c),peer=+c.p[0];if(peer===u.id)throw err(400,'غير صالح');
+  if(!get('SELECT 1 x FROM users WHERE id=? AND active=1',peer))throw err(404,'المستخدم غير موجود');
+  const ag=get(`SELECT * FROM agreements WHERE ((a_id=? AND b_id=?) OR (a_id=? AND b_id=?)) AND status IN ('agreed','completion_requested','completed') AND paid_at IS NULL AND id NOT IN (SELECT agreement_id FROM chat_invoices WHERE status='active') ORDER BY id DESC LIMIT 1`,u.id,peer,peer,u.id);
+  if(!ag)throw err(400,'لا يمكن إنشاء فاتورة قبل الاتفاق على الخدمة والمبلغ، أو أن الاتفاق الحالي مفوتر ومدفوع');
+  if(helperOf(ag)!==u.id)throw err(403,'إنشاء الفاتورة للمساعد فقط');
+  if(needsVat(u))throw err(403,'رقمك الضريبي غير مُعتمد حاليًا، عدّله في ملفك الشخصي قبل إصدار الفواتير');
+  const service=str(c.b.service,3,300,'موضوع الخدمة'),amount=Number(c.b.amount);
+  if(service!==String(ag.description).trim()||amount!==Number(ag.amount))throw err(400,'الموضوع والمبلغ يجب أن يطابقا ما اتفقتما عليه في الاتفاق');
+  const H=partySnap(u.id),C=partySnap(peer);const miss=[];
+  if(!H.name)miss.push('اسم المساعد');if(!H.phone)miss.push('جوال المساعد');if(!H.email)miss.push('بريد المساعد');if(H.vat_status==='registered'&&!H.vat)miss.push('الرقم الضريبي للمساعد');
+  if(!C.name)miss.push('اسم العميل');if(!C.phone)miss.push('جوال العميل');if(!C.email)miss.push('بريد العميل');
+  if(miss.length)throw err(400,'لا يمكن إصدار الفاتورة قبل استكمال: '+miss.join('، '));
+  const y=new Date().getFullYear();const n=get('SELECT COUNT(*)+1 n FROM chat_invoices WHERE number LIKE ?',`INV-${y}-%`).n;const number=`INV-${y}-${String(n).padStart(4,'0')}`;
+  const id=Number(run('INSERT INTO chat_invoices(number,agreement_id,helper_id,client_id,service,amount,vat_amount,total,helper_snapshot,client_snapshot) VALUES(?,?,?,?,?,?,?,?,?,?)',number,ag.id,u.id,peer,service,ag.amount,ag.vat_amount||0,ag.total_amount,JSON.stringify(H),JSON.stringify(C)).lastInsertRowid);
+  run('INSERT INTO audit_log(admin_id,action,detail) VALUES(NULL,?,?)','chat_invoice_created',`${number}:agreement=${ag.id}:by=${u.id}:total=${ag.total_amount}`);
+  notify(peer,`أصدر ${u.name} فاتورة رقم ${number} بمبلغ ${ag.total_amount} ريال`,'#/direct/'+u.id);
+  return{ok:1,id,number,total:ag.total_amount}}));
+
+route('GET','/direct/(\\d+)/invoices',c=>{const u=need(c),peer=+c.p[0];return all(invSelect+' WHERE (ci.helper_id=? AND ci.client_id=?) OR (ci.helper_id=? AND ci.client_id=?) ORDER BY ci.id',peer,u.id,u.id,peer).map(invView)});
+
+route('POST','/chat-invoices/(\\d+)/cancel',c=>tx(()=>{const u=need(c),id=+c.p[0];const r=get(invSelect+' WHERE ci.id=?',id);if(!r)throw err(404,'الفاتورة غير موجودة');
+  if(r.helper_id!==u.id)throw err(403,'الإلغاء للمساعد المُصدِر فقط');if(r.status==='cancelled')throw err(400,'الفاتورة ملغاة مسبقًا');if(r.ag_paid)throw err(400,'الفاتورة مدفوعة، والإلغاء بعد السداد يتم عبر الإدارة');
+  const reason=str(c.b.reason,3,200,'سبب الإلغاء');run("UPDATE chat_invoices SET status='cancelled',cancelled_at=datetime('now'),cancel_reason=? WHERE id=?",reason,id);
+  notify(r.client_id,`ألغى المساعد الفاتورة رقم ${r.number}`,'#/direct/'+r.helper_id);return{ok:1}}));

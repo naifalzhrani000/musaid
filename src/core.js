@@ -90,6 +90,9 @@ const issuer=ht.taxed?{name:ht.name,vat:ht.vat}:{name,vat:reg?pvat:''};
 const rate=(ht.taxed||reg)?0.15:0;const vat=Math.round(a.amount*rate*100)/100,total=Math.round((a.amount+vat)*100)/100;
 const seq=get('SELECT COALESCE(MAX(seq),0)+1 n FROM invoices').n;const ts=new Date().toISOString();const pct=commissionPctFor(),comm=Math.round(a.amount*pct)/100,desc='خدمة عبر منصة المساعد رقم '+agreementId+'. الدفع يُحوَّل مباشرة عبر بوابة الدفع إلى مقدم الخدمة، وعمولة المنصة '+pct+'% ('+comm.toFixed(2)+' ريال) هي وحدها التي تستلمها المنصة.';const qr=rate>0&&issuer.vat?qrOf(issuer.name,issuer.vat,ts,total,vat):null;
 run('INSERT INTO invoices(kind,ref,seq,agreement_id,issuer_name,issuer_vat,buyer_name,buyer_vat,description,subtotal,vat_rate,vat_amount,total,issued_at,qr,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rate>0?'tax_invoice':'simplified',ref,seq,agreementId,issuer.name,issuer.vat,cname,'',desc,a.amount,rate,vat,total,ts,qr,'pending_provider')};
+// فواتير المحادثة: يصدرها المساعد بعد الاتفاق على الخدمة والمبلغ، ونسخة الأطراف تُحفظ وقت الإصدار
+db.exec("CREATE TABLE IF NOT EXISTS chat_invoices(id INTEGER PRIMARY KEY,number TEXT UNIQUE NOT NULL,agreement_id INT NOT NULL REFERENCES agreements(id),helper_id INT NOT NULL REFERENCES users(id),client_id INT NOT NULL REFERENCES users(id),service TEXT NOT NULL,amount REAL NOT NULL,vat_amount REAL NOT NULL DEFAULT 0,total REAL NOT NULL,helper_snapshot TEXT NOT NULL,client_snapshot TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'active',cancelled_at TEXT,cancel_reason TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+db.exec("CREATE INDEX IF NOT EXISTS ix_chat_inv_agr ON chat_invoices(agreement_id,status)");
 // the link to the e-invoicing provider: nothing is sent until a provider contract is set up
 const submitInvoice=async(inv)=>{if(!process.env.INVOICE_PROVIDER_URL)return{status:'pending_provider'};return{status:'not_implemented'}};
 

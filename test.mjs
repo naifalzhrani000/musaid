@@ -957,3 +957,35 @@ assert.equal((await c('/me/docs','POST',{kind:'cr',number:'1010123456',attachmen
 });
 
 const PNGDOC='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+test('فواتير المحادثة: إصدار بعد الاتفاق، ومطابقة الخدمة والمبلغ، والإلغاء، والدفع',async()=>{
+const cli=await reg('invc1'),hel=await reg('invh1');
+const cid=(await cli('/me')).j.user.id,hid=(await hel('/me')).j.user.id;
+await asHelper(hel);await vfy(hel);
+const ag=(await cli('/direct/'+hid+'/agreements','POST',{amount:500,description:'تركيب مكيف'}));assert.equal(ag.s,200);
+const gid=(await cli('/direct/'+hid+'/agreements')).j[0].id;
+assert.equal((await hel('/agreements/'+gid+'/approve','POST')).s,200);
+// لا يصدر الفاتورة إلا المساعد
+assert.equal((await cli('/direct/'+hid+'/invoices','POST',{service:'تركيب مكيف',amount:500})).s,403);
+// الموضوع والمبلغ يجب أن يطابقا الاتفاق
+assert.equal((await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب',amount:500})).s,400);
+assert.equal((await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب مكيف',amount:400})).s,400);
+// إصدار صحيح
+const inv=await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب مكيف',amount:500});
+assert.equal(inv.s,200);assert.match(inv.j.number,/^INV-\d{4}-\d{4}$/);
+assert.equal((await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب مكيف',amount:500})).s,400,'لا فاتورتان فعّالتان لاتفاق واحد');
+const list=(await cli('/direct/'+hid+'/invoices')).j;assert.equal(list.length,1);
+assert.equal(list[0].status,'awaiting_payment');assert.equal(list[0].total,575);assert.ok(list[0].client.phone&&list[0].helper.name);
+// العميل لا يلغي الفاتورة، والمساعد يلغيها
+assert.equal((await cli('/chat-invoices/'+list[0].id+'/cancel','POST',{reason:'سبب تجريبي'})).s,403);
+assert.equal((await hel('/chat-invoices/'+list[0].id+'/cancel','POST',{reason:'سبب تجريبي'})).s,200);
+assert.equal((await cli('/direct/'+hid+'/invoices')).j[0].status,'cancelled');
+// بعد الإلغاء يُصدر المساعد فاتورة جديدة برقم جديد
+const inv2=await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب مكيف',amount:500});assert.equal(inv2.s,200);assert.notEqual(inv2.j.number,inv.j.number);
+// الدفع عبر البوابة يحدّث حالة الفاتورة تلقائيًا، ولا يتكرر الإصدار بعده
+assert.equal((await hel('/agreements/'+gid+'/payment')).s,403);
+assert.equal(await payHala(gid),200);
+const after=(await cli('/direct/'+hid+'/invoices')).j.filter(x=>x.status!=='cancelled');assert.equal(after[0].status,'paid_online');
+assert.equal((await cli('/agreements/'+gid+'/payment')).j.paid,true);
+assert.equal((await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب مكيف',amount:500})).s,400,'لا فاتورة لاتفاق مدفوع');
+});

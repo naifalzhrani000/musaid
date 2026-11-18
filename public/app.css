@@ -672,3 +672,28 @@ label.switch.switch input:disabled + .slider{opacity:.5}
 @media (prefers-reduced-motion:reduce){label.switch.switch .slider,label.switch.switch .slider::before{transition:none}}
 
 .doc-list{display:grid;gap:8px;margin:8px 0}.doc-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px}.doc-pic{width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center}.doc-pic img{max-width:48px;max-height:48px;object-fit:contain}.doc-txt{display:flex;flex-direction:column;gap:2px}.doc-txt small{color:#5b6b64}
+
+/* محادثة: قائمة (+) ونافذتا موضوع الطلب والفاتورة وبطاقة الفاتورة */
+.plus-wrap{position:relative;flex:0 0 auto}
+.plus-menu{position:absolute;bottom:calc(100% + 10px);inset-inline-start:0;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:6px;min-width:230px;box-shadow:0 12px 30px rgba(0,0,0,.14);z-index:30;display:flex;flex-direction:column}
+.plus-menu[hidden]{display:none!important}
+.plus-menu button{background:none;border:0;text-align:start;padding:12px 14px;border-radius:12px;font:inherit;cursor:pointer;color:#111827}
+.plus-menu button:hover,.plus-menu button:focus-visible{background:#f0faf6}
+.mo-ov{position:fixed;inset:0;background:#0007;display:grid;place-items:center;z-index:70;padding:16px}
+.mo-ov .mo-box{display:flex;flex-direction:column;gap:10px;max-width:420px;text-align:start}
+.mo-ov .mo-box label{display:flex;flex-direction:column;gap:6px;font-weight:600;color:#111827}
+.mo-ov .mo-box input,.mo-ov .mo-box textarea{border:1px solid #d1d5db;border-radius:12px;padding:10px;font:inherit;background:#f9fafb;font-weight:400}
+.topic-card{display:flex;flex-direction:column;gap:4px}
+.topic-card small{color:#0f6b4f;font-weight:700}
+.topic-card p{margin:0;white-space:pre-wrap}
+.inv-card{background:#fff;border:1px solid #d1d5db;border-radius:18px;padding:12px;max-width:440px;align-self:stretch;display:flex;flex-direction:column;gap:10px;text-align:start}
+.inv-head{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#f0faf6;border-radius:14px;padding:10px 12px}
+.inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f7f8fa;border-radius:14px;padding:10px;font-size:13px}
+.inv-parties>div>b,.inv-det>b{color:#0f4f3c;display:block;margin-bottom:4px}
+.inv-r{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0}
+.inv-r span{color:#6b7280}
+.inv-det{background:#f7f8fa;border-radius:14px;padding:10px;font-size:13px;display:flex;flex-direction:column;gap:2px}
+.inv-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.inv-acts small{color:#6b7280;font-size:12px}
+.inv-card.cancelled{opacity:.6}
+@media (max-width:480px){.inv-parties{grid-template-columns:1fr}}
