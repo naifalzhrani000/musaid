@@ -363,3 +363,5 @@ route('GET','/admin/reports/(\\d+)',c=>{
   const m=get('SELECT m.from_id,m.to_id,fa.name from_name,ta.name to_name FROM direct_messages m JOIN users fa ON fa.id=m.from_id JOIN users ta ON ta.id=m.to_id WHERE m.id=?',r.target_id);
   return{...r,parties:m?{from_id:m.from_id,from_name:m.from_name,to_id:m.to_id,to_name:m.to_name}:null};
 });
+
+route('POST','/admin/helpers/(\\d+)/settle-dues',c=>tx(()=>{adm(c);const id=+c.p[0];if(!get('SELECT 1 x FROM users WHERE id=?',id))throw err(404,'المستخدم غير موجود');const r=run("UPDATE agreement_commissions SET status='settled',paid_at=datetime('now') WHERE helper_id=? AND status='due'",id);run("INSERT INTO audit_log(admin_id,action,detail) VALUES(NULL,?,?)",'settle_dues',id+':'+r.changes);if(r.changes)notify(id,'تم تسجيل سداد عمولاتك المستحقة لدى المنصة','#/profile');return{ok:1,settled:r.changes}}));
