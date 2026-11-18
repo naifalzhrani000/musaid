@@ -54,3 +54,31 @@ export async function sendWebPush(sub, plaintext, cfg) {
     body: encryptPayload(sub.p256dh, sub.auth, plaintext),
   });
 }
+
+// تنظيف مفتاح VAPID: إزالة المسافات والاقتباسات، وتحويل base64 العادي إلى base64url
+export function cleanKey(k) {
+  return String(k || '').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// فحص صلاحية المفاتيح: يعيد وصف المشكلة بالعربية، أو نصًا فارغًا إذا كانت سليمة
+export function vapidProblem({ publicKey, privateKey }) {
+  try {
+    const pub = unb64(publicKey), prv = unb64(privateKey);
+    if (pub.length !== 65 || pub[0] !== 4) return 'المفتاح العام يجب أن يكون 65 بايت بصيغة base64url';
+    if (prv.length !== 32) return 'المفتاح الخاص يجب أن يكون 32 بايت بصيغة base64url';
+    crypto.createPrivateKey({
+      key: { kty: 'EC', crv: 'P-256', x: b64u(pub.subarray(1, 33)), y: b64u(pub.subarray(33, 65)), d: b64u(prv) },
+      format: 'jwk',
+    });
+    return '';
+  } catch {
+    return 'المفتاحان غير متطابقين أو غير صالحين';
+  }
+}
+
+// تحليل رد خدمة الدفع الفاشل: dead = الاشتراك منتهٍ ويُحذف (404/410)
+export async function pushFailure(res) {
+  let reason = '';
+  try { reason = String(await res.text()).slice(0, 200); } catch {}
+  return { status: res.status, reason, dead: res.status === 404 || res.status === 410 };
+}
