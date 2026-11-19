@@ -16,6 +16,7 @@ import './src/routes/messages.js';
 import './src/routes/shared.js';
 import './src/routes/account.js';
 import './src/routes/feed.js';
+import './src/routes/follow.js';
 import './src/routes/accounting.js';
 import './src/routes/admin.js';
 // ---- عنوان العميل: لا يُقرأ من الرأس إلا خلف وكيل موثوق (TRUST_PROXY=1) ----

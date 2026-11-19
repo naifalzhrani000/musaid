@@ -20,7 +20,7 @@ document.addEventListener('click',e=>{if(e.target.closest('#mb,#hmb')){toggleMen
 let pcHtml='';
 function nav(){const u=me.user,h=location.hash||'#/',a=(l,t)=>`<a href="${l}" class="${h===l?'on':''}">${t}</a>`;const isHome=h==='#/'||h==='#'||h==='';
 $('#nav').innerHTML=`<a class=logo href="#/"><span class=mark><img loading=lazy decoding=async src=/hand.png alt=""></span>المساعد</a>${isHome?`<div class=pcircles id=pc aria-label="آخر المنشورات">${pcHtml}</div>`:''}<div class=hact>${u?`<a class=bell href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<a class=hlogin href="#/login">تسجيل الدخول</a>'}<button id=mb aria-label="القائمة">${ic(I.menu)}</button></div>`;
-$('#menu').innerHTML=a('#/','المساعد الذكي')+(u?a('#/profile/data','ملفي الشخصي'):'')+a('#/feed','المنشورات العامة')+(isStandalone()?'':'<a href="#" data-act=installApp>تثبيت التطبيق</a>')+(u?a('#/chats','محادثاتي')+a('#/profile','حسابي')+`<a href="#" data-act=toggleAllNotify>${allNotifyOn()?'إيقاف كل الإشعارات':'تفعيل كل الإشعارات'}</a>`+(['admin','staff'].includes(u.role)?a('#/manage','الإدارة'):''):'')+(u?'<a href="#" data-act="exportData">تصدير بياناتي</a><a href="#/settings">الإعدادات</a>'+(u.account_type==='helper'?'':'<a href="#/profile">إدارة الحساب</a>')+'<a href="#" data-act="logout">تسجيل الخروج</a>':'')+'<div class=menu-legal>'+a('#/complaints','سياسة الشكاوى')+a('#/about','من نحن')+a('#/contact','تواصل معنا')+a('#/terms','الشروط والأحكام')+a('#/privacy','سياسة الخصوصية')+'</div>';
+$('#menu').innerHTML=a('#/','المساعد الذكي')+(u?a('#/profile/data','ملفي الشخصي'):'')+a('#/feed','المنشورات العامة')+(isStandalone()?'':'<a href="#" data-act=installApp>تثبيت التطبيق</a>')+(u&&u.account_type==='helper'?a('#/follow','متابعة'):'')+(u?a('#/chats','محادثاتي')+a('#/profile','حسابي')+`<a href="#" data-act=toggleAllNotify>${allNotifyOn()?'إيقاف كل الإشعارات':'تفعيل كل الإشعارات'}</a>`+(['admin','staff'].includes(u.role)?a('#/manage','الإدارة'):''):'')+(u?'<a href="#" data-act="exportData">تصدير بياناتي</a><a href="#/settings">الإعدادات</a>'+(u.account_type==='helper'?'':'<a href="#/profile">إدارة الحساب</a>')+'<a href="#" data-act="logout">تسجيل الخروج</a>':'')+'<div class=menu-legal>'+a('#/complaints','سياسة الشكاوى')+a('#/about','من نحن')+a('#/contact','تواصل معنا')+a('#/terms','الشروط والأحكام')+a('#/privacy','سياسة الخصوصية')+'</div>';
 try{if(me.user&&navigator.setAppBadge){me.unread?navigator.setAppBadge(me.unread):navigator.clearAppBadge()}}catch{}
 renderBottom(h);$('#menu').onclick=e=>{if(e.target.tagName==='A')closeMenu()}}
 async function insights(){location.hash='#/manage/insights'}
@@ -404,7 +404,7 @@ function plusSetup(id,reload,proposeAgr){const btn=$('#plusBtn'),menu=$('#plusMe
 }
 const legal=kind=>{const t=kind==='terms'?'الشروط والأحكام':kind==='complaints'?'سياسة الشكاوى وفض النزاعات':'سياسة الخصوصية';app.innerHTML=`<section class=legal><div class=lg-art>${LG_ART[kind]||''}</div><h1>${t}</h1><p class=draft>مسودة: هذا النص لم يُعتمد بعد، ويجب مراجعته من محامٍ مختص قبل نشره رسميًا.</p><div id=lgs>${LEGAL[kind].map(([h,b])=>`<h2>${esc(h)}</h2><p>${esc(b).replace(/\n/g,'<br>')}</p>`).join('')}</div><p class=meta-l id=lo></p></section>`;
 orgInfo().then(o=>{const txt=kind==='complaints'?null:o[kind==='terms'?'terms_text':'privacy_text'];if(txt)$('#lgs').innerHTML=txt.split(/\n\s*\n/).map(x=>`<p>${esc(x.trim())}</p>`).join('');$('#lo').innerHTML=`المنشأة المالكة للمنصة: ${o.org_name?esc(o.org_name)+(o.org_cr?'، سجل تجاري رقم '+esc(o.org_cr):''):'[اسم المؤسسة ورقم السجل التجاري]'}`})};
-const routes=[[/^#\/(mine|new|r\/\d+|chat\/\d+\/\d+)$/,()=>{location.hash='#/'}],[/^#\/settings$/,settingsPage],[/^#\/wallet$/,walletPage],[/^#\/direct\/(\d+)$/,directChat],[/^#\/verify\/([0-9a-f]{64})$/,verifyPage],[/^#\/profile\/gallery$/,feedPage],[/^#\/profile\/(\w+)$/,profileSub],[/^#\/insights$/,insights],[/^#\/manage(?:\/([\w/]+))?$/,t=>loadAdmin().then(()=>manage(t))],[/^#\/chats$/,chats],[/^#\/profile$/,profileAccount],[/^#\/invoices$/,invoicesList],[/^#\/invoice\/(\d+)$/,invoiceView],[/^#\/notifs$/,notifs],[/^#\/login$/,()=>auth(false)],[/^#\/admin-login$/,()=>auth(false)],[/^#\/register$/,()=>auth(true)],[/^#\/complaints$/,()=>legal('complaints')],[/^#\/agreement\/(\d+)$/,agreementPage],[/^#\/about$/,about],[/^#\/contact$/,contact],[/^#\/forgot$/,forgot],[/^#\/reset\/([0-9a-f]{64})$/,resetPage],[/^#\/p\/(\d+)$/,provider],[/^#\/verify-email$/,verifyEmailPage],[/^#\/feed$/,feedPage],[/^#\/terms$/,()=>legal('terms')],[/^#\/privacy$/,()=>legal('privacy')],[/^#\/admin$/,()=>{location.hash='#/manage'}]];
+const routes=[[/^#\/(mine|new|r\/\d+|chat\/\d+\/\d+)$/,()=>{location.hash='#/'}],[/^#\/settings$/,settingsPage],[/^#\/wallet$/,walletPage],[/^#\/follow$/,followPage],[/^#\/direct\/(\d+)$/,directChat],[/^#\/verify\/([0-9a-f]{64})$/,verifyPage],[/^#\/profile\/gallery$/,feedPage],[/^#\/profile\/(\w+)$/,profileSub],[/^#\/insights$/,insights],[/^#\/manage(?:\/([\w/]+))?$/,t=>loadAdmin().then(()=>manage(t))],[/^#\/chats$/,chats],[/^#\/profile$/,profileAccount],[/^#\/invoices$/,invoicesList],[/^#\/invoice\/(\d+)$/,invoiceView],[/^#\/notifs$/,notifs],[/^#\/login$/,()=>auth(false)],[/^#\/admin-login$/,()=>auth(false)],[/^#\/register$/,()=>auth(true)],[/^#\/complaints$/,()=>legal('complaints')],[/^#\/agreement\/(\d+)$/,agreementPage],[/^#\/about$/,about],[/^#\/contact$/,contact],[/^#\/forgot$/,forgot],[/^#\/reset\/([0-9a-f]{64})$/,resetPage],[/^#\/p\/(\d+)$/,provider],[/^#\/verify-email$/,verifyEmailPage],[/^#\/feed$/,feedPage],[/^#\/terms$/,()=>legal('terms')],[/^#\/privacy$/,()=>legal('privacy')],[/^#\/admin$/,()=>{location.hash='#/manage'}]];
 async function route(){const h=location.hash||'#/';document.body.classList.remove('dchat-mode');nav();$('#ft').hidden=true;document.body.classList.toggle('home',h==='#/'||h==='#'||h==='');if(document.body.classList.contains('home'))loadPC();if(/#\/(new|profile|notifs|admin(?!-login)|mine|chats|chat)/.test(h)&&!me.user)return location.hash='#/login';
 for(const[re,f]of routes){const m=re.exec(h);if(m){try{await f(m[1],m[2])}catch(e){app.innerHTML=`<div class=empty>${esc(e.message)}</div>`}return}}
 if(h==='#list'||h==='#/'||h==='#')return home();home()}
@@ -520,3 +520,37 @@ setInterval(()=>{if(!document.hidden&&$('#pc'))loadPC()},15000);
 
 /* تحديث عداد الإشعارات كل دقيقة (يظهر على أيقونة التطبيق وعلى الجرس) */
 setInterval(async()=>{if(!me.user)return;try{const m=await api('/me');const n=m.unread||0;if(n!==(me.unread||0)){me.unread=n;nav()}}catch{}},60000);
+
+/* قسم «متابعة» للمساعد: أداؤه وعملاؤه وفواتيره ومستحقات المنصة (للقراءة فقط) */
+async function followPage(){
+  if(!me.user){location.hash='#/login';return}
+  if(me.user.account_type!=='helper'){app.innerHTML='<div class=empty>هذا القسم للمساعدين فقط.</div>';return}
+  let d;
+  try{d=await api('/helper/follow')}catch(x){app.innerHTML=`<div class=empty>${esc(x.message)}</div>`;return}
+  const fm=n=>Number(n||0).toLocaleString('ar-SA',{maximumFractionDigits:2})+' ر.س';
+  const day=s=>esc(String(s||'').slice(0,10));
+  const S=d.summary;
+  const ST={active:'سارية',cancelled:'ملغاة'};
+  const invRows=(rows,label)=>rows.length?`<div class=tbl-wrap><table class=tbl><thead><tr><th>الرقم</th><th>${label}</th><th>الخدمة</th><th>المبلغ</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${rows.map(r=>`<tr><td><bdi dir=ltr>${esc(r.number)}</bdi></td><td>${esc(r.other_name)}</td><td>${esc(r.service)}</td><td>${fm(r.total)}</td><td><span class=pill>${esc(ST[r.status]||r.status)}</span></td><td>${day(r.created_at)}</td></tr>`).join('')}</tbody></table></div>`:'<div class=empty>لا توجد فواتير بعد.</div>';
+  const cliRows=d.clients.length?`<div class=tbl-wrap><table class=tbl><thead><tr><th>العميل</th><th>الطلبات</th><th>المنجزة</th><th>آخر تعامل</th></tr></thead><tbody>${d.clients.map(c=>`<tr><td>${esc(c.name)}</td><td>${c.orders}</td><td>${c.completed}</td><td>${day(c.last_at)}</td></tr>`).join('')}</tbody></table></div>`:'<div class=empty>لا يوجد عملاء بعد.</div>';
+
+  app.innerHTML=`<h2 style="margin:8px 0">متابعة</h2>
+  <div class=kpis>
+    <div class=kpi><small>الأرباح بعد عمولة المنصة</small><b>${fm(S.net_earned)}</b><span>من فواتيرك السارية</span></div>
+    <div class="kpi ${S.debt>0?'warn':''}"><small>مديونيتك للمنصة</small><b>${fm(S.debt)}</b><span>عمولات لم تُسدَّد</span></div>
+    <div class=kpi><small>الطلبات المنجزة</small><b>${S.completed}</b><span>من أصل ${S.orders} طلب</span></div>
+    <div class=kpi><small>التقييم</small><b>${S.rating===null?'—':S.rating}</b><span>${S.rating_count} تقييم</span></div>
+  </div>
+  <div class=tabs role=tablist>
+    <button type=button class="tab on" data-ft=clients>العملاء</button>
+    <button type=button class=tab data-ft=issued>الفواتير الصادرة</button>
+    <button type=button class=tab data-ft=received>الفواتير الواردة</button>
+  </div>
+  <div id=ftBody>${cliRows}</div>`;
+
+  const bodies={clients:cliRows,issued:invRows(d.issued,'العميل'),received:invRows(d.received,'المساعد')};
+  app.querySelectorAll('[data-ft]').forEach(b=>b.onclick=()=>{
+    app.querySelectorAll('[data-ft]').forEach(x=>x.classList.toggle('on',x===b));
+    $('#ftBody').innerHTML=bodies[b.dataset.ft];
+  });
+}
