@@ -831,3 +831,7 @@ body.dchat-mode .dc-send .dcs-fill{width:20px;height:20px}
 
 /* بطاقة الاتفاق داخل المحادثة */
 body.dchat-mode .agr-c.cancelled{opacity:.65}
+
+/* منع القفز أثناء السحب على الآيفون: السحب يبقى داخل المحادثة ولا ينتقل إلى الصفحة */
+html:has(body.dchat-mode),body.dchat-mode{overscroll-behavior:none;overflow:hidden}
+body.dchat-mode #dchat{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
