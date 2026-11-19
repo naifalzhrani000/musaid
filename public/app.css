@@ -828,3 +828,6 @@ body.dchat-mode .dc-send .dcs-fill{width:20px;height:20px}
 .pc{display:block;width:34px;height:34px;border-radius:50%;padding:2px;flex:0 0 auto;background:linear-gradient(135deg,#6fd3a8,#8a6cff)}
 .pc span{display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;background:#1f5f4a}
 .pc img,.pc video{width:100%;height:100%;object-fit:cover;display:block}
+
+/* بطاقة الاتفاق داخل المحادثة */
+body.dchat-mode .agr-c.cancelled{opacity:.65}
