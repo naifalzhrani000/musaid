@@ -4,9 +4,9 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 
 const E = process.env;
-export const MAX_VIDEO = 100e6;
-export const MAX_RAW = 30e6; // أقصى حجم لفيديو يُرفع إلى القرص المحلي
-export const MEDIA_QUOTA = (+E.MEDIA_QUOTA_MB * 1e6) || 700e6; // سقف مساحة الفيديوهات على القرص
+export const MAX_VIDEO = 150e6;
+export const MAX_RAW = 50e6; // أقصى حجم لفيديو يُرفع إلى القرص المحلي
+export const MEDIA_QUOTA = (+E.MEDIA_QUOTA_MB * 1e6) || 1500e6; // سقف مساحة الفيديوهات على القرص
 // مجلد الفيديوهات على القرص الدائم: بجانب قاعدة البيانات افتراضيًا (مثلًا /var/data/media)
 export const mediaDir = () => E.MEDIA_DIR || path.join(path.dirname(E.DB_FILE || 'data.db'), 'media');
 export const storageOn = () => !!(E.S3_ENDPOINT && E.S3_BUCKET && E.S3_ACCESS_KEY_ID && E.S3_SECRET_ACCESS_KEY);
