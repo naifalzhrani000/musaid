@@ -998,18 +998,18 @@ const o=cl();await o('/register','POST',{name:'عميل مهمة',email:'tk1@t.s
 const oid=(await o('/me')).j.user.id;
 const h=cl();await h('/register','POST',{name:'مساعد مهمة',email:'tk2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد مهمة',phone:'0500009802'});await h('/pledge','POST',{accept:true,name:'مساعد مهمة'});
 const hid=(await h('/me')).j.user.id;
-assert.equal((await h(`/direct/${oid}/task`,'POST')).s,403,'المساعد لا يبدأ المهمة');
-const st=await o(`/direct/${hid}/task`,'POST');assert.equal(st.s,200);
-assert.equal((await o(`/direct/${hid}/task`,'POST')).s,400,'لا مهمتان مفتوحتان');
+assert.equal((await o(`/direct/${hid}/task`,'POST')).s,403,'العميل لا يبدأ المهمة');
+const st=await h(`/direct/${oid}/task`,'POST');assert.equal(st.s,200);
+assert.equal((await h(`/direct/${oid}/task`,'POST')).s,400,'لا مهمتان مفتوحتان');
 assert.equal((await h(`/direct/${oid}/task`)).j.task.status,'requested');
-assert.equal((await o(`/tasks/${st.j.id}/accept`,'POST')).s,403,'القبول للمساعد فقط');
-assert.equal((await h(`/tasks/${st.j.id}/accept`,'POST')).s,200);
+assert.equal((await h(`/tasks/${st.j.id}/accept`,'POST')).s,403,'القبول للعميل فقط');
+assert.equal((await o(`/tasks/${st.j.id}/accept`,'POST')).s,200);
 const pl=await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب',amount:200});assert.equal(pl.s,200);
 const tot=(await o(`/agreements/${pl.j.id}`)).j.total_amount;
 const body=JSON.stringify({agreement_id:pl.j.id,amount:tot,reference:'TK'+pl.j.id});
 const pay=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body});assert.equal(pay.status,200);
 assert.equal((await h(`/direct/${oid}/task`)).j.task,null,'بعد السداد لا مهمة مفتوحة');
-assert.equal((await o(`/direct/${hid}/task`,'POST')).s,200,'يمكن بدء مهمة جديدة بعد النجاح');
+assert.equal((await h(`/direct/${oid}/task`,'POST')).s,200,'يمكن بدء مهمة جديدة بعد النجاح');
 });
 
 test('التقييم بعد المهمة: يظهر للعميل بعد السداد، ويظهر في حساب المساعد والبطاقة',async()=>{
@@ -1018,8 +1018,8 @@ const o=cl();await o('/register','POST',{name:'عميل تقييم',email:'rv1@t
 const oid=(await o('/me')).j.user.id;
 const h=cl();await h('/register','POST',{name:'مساعد تقييم',email:'rv2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد تقييم',phone:'0500009902'});await h('/pledge','POST',{accept:true,name:'مساعد تقييم'});
 const hid=(await h('/me')).j.user.id;
-const t=await o(`/direct/${hid}/task`,'POST');assert.equal(t.s,200);
-await h(`/tasks/${t.j.id}/accept`,'POST');
+const t=await h(`/direct/${oid}/task`,'POST');assert.equal(t.s,200);
+await o(`/tasks/${t.j.id}/accept`,'POST');
 const pl=await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب',amount:100});
 const tot=(await o(`/agreements/${pl.j.id}`)).j.total_amount;
 const body=JSON.stringify({agreement_id:pl.j.id,amount:tot,reference:'RV'+pl.j.id});
