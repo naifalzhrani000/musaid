@@ -79,6 +79,7 @@ db.exec("DROP TABLE IF EXISTS chat_invoices");
 db.exec("CREATE TABLE IF NOT EXISTS helper_hala(user_id INTEGER PRIMARY KEY REFERENCES users(id),api_key_enc TEXT NOT NULL,webhook_secret_enc TEXT NOT NULL,last4 TEXT,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
 db.exec("CREATE TABLE IF NOT EXISTS platform_invoices(id INTEGER PRIMARY KEY,number TEXT UNIQUE NOT NULL,helper_id INT NOT NULL REFERENCES users(id),amount REAL NOT NULL,commission_ids TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'unpaid',issued_at TEXT DEFAULT CURRENT_TIMESTAMP,paid_at TEXT,paid_note TEXT)");
 db.exec("CREATE TABLE IF NOT EXISTS tasks(id INTEGER PRIMARY KEY,client_id INT NOT NULL REFERENCES users(id),helper_id INT NOT NULL REFERENCES users(id),status TEXT NOT NULL,agreement_id INT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+if(!db.prepare("SELECT 1 x FROM pragma_table_info('tasks') WHERE name='rated'").get())db.exec("ALTER TABLE tasks ADD COLUMN rated INT NOT NULL DEFAULT 0");
 for(const [col,def] of [['source','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 db.exec("CREATE TABLE IF NOT EXISTS agreement_notes(agreement_id INTEGER PRIMARY KEY REFERENCES agreements(id),notes TEXT NOT NULL DEFAULT '',updated_at TEXT)");
 

@@ -1011,3 +1011,25 @@ const pay=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'co
 assert.equal((await h(`/direct/${oid}/task`)).j.task,null,'بعد السداد لا مهمة مفتوحة');
 assert.equal((await o(`/direct/${hid}/task`,'POST')).s,200,'يمكن بدء مهمة جديدة بعد النجاح');
 });
+
+test('التقييم بعد المهمة: يظهر للعميل بعد السداد، ويظهر في حساب المساعد والبطاقة',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
+const o=cl();await o('/register','POST',{name:'عميل تقييم',email:'rv1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل تقييم',phone:'0500009901'});
+const oid=(await o('/me')).j.user.id;
+const h=cl();await h('/register','POST',{name:'مساعد تقييم',email:'rv2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد تقييم',phone:'0500009902'});await h('/pledge','POST',{accept:true,name:'مساعد تقييم'});
+const hid=(await h('/me')).j.user.id;
+const t=await o(`/direct/${hid}/task`,'POST');assert.equal(t.s,200);
+await h(`/tasks/${t.j.id}/accept`,'POST');
+const pl=await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب',amount:100});
+const tot=(await o(`/agreements/${pl.j.id}`)).j.total_amount;
+const body=JSON.stringify({agreement_id:pl.j.id,amount:tot,reference:'RV'+pl.j.id});
+assert.equal((await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body})).status,200);
+const tk=(await o(`/direct/${hid}/task`)).j;assert.equal(tk.task,null);assert.ok(tk.rate,'العميل يرى طلب التقييم بعد الإنجاز');
+assert.equal((await o(`/tasks/${t.j.id}/rate`,'POST',{stars:9})).s,400,'التقييم بين 1 و5');
+assert.equal((await h(`/tasks/${t.j.id}/rate`,'POST',{stars:5})).s,403,'التقييم للعميل فقط');
+assert.equal((await o(`/tasks/${t.j.id}/rate`,'POST',{stars:4,comment:'ممتاز'})).s,200);
+assert.equal((await o(`/tasks/${t.j.id}/rate`,'POST',{stars:5})).s,409,'لا تقييم مكرر');
+assert.equal((await o(`/direct/${hid}/task`)).j.rate,null,'اختفى طلب التقييم');
+const rv=(await h('/helper/reviews')).j;assert.equal(rv.count,1);assert.equal(rv.reviews[0].stars,4);assert.equal(rv.reviews[0].comment,'ممتاز');
+const card=(await o(`/direct/${hid}/agreements`)).j.find(x=>x.id===pl.j.id);assert.equal(card.link_meta.count,1);assert.equal(card.link_meta.avg,4);
+});
