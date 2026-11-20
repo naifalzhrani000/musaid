@@ -1033,3 +1033,17 @@ assert.equal((await o(`/direct/${hid}/task`)).j.rate,null,'اختفى طلب ا�
 const rv=(await h('/helper/reviews')).j;assert.equal(rv.count,1);assert.equal(rv.reviews[0].stars,4);assert.equal(rv.reviews[0].comment,'ممتاز');
 const card=(await o(`/direct/${hid}/agreements`)).j.find(x=>x.id===pl.j.id);assert.equal(card.link_meta.count,1);assert.equal(card.link_meta.avg,4);
 });
+
+test('رابط الدفع بعد بدء المهمة مباشرة: المساعد يرسله قبل قبول العميل، والسداد ينهي المهمة',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
+const o=cl();await o('/register','POST',{name:'عميل بدء',email:'sb1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل بدء',phone:'0500010001'});
+const oid=(await o('/me')).j.user.id;
+const h=cl();await h('/register','POST',{name:'مساعد بدء',email:'sb2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد بدء',phone:'0500010002'});await h('/pledge','POST',{accept:true,name:'مساعد بدء'});
+const hid=(await h('/me')).j.user.id;
+const t=await h(`/direct/${oid}/task`,'POST');assert.equal(t.s,200);
+const pl=await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب',amount:120});assert.equal(pl.s,200,'الرابط يُرسل بعد بدء المهمة مباشرة');
+const tot=(await o(`/agreements/${pl.j.id}`)).j.total_amount;
+const body=JSON.stringify({agreement_id:pl.j.id,amount:tot,reference:'SB'+pl.j.id});
+assert.equal((await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body})).status,200);
+assert.equal((await h(`/direct/${oid}/task`)).j.task,null,'السداد أنهى المهمة');
+});
