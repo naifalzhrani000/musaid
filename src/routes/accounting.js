@@ -30,7 +30,7 @@ route('GET','/admin/accounting',c=>{
   const outVat=0;
   return{month:m,income:s.income,expenses:s.expenses,profit:s.income-s.expenses,
     vat:outVat,
-    vat_note:reg?'ضريبة المخرجات الفعلية من مستندات المنصة هذا الشهر (فواتير العمولة وفواتير المورّد المفترض)':'المنصة غير مسجلة في ضريبة القيمة المضافة',
+    vat_note:reg?'المنصة لا تصدر فواتير، فلا تُحتسب ضريبة مخرجات من مستنداتها':'المنصة غير مسجلة في ضريبة القيمة المضافة',
     payables:s.payables,
     entries:rows.length,reconciled};
 });

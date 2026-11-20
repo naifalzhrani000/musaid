@@ -182,7 +182,6 @@ const VERIFY_REQUIRED=process.env.EMAIL_VERIFY_REQUIRED!=='0';
 const issueVerify=async(uid,email)=>{const code=String(crypto.randomInt(0,1000000)).padStart(6,'0');run("INSERT OR REPLACE INTO verify_codes(user_id,code_hash,expires_at,attempts,created_at) VALUES(?,?,datetime('now','+10 minutes'),0,datetime('now'))",uid,macOf(code+':'+uid));const u=get('SELECT name FROM users WHERE id=?',uid);return sendMail(email,'رمز تفعيل البريد - المساعد',`<div dir="rtl"><p>أهلًا ${hx(u?u.name:'')}،</p><p>رمز تفعيل بريدك الإلكتروني:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>الرمز صالح لمدة 10 دقائق. إذا لم تطلب ذلك فتجاهل هذه الرسالة.</p></div>`)};
 const ACT={start:['helper',['helper_chosen'],'in_progress'],complete:['owner',['in_progress'],'completed'],cancel:['owner',['draft','published','negotiating'],'cancelled'],publish:['owner',['draft'],'published'],dispute:['party',['helper_chosen','in_progress'],'disputed']};
 const blocked=(a,b)=>!!get('SELECT 1 x FROM blocks WHERE (blocker_id=? AND blocked_id=?) OR (blocker_id=? AND blocked_id=?)',a,b,b,a);
-const CFG=()=>{const s=SET();return{warn:+(s.cancel_warn_at??2),sus:+(s.cancel_suspend_at??3),rev:+(s.cancel_review_at??5),days:+(s.cancel_suspend_days??7)}};
 // قاعدة الإلغاء: 15 إلغاءً خلال 7 أيام، أو 5 إلغاءات متتالية دون أي طلب مكتمل بينها ← إغلاق 7 أيام
 const applyPenalty=uid=>{
   const weekly=get("SELECT COUNT(*) n FROM agreement_cancellations WHERE by_id=? AND created_at>datetime('now','-7 days')",uid).n;
@@ -240,7 +239,7 @@ const cityOpen=city=>{
   return true;
 };
 
-export {pushCfg,pushKeyProblem,pushTest,verified,cityCoverage,cityOpen,CITY_OPEN_PCT,macOf,DB_PATH, notifyEmail, activateVatIfNeeded, supplyFor, supplyOf, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, commissionPctFor, syncCashHold, helperHalaSecret, encSecret, secretsKey};
+export {pushCfg,pushKeyProblem,pushTest,verified,cityCoverage,cityOpen,CITY_OPEN_PCT,macOf,DB_PATH, notifyEmail, activateVatIfNeeded, supplyFor, supplyOf, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, commissionPctFor, syncCashHold, helperHalaSecret, encSecret, secretsKey};
 
 // تنظيف محاولات الدخول القديمة عند التشغيل (الجدول كان ينمو بلا حد)
 try{run('DELETE FROM login_attempts WHERE t<?',Date.now()-864e5)}catch{}

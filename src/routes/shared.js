@@ -1,4 +1,3 @@
-import {DatabaseSync} from 'node:sqlite';
 import {randomUUID} from 'node:crypto';
 import {storageOn, presign, remoteHead, remoteHeader, remoteDelete, MAX_VIDEO, MAX_RAW, MEDIA_QUOTA, mediaDir} from '../storage.js';
 import os from 'node:os';
@@ -7,7 +6,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import {SKILL_SEED, ASSIST_CITIES, CANCEL_REASONS} from '../../data.js';
-import {route, notifyEmail, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, needsVat, cityCoverage, cityOpen} from '../core.js';
+import {route, notifyEmail, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, needsVat, cityCoverage, cityOpen} from '../core.js';
 
 route('POST','/upload',c=>{const u=need(c),m=/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(c.b.data||''));if(!m)throw err(400,'صيغة الصورة غير مدعومة');const d=Buffer.from(m[2],'base64');if(d.length>2e6||d.length<12)throw err(400,'حجم الصورة غير مقبول');
 const h=d.subarray(0,12).toString('latin1'),ok=m[1]==='png'?d[0]===0x89&&h.slice(1,4)==='PNG':m[1]==='jpeg'?d[0]===0xff&&d[1]===0xd8:h.startsWith('RIFF')&&h.slice(8)==='WEBP';if(!ok)throw err(400,'الملف ليس صورة صالحة');

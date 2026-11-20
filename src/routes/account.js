@@ -1,4 +1,4 @@
-import {SKILL_SEED, ASSIST_CITIES, CANCEL_REASONS} from '../../data.js';
+
 import {DatabaseSync} from 'node:sqlite';
 import os from 'node:os';
 import path from 'node:path';

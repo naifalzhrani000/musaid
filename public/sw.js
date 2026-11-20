@@ -1,5 +1,5 @@
 // ---- تطبيق ويب قابل للتثبيت: تخزين الواجهة الثابتة فقط (لا يُخزَّن أي شيء من /api) ----
-const CACHE = 'musaed-shell-v9';
+const CACHE = 'musaed-shell-v10';
 const SHELL = ['/', '/app.css', '/app.js', '/splash.js', '/logo.png', '/hand.png', '/icon-192.png'];
 const OFFLINE_HTML = '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>المساعد</title><body style="font-family:Tahoma,sans-serif;background:#f4f6f5;color:#145c46;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:24px"><div><h1 style="margin:0 0 8px">لا يوجد اتصال بالإنترنت</h1><p style="color:#5b6b64">تأكد من اتصالك ثم أعد المحاولة.</p><button onclick="location.reload()" style="font:inherit;background:#145c46;color:#fff;border:0;border-radius:12px;padding:12px 24px;min-height:44px">إعادة المحاولة</button></div></body></html>';
 

@@ -66,10 +66,10 @@ export function vapidProblem({ publicKey, privateKey }) {
     const pub = unb64(publicKey), prv = unb64(privateKey);
     if (pub.length !== 65 || pub[0] !== 4) return 'المفتاح العام يجب أن يكون 65 بايت بصيغة base64url';
     if (prv.length !== 32) return 'المفتاح الخاص يجب أن يكون 32 بايت بصيغة base64url';
-    crypto.createPrivateKey({
-      key: { kty: 'EC', crv: 'P-256', x: b64u(pub.subarray(1, 33)), y: b64u(pub.subarray(33, 65)), d: b64u(prv) },
-      format: 'jwk',
-    });
+    // المفتاح الخاص يجب أن يولّد المفتاح العام نفسه (ضرب نقطي)، وإلا فالزوج غير متطابق
+    const ecdh = crypto.createECDH('prime256v1');
+    ecdh.setPrivateKey(prv);
+    if (!ecdh.getPublicKey().equals(pub)) return 'المفتاحان غير متطابقين أو غير صالحين';
     return '';
   } catch {
     return 'المفتاحان غير متطابقين أو غير صالحين';
@@ -77,8 +77,12 @@ export function vapidProblem({ publicKey, privateKey }) {
 }
 
 // تحليل رد خدمة الدفع الفاشل: dead = الاشتراك منتهٍ ويُحذف (404/410)
+// الاشتراك يُحذف إذا انتهى (404/410)، أو إذا أُنشئ بمفتاح VAPID قديم لا يُقبل بعد الآن
 export async function pushFailure(res) {
-  let reason = '';
-  try { reason = String(await res.text()).slice(0, 200); } catch {}
-  return { status: res.status, reason, dead: res.status === 404 || res.status === 410 };
+  let raw = '';
+  try { raw = String(await res.text()).slice(0, 200); } catch {}
+  let reason = raw;
+  try { const j = JSON.parse(raw); if (j && typeof j.reason === 'string') reason = j.reason; } catch {}
+  const dead = res.status === 404 || res.status === 410 || reason === 'VapidPkHashMismatch';
+  return { status: res.status, reason, dead };
 }
