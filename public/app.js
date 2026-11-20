@@ -557,12 +557,12 @@ async function halaPage(){const st=await api('/helper/hala');app.innerHTML=`<h2>
 async function platformDuesPage(){const l=await api('/helper/platform-invoices');app.innerHTML=`<h2>مستحقات المنصة</h2><div class=panel>${l.length?l.map(x=>`<div class=row><span>${esc(x.number)}<br><small>${esc(x.issued_at||'')}</small></span><b>${Number(x.amount).toLocaleString('en-US')} ريال</b><small>${x.status==='paid'?'مسددة':'غير مسددة'}</small></div>`).join(''):'<div class=empty>لا توجد فواتير مستحقات.</div>'}</div><a class=lnk href="#/profile">‹ رجوع</a>`}
 
 let pendingRate=null;
-async function taskUi(id){const b=$('#dtask');if(!b||!me.user)return;let t=null,rt=null;try{const r=await api('/direct/'+id+'/task');t=r.task;rt=r.rate}catch{}
+async function taskUi(id){const b=$('#dtask');if(!b||!me.user)return;let t=null,rt=null,cs=true;try{const r=await api('/direct/'+id+'/task');t=r.task;rt=r.rate;cs=r.can_start!==false}catch{}
 const isH=me.user.account_type==='helper';
 const nextRate=rt&&!isH?rt:null;const changed=String(nextRate&&nextRate.id)!==String(pendingRate&&pendingRate.id);pendingRate=nextRate;if(changed&&window.__dchatReload)window.__dchatReload();
 b.hidden=true;b.onclick=null;
 if(nextRate)return;
-if(!t&&isH){b.hidden=false;b.textContent='بدء المهمة';b.onclick=async()=>{try{await api('/direct/'+id+'/task','POST');toast('تم بدء المهمة');await taskUi(id)}catch(x){toast(x.message,1)}}}
+if(!t&&isH&&cs){b.hidden=false;b.textContent='بدء المهمة';b.onclick=async()=>{try{await api('/direct/'+id+'/task','POST');toast('تم بدء المهمة');await taskUi(id)}catch(x){toast(x.message,1)}}}
 else if(t&&t.status==='requested'&&!isH){b.hidden=false;b.textContent='قبول المهمة';b.onclick=async()=>{try{await api('/tasks/'+t.id+'/accept','POST');toast('تم قبول المهمة');await taskUi(id)}catch(x){toast(x.message,1)}}}}
 function rateCard(r){return `<form class="rate-card" data-rate="${+r.id}"><b>قيّم المساعد</b><div class="rc-stars">${[5,4,3,2,1].map(n=>`<label><input type=radio name=stars value=${n}><span>${n} ★</span></label>`).join('')}</div><textarea name=comment maxlength=500 rows=2 placeholder="أضف تعليقًا (اختياري)"></textarea><button class=btn type=submit>إرسال التقييم</button></form>`}
 async function profileWithRevs(){await profileAccount();if(!me.user||me.user.account_type!=='helper')return;const r=await api('/helper/reviews').catch(()=>null);if(!r)return;app.insertAdjacentHTML('beforeend',`<section class=panel><h3>تقييمات العملاء</h3><b>★ ${r.avg??'—'} (${r.count})</b>${r.reviews.length?r.reviews.map(x=>`<div class=row><span><b>${esc(x.rater)}</b>${x.comment?`<br><small>${esc(x.comment)}</small>`:''}</span><b>${'★'.repeat(x.stars)}</b></div>`).join(''):'<div class=empty>لا توجد تقييمات بعد.</div>'}</section>`)}

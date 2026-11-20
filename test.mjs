@@ -1013,6 +1013,24 @@ assert.equal((await h(`/direct/${oid}/task`)).j.task,null,'بعد السداد �
 assert.equal((await h(`/direct/${oid}/task`,'POST')).s,200,'يمكن بدء مهمة جديدة بعد النجاح');
 });
 
+test('بعد تأكيد استلام الكاش تنتهي المهمة ولا يظهر زر البدء إلا برسالة جديدة من العميل',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
+const o=cl();await o('/register','POST',{name:'عميل كاش بدء',email:'cb1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل كاش بدء',phone:'0500010101'});
+const oid=(await o('/me')).j.user.id;
+const h=cl();await h('/register','POST',{name:'مساعد كاش بدء',email:'cb2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد كاش بدء',phone:'0500010102'});await h('/pledge','POST',{accept:true,name:'مساعد كاش بدء'});
+assert.equal((await h(`/direct/${oid}/task`)).j.can_start,true,'لا مهمة سابقة: الزر متاح');
+const t=await h(`/direct/${oid}/task`,'POST');assert.equal(t.s,200);assert.equal((await o(`/tasks/${t.j.id}/accept`,'POST')).s,200);
+const pl=await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب',amount:120});assert.equal(pl.s,200);
+assert.equal((await o(`/agreements/${pl.j.id}/choose-cash`,'POST')).s,200);
+assert.equal((await h(`/agreements/${pl.j.id}/cash-received`,'POST')).s,200);
+const after=(await h(`/direct/${oid}/task`)).j;
+assert.equal(after.task,null,'الكاش أنهى المهمة');
+assert.equal(after.can_start,false,'بعد الإنهاء لا يظهر زر بدء المهمة');
+await new Promise(r=>setTimeout(r,1100));
+assert.equal((await o(`/direct/${(await h('/me')).j.user.id}`,'POST',{body:'محتاج خدمة ثانية'})).s,200);
+assert.equal((await h(`/direct/${oid}/task`)).j.can_start,true,'رسالة جديدة من العميل بعد الإنهاء تعيد الزر');
+});
+
 test('التقييم بعد المهمة: يظهر للعميل بعد السداد، ويظهر في حساب المساعد والبطاقة',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل تقييم',email:'rv1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل تقييم',phone:'0500009901'});
