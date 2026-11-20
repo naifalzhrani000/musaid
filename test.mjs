@@ -8,7 +8,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 let DBF;
 let srv;const B='http://localhost:3999';
-before(async()=>{DBF=join(tmpdir(),'t'+Date.now()+'.db');srv=spawn('node',['server.js'],{env:{...process.env,RESEND_API_KEY:'',REGISTER_PER_HOUR:'1000',ASSISTANT_PER_HOUR:'5000',PORT:3999,DB_FILE:DBF,ADMIN_EMAIL:'admin@t.sa',ADMIN_SETUP_TOKEN:'test-token',HALA_WEBHOOK_SECRET:'test-hala'},stdio:'ignore'});await new Promise(r=>setTimeout(r,1200))});
+before(async()=>{DBF=join(tmpdir(),'t'+Date.now()+'.db');srv=spawn('node',['server.js'],{env:{...process.env,SECRETS_KEY:Buffer.alloc(32,7).toString('base64'),RESEND_API_KEY:'',REGISTER_PER_HOUR:'1000',ASSISTANT_PER_HOUR:'5000',PORT:3999,DB_FILE:DBF,ADMIN_EMAIL:'admin@t.sa',ADMIN_SETUP_TOKEN:'test-token',HALA_WEBHOOK_SECRET:'test-hala'},stdio:'ignore'});await new Promise(r=>setTimeout(r,1200))});
 after(()=>srv.kill());
 const cl=()=>{let ck='';return async(p,m='GET',b)=>{const r=await fetch(B+'/api'+p,{method:m,headers:{'content-type':'application/json',cookie:ck},body:b?JSON.stringify(b):undefined});ck=r.headers.get('set-cookie')?.split(';')[0]||ck;return{s:r.status,j:await r.json().catch(()=>({}))}}};
 let phSeq=0;const ph=()=>'05'+String(70000000+(++phSeq));
@@ -627,7 +627,7 @@ assert.equal((await h('/me')).j.user.helper_type,'company','بعد موافقة 
 assert.equal((await cl()('/admin/verifications')).s,401,'غير المدير لا يرى التوثيق');
 });
 
-test('الفواتير: إيصال عمولة حين المنصة غير مسجلة، وفاتورة ضريبية حين تسجل، بلا تكرار، ورمز QR',async()=>{
+test('ضريبة المنصة: تُفعَّل بالإعداد وتُطبَّق على الإجمالي، ولا فواتير',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل فوترة',email:'bl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await verifyEmail(o);
@@ -639,47 +639,12 @@ const hid=(await h('/me')).j.user.id;
 const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
 await admin('/admin/settings','POST',{bank_name:'بنك',account_name:'مؤسسة المساعد',iban:'SA0380000000608010167519',commission_percent:2,commission_grace_days:3,org_name:'مؤسسة المساعد',org_cr:'7054975474',dispute_clause:'تحكيم.',support_email:'support@almusaidgroup.shop'});
 const deal=async(amt)=>{const id=(await o(`/direct/${hid}/agreements`,'POST',{amount:amt,description:'فوترة'})).j.id;await h(`/agreements/${id}/approve`,'POST');await h(`/agreements/${id}/request-completion`,'POST');await o(`/agreements/${id}/confirm-completion`,'POST');await payHala(id);return id};
-const a1=await deal(1000);
-const list1=(await admin('/admin/invoices')).j;
-const r1=list1.find(x=>x.ref==='S-'+a1);
-assert.ok(r1,'فاتورة المنصة للعميل');assert.equal(r1.kind,'simplified','المنصة غير مسجلة لا تُصدر فاتورة ضريبية: تُصدر مبسطة');assert.equal(r1.vat_amount,0,'المنصة غير مسجلة: بلا ضريبة');assert.equal(r1.total,1000,'الخدمة كاملة');
+const a2=await deal(1000);
 assert.equal((await admin('/admin/invoicing','POST',{platform_vat_registered:true,platform_vat_number:'123'})).s,400,'رقم المنصة الضريبي يُتحقق منه');
 assert.equal((await admin('/admin/invoicing','POST',{platform_vat_registered:true,platform_vat_number:'312345678901234'})).s,200);
-const a2=await deal(1000);
-const r2=(await admin('/admin/invoices')).j.find(x=>x.ref==='S-'+a2);
-assert.equal(r2.vat_amount,150,'الضريبة 15% على الخدمة كاملة');assert.equal(r2.total,1150,'الإجمالي 1150');
-const c1=(await admin('/admin/invoices')).j.find(x=>x.ref==='C-'+a1);assert.ok(c1,'مستند العمولة يُصدر عند الدفع');assert.equal(c1.seq,r1.seq+1,'مستند العمولة يلي فاتورة الخدمة مباشرة');assert.equal(r2.seq,c1.seq+1,'تسلسل متصل بين كل المستندات');assert.equal(r2.status,'pending_provider');
-const qr=Buffer.from(r2.qr||'','base64');assert.ok(qr.length>20,'رمز QR موجود');
-assert.ok(qr.includes(Buffer.from('مؤسسة المساعد')),'اسم البائع في الرمز');
-})
-
-test('توريدات المنصة: عمولة فقط للمساعد المسجل، والمهمة كاملة للمساعد غير المسجل عند تفعيل العد الاحتياطي',async()=>{
-const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
-const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
-await admin('/admin/settings','POST',{bank_name:'بنك',account_name:'مؤسسة المساعد',iban:'SA0380000000608010167519',commission_percent:2,commission_grace_days:3,org_name:'مؤسسة المساعد',org_cr:'7054975474',dispute_clause:'تحكيم.',support_email:'support@almusaidgroup.shop'});
-const o=cl();await o('/register','POST',{name:'عميل توريد',email:'ts1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
-await verifyEmail(o);
-await o('/profile','POST',{name:'عميل توريد',phone:'0500009601'});
-const hr=cl();await hr('/register','POST',{name:'مساعد مسجل توريد',email:'ts2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
-await verifyEmail(hr);
-await hr('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد مسجل توريد',phone:'0500009602'});await vfy(hr);
-const hu=cl();await hu('/register','POST',{name:'مساعد فرد توريد',email:'ts3@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
-await verifyEmail(hu);
-await hu('/profile','POST',{name:'مساعد فرد توريد',phone:'0500009603'});
-const hidR=(await hr('/me')).j.user.id,hidU=(await hu('/me')).j.user.id;
-const deal=async(hid,h,amt)=>{const id=(await o(`/direct/${hid}/agreements`,'POST',{amount:amt,description:'توريد'})).j.id;await h(`/agreements/${id}/approve`,'POST');await h(`/agreements/${id}/request-completion`,'POST');await o(`/agreements/${id}/confirm-completion`,'POST');await payHala(id);return id};
-const cur=()=>{const rows=admin('/admin/supply-report').then(r=>r.j);return rows};
-const base=(await cur()).rows.at(-1).platform_supply;
-await deal(hidR,hr,1000);
-const afterReg=(await cur()).rows.at(-1).platform_supply;
-assert.equal(Math.round((afterReg-base)*100)/100,20,'المساعد المسجل: المنصة تُحسب عمولتها فقط (2% من 1000)');
-await deal(hidU,hu,1000);
-const afterUnreg=(await cur()).rows.at(-1).platform_supply;
-assert.equal(Math.round((afterUnreg-afterReg)*100)/100,1000,'غير المسجل: قيمة المهمة كاملة كمورّد مفترض');
-assert.equal((await admin('/admin/supply-threshold','POST',{value:375000,deemed_supply_counting:false})).s,200);
-const off=(await cur()).rows.at(-1).platform_supply;
-assert.equal(Math.round((afterUnreg-off)*100)/100,0,'العد إلزامي وفق الرأي المعتمد: تجاهل الإيقاف');
-assert.equal((await admin('/admin/supply-threshold','POST',{value:375000,deemed_supply_counting:true})).s,200);
+const a3=await deal(1000);
+assert.equal((await o(`/agreements/${a3}`)).j.total_amount,1150,'الضريبة تُطبَّق على الإجمالي بعد تفعيلها');
+assert.equal((await admin('/admin/invoices')).s,404,'لا مسار للفواتير');
 });
 
 test('المنشورات: إعجاب بالتبديل، وتعليقات تُحفظ وتُعرض، وحذف التعليق لصاحبه فقط',async()=>{
@@ -958,34 +923,91 @@ assert.equal((await c('/me/docs','POST',{kind:'cr',number:'1010123456',attachmen
 
 const PNGDOC='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
-test('فواتير المحادثة: إصدار بعد الاتفاق، ومطابقة الخدمة والمبلغ، والإلغاء، والدفع',async()=>{
-const cli=await reg('invc1'),hel=await reg('invh1');
-const cid=(await cli('/me')).j.user.id,hid=(await hel('/me')).j.user.id;
-await asHelper(hel);await vfy(hel);
-const ag=(await cli('/direct/'+hid+'/agreements','POST',{amount:500,description:'تركيب مكيف'}));assert.equal(ag.s,200);
-const gid=(await cli('/direct/'+hid+'/agreements')).j[0].id;
-assert.equal((await hel('/agreements/'+gid+'/approve','POST')).s,200);
-// لا يصدر الفاتورة إلا المساعد
-assert.equal((await cli('/direct/'+hid+'/invoices','POST',{service:'تركيب مكيف',amount:500})).s,403);
-// الموضوع والمبلغ يجب أن يطابقا الاتفاق
-assert.equal((await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب',amount:500})).s,400);
-assert.equal((await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب مكيف',amount:400})).s,400);
-// إصدار صحيح
-const inv=await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب مكيف',amount:500});
-assert.equal(inv.s,200);assert.match(inv.j.number,/^INV-\d{4}-\d{4}$/);
-assert.equal((await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب مكيف',amount:500})).s,400,'لا فاتورتان فعّالتان لاتفاق واحد');
-const list=(await cli('/direct/'+hid+'/invoices')).j;assert.equal(list.length,1);
-assert.equal(list[0].status,'awaiting_payment');assert.equal(list[0].total,575);assert.ok(list[0].client.phone&&list[0].helper.name);
-// العميل لا يلغي الفاتورة، والمساعد يلغيها
-assert.equal((await cli('/chat-invoices/'+list[0].id+'/cancel','POST',{reason:'سبب تجريبي'})).s,403);
-assert.equal((await hel('/chat-invoices/'+list[0].id+'/cancel','POST',{reason:'سبب تجريبي'})).s,200);
-assert.equal((await cli('/direct/'+hid+'/invoices')).j[0].status,'cancelled');
-// بعد الإلغاء يُصدر المساعد فاتورة جديدة برقم جديد
-const inv2=await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب مكيف',amount:500});assert.equal(inv2.s,200);assert.notEqual(inv2.j.number,inv.j.number);
-// الدفع عبر البوابة يحدّث حالة الفاتورة تلقائيًا، ولا يتكرر الإصدار بعده
-assert.equal((await hel('/agreements/'+gid+'/payment')).s,403);
-assert.equal(await payHala(gid),200);
-const after=(await cli('/direct/'+hid+'/invoices')).j.filter(x=>x.status!=='cancelled');assert.equal(after[0].status,'paid_online');
-assert.equal((await cli('/agreements/'+gid+'/payment')).j.paid,true);
-assert.equal((await hel('/direct/'+cid+'/invoices','POST',{service:'تركيب مكيف',amount:500})).s,400,'لا فاتورة لاتفاق مدفوع');
+test('الإلغاء المتتالي والكاش: 5 إلغاءات متتالية تُغلق الحساب، و3 طلبات كاش غير مسددة توقف المساعد حتى السداد',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
+const mk=async(email,name,phoneN)=>{const c=cl();await c('/register','POST',{name,email,password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(c);await c('/profile','POST',{name,phone:phoneN});return c};
+const o=await mk('cx1@t.sa','عميل إلغاء','0500009601');const oid=(await o('/me')).j.user.id;
+const o2=await mk('cx3@t.sa','عميل كاش','0500009603');
+const h=cl();await h('/register','POST',{name:'مساعد إلغاء',email:'cx2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+await verifyEmail(h);await h('/profile','POST',{name:'مساعد إلغاء',phone:'0500009602'});await h('/pledge','POST',{accept:true,name:'مساعد إلغاء'});
+const hid=(await h('/me')).j.user.id;
+const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
+
+for(let i=0;i<4;i++){const id=(await o(`/direct/${hid}/agreements`,'POST',{amount:100,description:'طلب '+i})).j.id;assert.equal((await o(`/agreements/${id}/cancel`,'POST')).s,200)}
+assert.equal((await admin(`/admin/users/${oid}/profile`)).j.user.suspended_until,null,'أربعة إلغاءات لا تُغلق الحساب');
+const last=(await o(`/direct/${hid}/agreements`,'POST',{amount:100,description:'طلب أخير'})).j.id;assert.equal((await o(`/agreements/${last}/cancel`,'POST')).s,200);
+assert.ok((await admin(`/admin/users/${oid}/profile`)).j.user.suspended_until,'خمسة إلغاءات متتالية تُغلق الحساب');
+
+const cashDeal=async(amt)=>{const id=(await o2(`/direct/${hid}/agreements`,'POST',{amount:amt,description:'كاش'})).j.id;assert.equal((await h(`/agreements/${id}/approve`,'POST')).s,200);assert.equal((await o2(`/agreements/${id}/choose-cash`,'POST')).s,200);assert.equal((await h(`/agreements/${id}/cash-received`,'POST')).s,200);return id};
+await cashDeal(100);await cashDeal(100);
+assert.equal((await admin(`/admin/users/${hid}/profile`)).j.user.cash_hold,0,'طلبا كاش فقط: لا إيقاف');
+await cashDeal(100);
+assert.equal((await admin(`/admin/users/${hid}/profile`)).j.user.cash_hold,1,'ثلاثة طلبات كاش غير مسددة توقف الحساب');
+
+const pid=(await o2(`/direct/${hid}/agreements`,'POST',{amount:100,description:'سداد'})).j.id;
+await h(`/agreements/${pid}/approve`,'POST');
+const tot=(await o2(`/agreements/${pid}`)).j.total_amount;
+const pay=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body:JSON.stringify({agreement_id:pid,amount:tot,reference:'SETTLE'+pid})});
+assert.equal(pay.status,200);
+assert.equal((await admin(`/admin/users/${hid}/profile`)).j.user.cash_hold,0,'بعد السداد يُفعَّل الحساب');
+});
+
+test('رابط الدفع: المساعد يحدد السعر النهائي فقط، فيُنشأ اتفاق معتمد، والعميل يختار كاش أو أونلاين',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
+const o=cl();await o('/register','POST',{name:'عميل رابط',email:'pl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل رابط',phone:'0500009701'});
+const oid=(await o('/me')).j.user.id;
+const h=cl();await h('/register','POST',{name:'مساعد رابط',email:'pl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد رابط',phone:'0500009702'});await h('/pledge','POST',{accept:true,name:'مساعد رابط'});
+const hid=(await h('/me')).j.user.id;
+const adm=cl();await adm('/login','POST',{email:'admin@t.sa',password:'12345678'});
+assert.equal((await o(`/direct/${hid}/payment-link`,'POST',{description:'تركيب',amount:300})).s,403,'العميل لا يرسل رابط دفع');
+const r=await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب مكيف',amount:300});assert.equal(r.s,200);
+const g=(await o(`/agreements/${r.j.id}`)).j;assert.equal(g.status,'agreed','الرابط يُنشئ اتفاقًا معتمدًا');assert.equal((await o(`/direct/${hid}/agreements`)).j.find(x=>x.id===r.j.id).source,'link','المحادثة تعرف أنه رابط دفع');assert.equal(g.amount,300);
+assert.equal((await o(`/agreements/${r.j.id}/choose-cash`,'POST')).s,200,'اختيار الكاش');
+assert.equal((await h(`/agreements/${r.j.id}/cash-received`,'POST')).s,200);
+
+// مفتاح هلا للمساعد: يُحفظ مشفّرًا، ولا يُعاد في أي استجابة
+assert.equal((await h('/helper/hala','POST',{api_key:'key-abcdef1234',webhook_secret:'whsec-abcdef1234'})).s,200);
+const st=await h('/helper/hala');assert.equal(st.j.configured,true);assert.equal(st.j.last4,'1234');
+assert.ok(!JSON.stringify(st.j).includes('whsec'),'السر لا يُعاد');
+assert.equal((await o('/helper/hala')).s,403,'العميل لا يصل لإعداد هلا');
+
+// إشعار موقّع بسر المساعد يُقبل، والسر العام المرسل بالترويسة يُرفض لهذا الاتفاق
+const r2=await h(`/direct/${oid}/payment-link`,'POST',{description:'دفع أونلاين',amount:200});
+const tot=(await o(`/agreements/${r2.j.id}`)).j.total_amount;
+const body=JSON.stringify({agreement_id:r2.j.id,amount:tot,reference:'HL'+r2.j.id});
+const wrong=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body});
+assert.equal(wrong.status,401,'السر العام لا يقبل اتفاق مساعد لديه سر خاص');
+const sig=createHmac('sha256','whsec-abcdef1234').update(body).digest('hex');
+const ok=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-signature':sig},body});
+assert.equal(ok.status,200,'الإشعار الموقّع بسر المساعد يُقبل');
+assert.ok((await o(`/agreements/${r2.j.id}`)).j.paid_at,'الاتفاق مدفوع');
+
+// مستحقات المنصة: تُصدر من الإدارة، وتُسوَّى عند تأكيدها
+assert.equal((await adm(`/admin/helpers/${hid}/platform-invoice`,'POST')).s,400,'الدفع الأونلاين خصم المستحقات السابقة تلقائيًا');
+const r3=await h(`/direct/${oid}/payment-link`,'POST',{description:'طلب كاش أخير',amount:150});
+assert.equal((await o(`/agreements/${r3.j.id}/choose-cash`,'POST')).s,200);assert.equal((await h(`/agreements/${r3.j.id}/cash-received`,'POST')).s,200);
+const pi=await adm(`/admin/helpers/${hid}/platform-invoice`,'POST');assert.equal(pi.s,200);assert.ok(pi.j.number.startsWith('PI-'));assert.ok(pi.j.amount>0);
+assert.ok((await h('/helper/platform-invoices')).j.some(x=>x.number===pi.j.number),'المساعد يرى الفاتورة');
+assert.equal((await adm(`/admin/platform-invoices/${pi.j.id}/mark-paid`,'POST',{note:'تحويل'})).s,200);
+assert.equal((await adm(`/admin/platform-invoices/${pi.j.id}/mark-paid`,'POST',{})).s,400,'لا تُسدَّد مرتين');
+});
+
+test('المهمة: العميل يبدأ، والمساعد يقبل، ورابط الدفع المسدد ينهيها بنجاح',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
+const o=cl();await o('/register','POST',{name:'عميل مهمة',email:'tk1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل مهمة',phone:'0500009801'});
+const oid=(await o('/me')).j.user.id;
+const h=cl();await h('/register','POST',{name:'مساعد مهمة',email:'tk2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد مهمة',phone:'0500009802'});await h('/pledge','POST',{accept:true,name:'مساعد مهمة'});
+const hid=(await h('/me')).j.user.id;
+assert.equal((await h(`/direct/${oid}/task`,'POST')).s,403,'المساعد لا يبدأ المهمة');
+const st=await o(`/direct/${hid}/task`,'POST');assert.equal(st.s,200);
+assert.equal((await o(`/direct/${hid}/task`,'POST')).s,400,'لا مهمتان مفتوحتان');
+assert.equal((await h(`/direct/${oid}/task`)).j.task.status,'requested');
+assert.equal((await o(`/tasks/${st.j.id}/accept`,'POST')).s,403,'القبول للمساعد فقط');
+assert.equal((await h(`/tasks/${st.j.id}/accept`,'POST')).s,200);
+const pl=await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب',amount:200});assert.equal(pl.s,200);
+const tot=(await o(`/agreements/${pl.j.id}`)).j.total_amount;
+const body=JSON.stringify({agreement_id:pl.j.id,amount:tot,reference:'TK'+pl.j.id});
+const pay=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body});assert.equal(pay.status,200);
+assert.equal((await h(`/direct/${oid}/task`)).j.task,null,'بعد السداد لا مهمة مفتوحة');
+assert.equal((await o(`/direct/${hid}/task`,'POST')).s,200,'يمكن بدء مهمة جديدة بعد النجاح');
 });

@@ -15,9 +15,8 @@ const journal=m=>[
 const summary=m=>{
   const income=get(`SELECT COALESCE(SUM(amount),0) s FROM agreement_commissions WHERE status='paid' AND substr(COALESCE(paid_at,created_at),1,7)=?`,m).s;
   const expenses=get(`SELECT COALESCE(SUM(amount),0) s FROM expenses WHERE substr(created_at,1,7)=?`,m).s;
-  const inv=get(`SELECT COUNT(*) n,COALESCE(SUM(total),0) t FROM invoices WHERE substr(issued_at,1,7)=?`,m);
   const payables=get(`SELECT COALESCE(SUM(amount),0) s FROM agreement_commissions WHERE status='due'`).s;
-  return{income,expenses,invoices:inv.n,invoices_total:inv.t,payables};
+  return{income,expenses,payables};
 };
 
 route('GET','/admin/accounting',c=>{
@@ -28,11 +27,11 @@ route('GET','/admin/accounting',c=>{
   const reconciled=Math.abs(jIncome-s.income)<0.005&&Math.abs(jExp-s.expenses)<0.005;
   const reg=vatRegistered();
   const pvat=String(get("SELECT value FROM settings WHERE key='platform_vat_number'")?.value||'');
-  const outVat=reg&&pvat?get('SELECT COALESCE(SUM(vat_amount),0) s FROM invoices WHERE issuer_vat=? AND substr(issued_at,1,7)=?',pvat,m).s:0;
+  const outVat=0;
   return{month:m,income:s.income,expenses:s.expenses,profit:s.income-s.expenses,
     vat:outVat,
     vat_note:reg?'ضريبة المخرجات الفعلية من مستندات المنصة هذا الشهر (فواتير العمولة وفواتير المورّد المفترض)':'المنصة غير مسجلة في ضريبة القيمة المضافة',
-    invoices:s.invoices,invoices_total:s.invoices_total,payables:s.payables,
+    payables:s.payables,
     entries:rows.length,reconciled};
 });
 
@@ -46,10 +45,6 @@ route('GET','/admin/accounting/export',c=>{
   if(type==='journal'){
     csv=toCsv(['التاريخ','النوع','المرجع','البيان','المبلغ (ريال)','الحالة'],
       journal(m).map(r=>[r.at,r.type,r.ref,r.description,r.amount,r.status]));
-  }else if(type==='invoices'){
-    csv=toCsv(['رقم الفاتورة','النوع','المرجع','اسم المشتري','الرقم الضريبي للمشتري','المجموع قبل الضريبة','نسبة الضريبة','مبلغ الضريبة','الإجمالي','تاريخ الإصدار','الحالة'],
-      all(`SELECT seq,kind,ref,buyer_name,buyer_vat,subtotal,vat_rate,vat_amount,total,issued_at,status FROM invoices WHERE substr(issued_at,1,7)=? ORDER BY seq`,m)
-        .map(r=>[r.seq,r.kind,r.ref,r.buyer_name,r.buyer_vat,r.subtotal,r.vat_rate,r.vat_amount,r.total,r.issued_at,r.status]));
   }else if(type==='commissions'){
     csv=toCsv(['رقم القيد','رقم الاتفاق','المساعد','المبلغ (ريال)','الحالة','تاريخ الإنشاء','تاريخ السداد'],
       all(`SELECT ac.id,ac.agreement_id,u.name helper,ac.amount,ac.status,ac.created_at,ac.paid_at

@@ -844,3 +844,11 @@ body.dchat-mode #dchat{overscroll-behavior:contain;-webkit-overflow-scrolling:to
 .sh-cell img,.sh-cell video{width:100%;height:100%;object-fit:cover;border-radius:12px}
 .sh-cell:has(img),.sh-cell:has(video){border:0;position:relative}
 .sh-cell .lnk{position:absolute;bottom:4px;background:rgba(255,255,255,.9);border-radius:8px;padding:2px 6px;font-size:12px}
+
+/* بطاقة رابط الدفع: صغيرة ومختصرة داخل المحادثة */
+body.dchat-mode .dc-linkcard{max-width:240px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:10px 12px;display:grid;gap:4px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+body.dchat-mode .dc-linkcard .dc-link-amt{font-weight:700;color:var(--g)}
+body.dchat-mode .dc-linkcard .dc-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+
+/* زر المهمة بجوار زر الإرسال */
+body.dchat-mode .dc-task{flex:0 0 auto;height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--g);background:#fff;color:var(--g);font:inherit;font-weight:700;cursor:pointer;white-space:nowrap}

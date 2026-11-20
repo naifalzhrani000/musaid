@@ -64,38 +64,23 @@ for(const [col,def] of [['vat_status',"TEXT NOT NULL DEFAULT ''"],['vat_number',
 for(const [col,def] of [['paid_at','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('attachments') WHERE name='ext_key'").get())db.exec("ALTER TABLE attachments ADD COLUMN ext_key TEXT");
 for(const [col,def] of [['helper_type',"TEXT NOT NULL DEFAULT ''"],['vat_verified','INT NOT NULL DEFAULT 0'],['helper_type_request','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
+for(const [col,def] of [['cash_hold','INT NOT NULL DEFAULT 0']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
 for(const [col,def] of [['vat_amount','REAL'],['total_amount','REAL'],['helper_net','REAL'],['payment_ref','TEXT'],['paid_via','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 // vat_verified: 0 = قيد المراجعة (يعمل)، 1 = معتمد، 2 = مرفوض (موقوف حتى يعدّل الرقم)
+// تشفير مفاتيح المساعد (AES-256-GCM)، والمفتاح من متغير البيئة SECRETS_KEY (32 بايت بصيغة base64)
+const secretsKey=()=>{const b=Buffer.from(process.env.SECRETS_KEY||'','base64');return b.length===32?b:null};
+const encSecret=(plain)=>{const key=secretsKey();if(!key)throw err(503,'مفتاح التشفير غير مُعدّ على الخادم، لا يمكن حفظ المفاتيح');const iv=crypto.randomBytes(12);const c=crypto.createCipheriv('aes-256-gcm',key,iv);const enc=Buffer.concat([c.update(String(plain),'utf8'),c.final()]);return [iv,c.getAuthTag(),enc].map(x=>x.toString('base64')).join('.')};
+const decSecret=(blob)=>{const key=secretsKey();if(!key||!blob)return null;try{const [iv,tag,enc]=blob.split('.').map(x=>Buffer.from(x,'base64'));const d=crypto.createDecipheriv('aes-256-gcm',key,iv);d.setAuthTag(tag);return Buffer.concat([d.update(enc),d.final()]).toString('utf8')}catch{return null}};
+const helperHalaSecret=uid=>{const r=get('SELECT webhook_secret_enc FROM helper_hala WHERE user_id=?',uid);return r?decSecret(r.webhook_secret_enc):null};
 const needsVat=u=>!!u&&u.account_type==='helper'&&u.vat_status==='registered'&&u.vat_verified===2;
 const helperOf=a=>{const h=get("SELECT id FROM users WHERE id=? AND account_type='helper'",a.a_id);return h?a.a_id:a.b_id};
-db.exec("CREATE TABLE IF NOT EXISTS invoices(id INTEGER PRIMARY KEY,kind TEXT NOT NULL,ref TEXT NOT NULL UNIQUE,seq INTEGER NOT NULL,agreement_id INT,issuer_name TEXT,issuer_vat TEXT,buyer_name TEXT,buyer_vat TEXT,description TEXT,subtotal REAL,vat_rate REAL,vat_amount REAL,total REAL,issued_at TEXT,qr TEXT,status TEXT NOT NULL DEFAULT 'pending_provider',provider_ref TEXT)");
-const tlv=(tag,val)=>{const b=Buffer.from(String(val),'utf8');return Buffer.concat([Buffer.from([tag,b.length]),b])};
-const qrOf=(seller,vat,ts,total,vatAmt)=>Buffer.concat([tlv(1,seller),tlv(2,vat),tlv(3,ts),tlv(4,total.toFixed(2)),tlv(5,vatAmt.toFixed(2))]).toString('base64');
-// one document per commission: a tax invoice when the platform is VAT-registered, otherwise a non-tax receipt
-// الأطراف في الاتفاق: المساعد والعميل
-const partiesOf=(agreementId)=>{const p=get('SELECT a_id,b_id FROM agreements WHERE id=?',agreementId);if(!p)return null;const hid=get("SELECT id FROM users WHERE id=? AND account_type='helper'",p.a_id)?p.a_id:p.b_id;return{hid,cid:hid===p.a_id?p.b_id:p.a_id}};
-// المساعد المسجل ضريبيًا: الاسم والرقم الضريبي وهل يُعامل كمسجل
-const taxedHelper=(hid)=>{const h=get('SELECT name,vat_status,vat_number FROM users WHERE id=?',hid);const taxed=!!h&&h.vat_status==='registered'&&!!h.vat_number;return{name:h?h.name||'':'',vat:taxed?String(h.vat_number):'',taxed}};
-// فاتورة عمولة المنصة: إن كان المساعد مسجلًا والمنصة مسجلة فهي خدمة خاضعة للضريبة (15%) تُصدرها المنصة للمساعد
-const issueCommissionDoc=(agreementId)=>{const ref='C-'+agreementId;if(get('SELECT 1 x FROM invoices WHERE ref=?',ref))return;const com=get('SELECT amount,helper_id FROM agreement_commissions WHERE agreement_id=?',agreementId);if(!com||!(com.amount>0))return;
-const reg=SET().platform_vat_registered==='1',pvat=String(SET().platform_vat_number||''),name=SET().org_name||'مؤسسة المساعد';const ht=taxedHelper(com.helper_id);
-const taxed=reg&&ht.taxed;const rate=taxed?0.15:0;const vat=Math.round(com.amount*rate*100)/100,total=Math.round((com.amount+vat)*100)/100;const kind=taxed?'tax_invoice':'receipt';
-const seq=get('SELECT COALESCE(MAX(seq),0)+1 n FROM invoices').n;const ts=new Date().toISOString();const qr=taxed?qrOf(name,pvat,ts,total,vat):null;
-run('INSERT INTO invoices(kind,ref,seq,agreement_id,issuer_name,issuer_vat,buyer_name,buyer_vat,description,subtotal,vat_rate,vat_amount,total,issued_at,qr,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',kind,ref,seq,agreementId,name,reg?pvat:'',ht.name,ht.vat,'عمولة وساطة إلكترونية عن الاتفاق رقم '+agreementId+(taxed?'':' (هامش داخل الوعاء، بدون ضريبة إضافية)'),com.amount,rate,vat,total,ts,qr,'pending_provider');};
-// فاتورة الخدمة للعميل: المساعد المسجل يُصدرها بنفسه، وغير المسجل تُصدرها المنصة كمورّد مفترض
-const issueSaleDoc=(agreementId)=>{const ref='S-'+agreementId;if(get('SELECT 1 x FROM invoices WHERE ref=?',ref))return;const a=get('SELECT amount FROM agreements WHERE id=?',agreementId);if(!a||!(a.amount>0))return;const pt=partiesOf(agreementId);if(!pt)return;
-const ht=taxedHelper(pt.hid);const cname=(get('SELECT name FROM users WHERE id=?',pt.cid)||{}).name||'العميل';
-const reg=SET().platform_vat_registered==='1',pvat=String(SET().platform_vat_number||''),name=SET().org_name||'مؤسسة المساعد';
-const issuer=ht.taxed?{name:ht.name,vat:ht.vat}:{name,vat:reg?pvat:''};
-const rate=(ht.taxed||reg)?0.15:0;const vat=Math.round(a.amount*rate*100)/100,total=Math.round((a.amount+vat)*100)/100;
-const seq=get('SELECT COALESCE(MAX(seq),0)+1 n FROM invoices').n;const ts=new Date().toISOString();const pct=commissionPctFor(),comm=Math.round(a.amount*pct)/100,desc='خدمة عبر منصة المساعد رقم '+agreementId+'. الدفع يُحوَّل مباشرة عبر بوابة الدفع إلى مقدم الخدمة، وعمولة المنصة '+pct+'% ('+comm.toFixed(2)+' ريال) هي وحدها التي تستلمها المنصة.';const qr=rate>0&&issuer.vat?qrOf(issuer.name,issuer.vat,ts,total,vat):null;
-run('INSERT INTO invoices(kind,ref,seq,agreement_id,issuer_name,issuer_vat,buyer_name,buyer_vat,description,subtotal,vat_rate,vat_amount,total,issued_at,qr,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rate>0?'tax_invoice':'simplified',ref,seq,agreementId,issuer.name,issuer.vat,cname,'',desc,a.amount,rate,vat,total,ts,qr,'pending_provider')};
-// فواتير المحادثة: يصدرها المساعد بعد الاتفاق على الخدمة والمبلغ، ونسخة الأطراف تُحفظ وقت الإصدار
-db.exec("CREATE TABLE IF NOT EXISTS chat_invoices(id INTEGER PRIMARY KEY,number TEXT UNIQUE NOT NULL,agreement_id INT NOT NULL REFERENCES agreements(id),helper_id INT NOT NULL REFERENCES users(id),client_id INT NOT NULL REFERENCES users(id),service TEXT NOT NULL,amount REAL NOT NULL,vat_amount REAL NOT NULL DEFAULT 0,total REAL NOT NULL,helper_snapshot TEXT NOT NULL,client_snapshot TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'active',cancelled_at TEXT,cancel_reason TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)");
-db.exec("CREATE INDEX IF NOT EXISTS ix_chat_inv_agr ON chat_invoices(agreement_id,status)");
+db.exec("DROP TABLE IF EXISTS invoices"); // إلغاء نظام الفواتير: حُذفت السجلات القديمة بموافقة المالك
+db.exec("DROP TABLE IF EXISTS chat_invoices");
+db.exec("CREATE TABLE IF NOT EXISTS helper_hala(user_id INTEGER PRIMARY KEY REFERENCES users(id),api_key_enc TEXT NOT NULL,webhook_secret_enc TEXT NOT NULL,last4 TEXT,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+db.exec("CREATE TABLE IF NOT EXISTS platform_invoices(id INTEGER PRIMARY KEY,number TEXT UNIQUE NOT NULL,helper_id INT NOT NULL REFERENCES users(id),amount REAL NOT NULL,commission_ids TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'unpaid',issued_at TEXT DEFAULT CURRENT_TIMESTAMP,paid_at TEXT,paid_note TEXT)");
+db.exec("CREATE TABLE IF NOT EXISTS tasks(id INTEGER PRIMARY KEY,client_id INT NOT NULL REFERENCES users(id),helper_id INT NOT NULL REFERENCES users(id),status TEXT NOT NULL,agreement_id INT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+for(const [col,def] of [['source','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 db.exec("CREATE TABLE IF NOT EXISTS agreement_notes(agreement_id INTEGER PRIMARY KEY REFERENCES agreements(id),notes TEXT NOT NULL DEFAULT '',updated_at TEXT)");
-// the link to the e-invoicing provider: nothing is sent until a provider contract is set up
-const submitInvoice=async(inv)=>{if(!process.env.INVOICE_PROVIDER_URL)return{status:'pending_provider'};return{status:'not_implemented'}};
 
 const VAT_THRESHOLD=375000;
 // توريدات المنصة الخاضعة: المنصة تستلم العمولة فقط، فلا تُحسب قيمة المهمة كاملة إلا للمساعد غير المسجل (مورّد مفترض) إن كان العد الاحتياطي مفعّلًا
@@ -107,7 +92,7 @@ const activateVatIfNeeded=(extra)=>{if(SET().platform_vat_registered==='1')retur
 run("INSERT OR REPLACE INTO settings(key,value) VALUES('platform_vat_registered','1')");run("INSERT OR REPLACE INTO settings(key,value) VALUES('platform_vat_activated_at',?)",new Date().toISOString());
 all("SELECT id FROM users WHERE role='admin'").forEach(a=>notify(a.id,'بلغ إجمالي توريدات المنصة حد التسجيل الإلزامي 375,000 ريال، وفُعّلت ضريبة القيمة المضافة تلقائيًا','#/admin'));return true};
 const commissionPctFor=()=>Number(SET().commission_percent)||15;
-const ensureCommission=(id)=>{const a=get('SELECT * FROM agreements WHERE id=?',id);if(!a||!a.paid_at)return;const pct=commissionPctFor(helperOf(a));run("INSERT OR IGNORE INTO agreement_commissions(agreement_id,helper_id,amount,status,paid_at) VALUES(?,?,?,'paid',datetime('now'))",id,helperOf(a),Math.round(a.amount*pct)/100);issueSaleDoc(id);issueCommissionDoc(id)};
+const ensureCommission=(id)=>{const a=get('SELECT * FROM agreements WHERE id=?',id);if(!a||!a.paid_at)return;const pct=commissionPctFor(helperOf(a));run("INSERT OR IGNORE INTO agreement_commissions(agreement_id,helper_id,amount,status,paid_at) VALUES(?,?,?,'paid',datetime('now'))",id,helperOf(a),Math.round(a.amount*pct)/100)};
 const clientOf=a=>helperOf(a)===a.a_id?a.b_id:a.a_id;
 const CATALOG_VERSION='4';
 const applyCatalog=()=>{const v=get("SELECT value FROM settings WHERE key='catalog_version'");if(v&&v.value===CATALOG_VERSION)return;
@@ -159,9 +144,10 @@ const R=[],route=(m,p,f)=>R.push([m,new RegExp('^/api'+p+'$'),f]);
 
 
 const SET=()=>Object.fromEntries(all('SELECT key,value FROM settings').map(r=>[r.key,r.value]));
-const restricted=uid=>{const x=get("SELECT flagged,(suspended_until>datetime('now')) on_hold FROM users WHERE id=?",uid);
+const restricted=uid=>{const x=get("SELECT flagged,cash_hold,(suspended_until>datetime('now')) on_hold FROM users WHERE id=?",uid);
 if(x?.flagged)throw err(403,'حسابك قيد مراجعة الإدارة بسبب تكرار الإلغاء بعد الاختيار');
-if(x?.on_hold)throw err(403,'حسابك موقوف مؤقتًا عن النشر والتقدم بسبب تكرار الإلغاء بعد الاختيار');};
+if(x?.on_hold)throw err(403,'حسابك موقوف مؤقتًا عن النشر والتقدم بسبب تكرار الإلغاء');
+if(x?.cash_hold)throw err(403,'حسابك موقوف مؤقتًا حتى سداد مستحقات الطلبات الكاش');};
 const own=(u,id)=>{if(!id)return null;if(!get('SELECT 1 x FROM attachments WHERE id=? AND user_id=?',+id,u.id))throw err(400,'المرفق غير صالح');return +id};
 const PV=4;
 const pledgeBody=s=>[
@@ -196,10 +182,29 @@ const issueVerify=async(uid,email)=>{const code=String(crypto.randomInt(0,100000
 const ACT={start:['helper',['helper_chosen'],'in_progress'],complete:['owner',['in_progress'],'completed'],cancel:['owner',['draft','published','negotiating'],'cancelled'],publish:['owner',['draft'],'published'],dispute:['party',['helper_chosen','in_progress'],'disputed']};
 const blocked=(a,b)=>!!get('SELECT 1 x FROM blocks WHERE (blocker_id=? AND blocked_id=?) OR (blocker_id=? AND blocked_id=?)',a,b,b,a);
 const CFG=()=>{const s=SET();return{warn:+(s.cancel_warn_at??2),sus:+(s.cancel_suspend_at??3),rev:+(s.cancel_review_at??5),days:+(s.cancel_suspend_days??7)}};
-const applyPenalty=uid=>{const c=CFG(),n=get("SELECT (SELECT COUNT(*) FROM agreement_cancellations WHERE by_id=? AND created_at>datetime('now','-30 days')) n",uid).n;
-if(n>=c.rev){run('UPDATE users SET flagged=1 WHERE id=?',uid);all("SELECT id FROM users WHERE role='admin'").forEach(a=>notify(a.id,'حساب يحتاج مراجعة بسبب تكرار الإلغاء بعد الاختيار','#/admin'))}
-if(n>=c.sus){run("UPDATE users SET suspended_until=datetime('now', '+' || ? || ' days') WHERE id=?",c.days,uid);notify(uid,`أُوقف نشرك وتقدمك لمدة ${c.days} أيام بسبب تكرار الإلغاء بعد اختيار المساعد`,'#/profile')}
-else if(n>=c.warn)notify(uid,'تنبيه: تكرار الإلغاء بعد اختيار المساعد قد يؤدي إلى إيقاف حسابك','#/profile')};
+// قاعدة الإلغاء: 15 إلغاءً خلال 7 أيام، أو 5 إلغاءات متتالية دون أي طلب مكتمل بينها ← إغلاق 7 أيام
+const applyPenalty=uid=>{
+  const weekly=get("SELECT COUNT(*) n FROM agreement_cancellations WHERE by_id=? AND created_at>datetime('now','-7 days')",uid).n;
+  const last5=all("SELECT created_at FROM agreement_cancellations WHERE by_id=? ORDER BY id DESC LIMIT 5",uid);
+  let streak=false;
+  if(last5.length===5){const since=last5[4].created_at;streak=!get("SELECT 1 x FROM agreements WHERE status='completed' AND (a_id=? OR b_id=?) AND completed_at>=?",uid,uid,since)}
+  if(weekly>=15||streak){
+    run("UPDATE users SET suspended_until=datetime('now','+7 days') WHERE id=?",uid);
+    notify(uid,'أُغلق حسابك 7 أيام بسبب تكرار الإلغاء');
+  }
+};
+
+// الطلبات الكاش: 3 طلبات كاش لم تُسدَّد عمولاتها ← إيقاف مؤقت حتى السداد
+const CASH_HOLD_AT=3;
+const syncCashHold=uid=>{
+  const n=get("SELECT COUNT(*) n FROM agreement_commissions ac JOIN agreements a ON a.id=ac.agreement_id WHERE ac.helper_id=? AND ac.status='due' AND a.paid_via='cash'",uid).n;
+  const want=n>=CASH_HOLD_AT?1:0;
+  const cur=(get('SELECT cash_hold FROM users WHERE id=?',uid)||{}).cash_hold||0;
+  if(want!==cur){
+    run('UPDATE users SET cash_hold=? WHERE id=?',want,uid);
+    if(want)notify(uid,`أُوقف حسابك مؤقتًا لوجود ${n} طلبات كاش لم تُسدَّد عمولاتها، ويُفعَّل بعد السداد`,'#/profile');
+  }
+};
 const likeEsc=v=>String(v).replace(/[\\%_]/g,m=>'\\'+m);
 const cleanSearch=t=>String(t).replace(/\+?[\d\u0660-\u0669][\d\u0660-\u0669\s-]{7,}[\d\u0660-\u0669]/g,'[\u0631\u0642\u0645]').replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g,'[\u0628\u0631\u064a\u062f]').trim().slice(0,200);
 const stripAl=w=>w.length>3&&w.startsWith('ال')?w.slice(2):w;
@@ -234,7 +239,7 @@ const cityOpen=city=>{
   return true;
 };
 
-export {pushCfg,pushKeyProblem,pushTest,verified,cityCoverage,cityOpen,CITY_OPEN_PCT,macOf,DB_PATH, notifyEmail, activateVatIfNeeded, supplyFor, supplyOf, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, issueCommissionDoc, submitInvoice, commissionPctFor, issueSaleDoc};
+export {pushCfg,pushKeyProblem,pushTest,verified,cityCoverage,cityOpen,CITY_OPEN_PCT,macOf,DB_PATH, notifyEmail, activateVatIfNeeded, supplyFor, supplyOf, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, CFG, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, commissionPctFor, syncCashHold, helperHalaSecret, encSecret, secretsKey};
 
 // تنظيف محاولات الدخول القديمة عند التشغيل (الجدول كان ينمو بلا حد)
 try{run('DELETE FROM login_attempts WHERE t<?',Date.now()-864e5)}catch{}

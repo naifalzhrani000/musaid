@@ -4,7 +4,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {route, supplyOf, matchSections, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen} from '../core.js';
+import {route, supplyOf, syncCashHold, matchSections, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen} from '../core.js';
 import {ASSIST_CITIES} from '../../data.js';
 import {snapshot as perfSnapshot} from '../metrics.js';
 route('GET','/admin/reports',c=>{can(c,'support');const Q={user:'SELECT name t FROM users WHERE id=?'};
@@ -121,7 +121,6 @@ route('POST','/admin/helper-type/(\\d+)/decide',c=>{const a=adm(c),id=+c.p[0];co
 if(c.b.decision==='approve'){run("UPDATE users SET helper_type=?,helper_type_request=NULL,vat_verified=0 WHERE id=?",u.helper_type_request,id)}else{run('UPDATE users SET helper_type_request=NULL WHERE id=?',id)}
 run('INSERT INTO direct_messages(from_id,to_id,body) VALUES(?,?,?)',a.id,id,c.b.decision==='approve'?'تمت الموافقة على تغيير نوع حسابك.':'لم تتم الموافقة على تغيير نوع حسابك.');audit(a.id,'helper_type_decide',id+':'+c.b.decision);return{ok:1}});
 
-route('GET','/admin/invoices',c=>{adm(c);return all('SELECT id,kind,seq,ref,buyer_name,buyer_vat,subtotal,vat_rate,vat_amount,total,issued_at,qr,status FROM invoices ORDER BY id DESC LIMIT 100')});
 route('POST','/admin/invoicing',c=>{const a=adm(c);const reg=!!c.b.platform_vat_registered;const vat=String(c.b.platform_vat_number||'').replace(/\s/g,'');
 if(reg&&!/^3\d{14}$/.test(vat))throw err(400,'الرقم الضريبي للمنصة يتكون من 15 رقمًا ويبدأ بـ 3');
 run("INSERT INTO settings(key,value) VALUES('platform_vat_registered',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",reg?'1':'0');
@@ -313,10 +312,23 @@ route('GET','/admin/export',c=>{
 });
 
 // ملف المستخدم للإدارة: بياناته، أقسامه، تقييماته، وطلباته
+route('POST','/admin/helpers/(\\d+)/platform-invoice',c=>tx(()=>{const a=adm(c),hid=+c.p[0];const h=get("SELECT id,name FROM users WHERE id=? AND account_type='helper'",hid);if(!h)throw err(404,'المساعد غير موجود');
+const rows=all("SELECT id,amount FROM agreement_commissions WHERE helper_id=? AND status='due' ORDER BY id",hid);if(!rows.length)throw err(400,'لا توجد مستحقات مفتوحة لهذا المساعد');
+const total=Math.round(rows.reduce((t,r)=>t+Number(r.amount),0)*100)/100;const y=new Date().getFullYear();const n=get('SELECT COUNT(*)+1 n FROM platform_invoices WHERE number LIKE ?',`PI-${y}-%`).n;const number=`PI-${y}-${String(n).padStart(4,'0')}`;
+const id=Number(run('INSERT INTO platform_invoices(number,helper_id,amount,commission_ids) VALUES(?,?,?,?)',number,hid,total,JSON.stringify(rows.map(r=>r.id))).lastInsertRowid);
+run('INSERT INTO audit_log(admin_id,action,detail) VALUES(?,?,?)',a.id,'platform_invoice_issued',`${number}:helper=${hid}:amount=${total}`);
+notify(hid,`أصدرت المنصة فاتورة مستحقات رقم ${number} بقيمة ${total} ريال، وتُسدَّد بالطريقة المتفق عليها عبر حسابك في هلا`,'#/platform-dues');
+return{ok:1,id,number,amount:total}}));
+route('GET','/admin/platform-invoices',c=>{adm(c);return all('SELECT p.id,p.number,p.amount,p.status,p.issued_at,p.paid_at,u.name helper FROM platform_invoices p JOIN users u ON u.id=p.helper_id ORDER BY p.id DESC LIMIT 200')});
+route('POST','/admin/platform-invoices/(\\d+)/mark-paid',c=>tx(()=>{const a=adm(c),id=+c.p[0];const r=get('SELECT * FROM platform_invoices WHERE id=?',id);if(!r)throw err(404,'الفاتورة غير موجودة');if(r.status==='paid')throw err(400,'الفاتورة مسددة');
+const ids=JSON.parse(r.commission_ids||'[]').map(Number).filter(Boolean);if(ids.length)run(`UPDATE agreement_commissions SET status='settled',paid_at=datetime('now') WHERE status='due' AND helper_id=? AND id IN (${ids.map(()=>'?').join(',')})`,r.helper_id,...ids);
+run("UPDATE platform_invoices SET status='paid',paid_at=datetime('now'),paid_note=? WHERE id=?",String(c.b.note||'').trim().slice(0,200),id);
+run('INSERT INTO audit_log(admin_id,action,detail) VALUES(?,?,?)',a.id,'platform_invoice_paid',`${r.number}`);syncCashHold(r.helper_id);notify(r.helper_id,`سُجِّلت تسوية الفاتورة ${r.number}`,'#/platform-dues');return{ok:1}}));
+
 route('GET','/admin/users/(\\d+)/profile',c=>{
   can(c,'support');
   const id=+c.p[0];
-  const u=get('SELECT id,name,email,phone,city,role,account_type,helper_type,vat_status,vat_verified,active,flagged,suspended_until,created_at,email_verified FROM users WHERE id=?',id);
+  const u=get('SELECT id,name,email,phone,city,role,account_type,helper_type,vat_status,vat_verified,active,flagged,suspended_until,cash_hold,created_at,email_verified FROM users WHERE id=?',id);
   if(!u)throw err(404,'المستخدم غير موجود');
   const sections=all('SELECT c.name FROM user_sections us JOIN skill_categories c ON c.id=us.category_id WHERE us.user_id=?',id).map(x=>x.name);
   const reviews=all('SELECT r.stars,r.comment,r.created_at,r.hidden,rv.name rater FROM ratings r JOIN users rv ON rv.id=r.rater_id WHERE r.ratee_id=? ORDER BY r.id DESC LIMIT 30',id);
