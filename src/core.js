@@ -93,6 +93,7 @@ run('INSERT INTO invoices(kind,ref,seq,agreement_id,issuer_name,issuer_vat,buyer
 // فواتير المحادثة: يصدرها المساعد بعد الاتفاق على الخدمة والمبلغ، ونسخة الأطراف تُحفظ وقت الإصدار
 db.exec("CREATE TABLE IF NOT EXISTS chat_invoices(id INTEGER PRIMARY KEY,number TEXT UNIQUE NOT NULL,agreement_id INT NOT NULL REFERENCES agreements(id),helper_id INT NOT NULL REFERENCES users(id),client_id INT NOT NULL REFERENCES users(id),service TEXT NOT NULL,amount REAL NOT NULL,vat_amount REAL NOT NULL DEFAULT 0,total REAL NOT NULL,helper_snapshot TEXT NOT NULL,client_snapshot TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'active',cancelled_at TEXT,cancel_reason TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)");
 db.exec("CREATE INDEX IF NOT EXISTS ix_chat_inv_agr ON chat_invoices(agreement_id,status)");
+db.exec("CREATE TABLE IF NOT EXISTS agreement_notes(agreement_id INTEGER PRIMARY KEY REFERENCES agreements(id),notes TEXT NOT NULL DEFAULT '',updated_at TEXT)");
 // the link to the e-invoicing provider: nothing is sent until a provider contract is set up
 const submitInvoice=async(inv)=>{if(!process.env.INVOICE_PROVIDER_URL)return{status:'pending_provider'};return{status:'not_implemented'}};
 

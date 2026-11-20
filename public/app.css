@@ -835,3 +835,12 @@ body.dchat-mode .agr-c.cancelled{opacity:.65}
 /* منع القفز أثناء السحب على الآيفون: السحب يبقى داخل المحادثة ولا ينتقل إلى الصفحة */
 html:has(body.dchat-mode),body.dchat-mode{overscroll-behavior:none;overflow:hidden}
 body.dchat-mode #dchat{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+
+/* العرض المميز للمساعد */
+.sh-wrap{background:#fff;border:1px solid #e3e7e5;border-radius:16px;padding:14px;margin:12px 0}
+.sh-wrap small{color:#5f6f68}
+.sh-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.sh-cell{aspect-ratio:1/1;border-radius:12px;border:1px dashed #b9c9c1;background:#f6f8f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;overflow:hidden;color:#1f5f4a;font-weight:600;font-size:13px;padding:0;cursor:pointer}
+.sh-cell img,.sh-cell video{width:100%;height:100%;object-fit:cover;border-radius:12px}
+.sh-cell:has(img),.sh-cell:has(video){border:0;position:relative}
+.sh-cell .lnk{position:absolute;bottom:4px;background:rgba(255,255,255,.9);border-radius:8px;padding:2px 6px;font-size:12px}
