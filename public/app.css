@@ -917,7 +917,7 @@ body:has(.home-hero) .chat-in .send{background:transparent;color:#1d2b2a;box-sha
 /* حسابي (مطابق للمرجع) */
 .acc .pv-cover{position:relative;height:230px;background:#cdd5d1 center/cover no-repeat}
 .pv-back{position:absolute;top:14px;inset-inline-start:14px;width:42px;height:42px;border:0;border-radius:12px;background:#fff;color:#111;display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
-.pv-covtitle{position:absolute;top:14px;inset-inline-start:66px;height:42px;display:flex;align-items:center;color:#fff;font-weight:600;font-size:17px;text-shadow:0 1px 3px rgba(0,0,0,.45)}
+.pv-covtitle{position:absolute;top:14px;inset-inline-start:66px;height:42px;display:flex;align-items:center;color:rgba(255,255,255,.75);font-weight:500;font-size:17px}
 .pv-head{margin-top:-40px;padding:0 4px;position:relative;display:flex}
 .pv-av{width:76px;height:76px;border-radius:14px;border:3px solid #fff;background:#fff;color:#0f4f3c;font-size:28px;font-weight:700;padding:0;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.12);display:grid;place-items:center}
 .pv-av img{width:100%;height:100%;object-fit:cover;display:block}
@@ -925,7 +925,7 @@ body:has(.home-hero) .chat-in .send{background:transparent;color:#1d2b2a;box-sha
 .pv-titlerow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .pv-title{flex:1;min-width:0}
 .pv-title h2{margin:0;font-size:19px;font-weight:700;color:#111;display:flex;align-items:center;gap:6px}
-.pv-ver{color:#16a34a;font-size:15px}
+.pv-ver{width:17px;height:17px;border-radius:50%;background:#4caf50;display:inline-grid;place-items:center;flex:0 0 auto}
 .pv-bio{margin:6px 0;color:#6b7280;font-size:13px;line-height:1.55}
 .pv-rate{display:flex;align-items:center;gap:5px;font-size:14px;color:#111}
 .pv-rate span{color:#f5b301}
@@ -933,16 +933,16 @@ body:has(.home-hero) .chat-in .send{background:transparent;color:#1d2b2a;box-sha
 .pv-icons{display:flex;gap:8px}
 .pv-ic{width:40px;height:40px;border-radius:10px;border:0;background:#eef0ef;color:#111;display:grid;place-items:center;cursor:pointer;text-decoration:none}
 .pv-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 4px 0}
-.pv-btn{display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:12px;background:#0f4f3c;color:#fff;text-decoration:none;font-weight:600}
-.pv-btn.gray{background:#eef0ef;color:#0f4f3c}
+.pv-btn{display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:12px;background:#1f4d36;color:#fff;text-decoration:none;font-weight:600}
+.pv-btn.gray{background:#e8eeeb;color:#1f4d36}
 .pv-tabs{display:flex;justify-content:space-around;margin-top:14px;border-bottom:1px solid #e5e7eb}
-.pv-tabs button{background:none;border:0;padding:10px 2px;font:inherit;font-weight:700;color:#111;cursor:pointer;border-bottom:3px solid transparent}
-.pv-tabs button.on{border-bottom-color:#111}
-.pv-panel{padding:14px 12px;background:#f4f4f4}
+.pv-tabs button{background:none;border:0;padding:10px 2px;font:inherit;font-weight:700;color:#111;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.pv-tabs button.on{border-bottom-color:#1f4d36}
+.pv-panel{padding:14px 12px;background:#fff}
 .pv-panel[hidden]{display:none}
 .pv-h{margin:6px 0 10px;font-size:15px;font-weight:700;color:#111}
 .pv-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-.pv-chip{background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;color:#111}
+.pv-chip{background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:7px 12px;font-size:13px;color:#1f4d36}
 .pv-muted{color:#6b7280}
 .pv-text{margin:0 0 12px;color:#4b5563;font-size:13px;line-height:1.7}
 .pv-rev{background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px}
@@ -958,3 +958,15 @@ body:has(.home-hero) .chat-wrap::before{display:none}
 body:has(.home-hero) #nav .hlogin{color:#1d2b2a;border-color:#1d2b2a}
 body:has(.home-hero) .chat-wrap{overflow:visible}
 body:has(.home-hero){overflow-x:hidden}
+
+/* الصفحة الرئيسية: ثابتة بلا اهتزاز، والهيدر فوق شريط الحالة */
+html:has(.home-hero),body:has(.home-hero){height:100%;overflow:hidden;overscroll-behavior:none}
+body:has(.home-hero) #app,body:has(.home-hero) main{height:100%}
+body:has(.home-hero) .chat-wrap{height:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden}
+body:has(.home-hero) #nav{padding-top:env(safe-area-inset-top,0px);height:auto;min-height:calc(64px + env(safe-area-inset-top,0px));box-sizing:border-box;z-index:5;flex:0 0 auto}
+body:has(.home-hero) #nav .logo{top:50%;transform:translate(-50%,-50%);margin:0;line-height:1}
+body:has(.home-hero) .home-hero{min-height:0;overflow:hidden}
+body:has(.home-hero) .home-hero .chips{width:100%;max-width:100%;padding:0 16px;box-sizing:border-box;align-items:stretch}
+body:has(.home-hero) .home-hero .chips-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0;overflow:visible}
+body:has(.home-hero) .home-hero .chip{justify-content:flex-start;min-width:0;white-space:normal;line-height:1.4;min-height:52px}
+body:has(.home-hero) .chat-in{margin-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
