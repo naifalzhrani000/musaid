@@ -16,7 +16,7 @@ function renderBottom(){const bn=$('#bn');if(bn)bn.innerHTML=''}
 async function exportData(){try{const d=await api('/me/export');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download='my-data.json';document.body.append(a);a.click();a.remove();toast('تم تجهيز ملف بياناتك')}catch(x){toast(x.message,1)}}
 function toggleMenu(){const m=$('#menu');m.hidden=!m.hidden}
 function closeMenu(){const m=$('#menu');if(m)m.hidden=true}
-document.addEventListener('click',e=>{if(e.target.closest('#mb,#hmb')){toggleMenu();return}if(!e.target.closest('#menu'))closeMenu()});
+document.addEventListener('click',e=>{const pt=e.target.closest&&e.target.closest('[data-ptab]');if(pt){const k=pt.dataset.ptab;document.querySelectorAll('.pv-tabs [data-ptab]').forEach(b=>b.classList.toggle('on',b.dataset.ptab===k));document.querySelectorAll('[data-panel]').forEach(p=>p.hidden=p.dataset.panel!==k);return}if(e.target.closest('#mb,#hmb')){toggleMenu();return}if(!e.target.closest('#menu'))closeMenu()});
 let pcHtml='';
 function nav(){const u=me.user,h=location.hash||'#/',a=(l,t)=>`<a href="${l}" class="${h===l?'on':''}">${t}</a>`;const isHome=h==='#/'||h==='#'||h==='';
 $('#nav').innerHTML=`<a class=logo href="#/"><span class=mark><img loading=lazy decoding=async src=/hand.png alt=""></span>المساعد</a>${isHome?`<div class=pcircles id=pc aria-label="آخر المنشورات">${pcHtml}</div>`:''}<div class=hact>${u?`<a class=bell href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<a class=hlogin href="#/login">تسجيل الدخول</a>'}<button id=mb aria-label="القائمة">${ic(I.menu)}</button></div>`;
@@ -36,12 +36,12 @@ document.querySelectorAll('#idays button').forEach(b=>b.onclick=()=>{st.d=+b.dat
 document.querySelectorAll('#itabs button').forEach(b=>b.onclick=()=>{st.t=b.dataset.t;paint()});paint()}
 
 async function home(){const feedBtn=`<a class=hbtn href="#/feed" aria-label="المنشورات العامة">${ic(I.feed)}</a>`;const bell=me.user?`<a class=hbtn href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<span class=hbtn></span>',avatar=`<button class=hbtn id=hmb type=button aria-label="القائمة">${ic(I.menu)}</button>`;
-app.innerHTML=`<section class=chat-wrap><div class=chat-top><div class=ctitle><img loading=lazy decoding=async class=ctl-logo src=/hand.png alt=""><div><b>منصة المساعد</b><small>خدمتك تبدأ من هنا</small></div></div><div class=ctl-actions>${feedBtn}${bell}${avatar}</div></div><div class=svc-pick><button type=button class=svc data-ask="أبي سباك"><span class=svc-ic>🔧</span><b>سباكة</b></button><button type=button class=svc data-ask="أبي كهربائي"><span class=svc-ic>⚡</span><b>كهرباء</b></button></div><ul class=trust-pts><li>محلات مسجلة ضريبيًا</li><li>دفع آمن</li><li>تقييمات</li></ul><div id=msgs class=chat-msgs aria-live=polite></div><div class=sugs>${['أبي سباك يصلح تسريب مياه','أبي كهربائي يصلح قاطع الكهرباء'].map(s=>`<button type=button class=sug>${esc(s)}</button>`).join('')}</div><form id=cf class=chat-in><input name=m maxlength=500 required placeholder="اكتب رسالتك هنا..." aria-label="اكتب رسالتك"><button class=send aria-label="إرسال"><svg class=ic viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></form></section>`;
+app.innerHTML=`<section class=chat-wrap><div class=chat-top><div class=ctitle><img loading=lazy decoding=async class=ctl-logo src=/hand.png alt=""><div><b>منصة المساعد</b><small>خدمتك تبدأ من هنا</small></div></div><div class=ctl-actions>${feedBtn}${bell}${avatar}</div></div><div id=hero class=home-hero><img loading=lazy decoding=async class=hero-mark src=/hand.png alt=""><h1>من تحتاج اليوم؟</h1><p>اكتب طلبك وسنجد لك مساعدًا مسجلًا في المنصة</p><div class=chips><button type=button class="sug chip" data-ask="أبي سباك يصلح تسريب مياه">أبي سباك يصلح تسريب مياه</button><button type=button class="sug chip" data-ask="أبي كهربائي يصلح قاطع">أبي كهربائي يصلح قاطع</button><button type=button class="sug chip" data-ask="أبي فني تكييف">أبي فني تكييف</button><button type=button class="sug chip" data-ask="أبي نجار لتركيب باب">أبي نجار لتركيب باب</button><button type=button class="sug chip" data-ask="أبي فني دهانات">أبي فني دهانات</button><button type=button class="sug chip" data-ask="أبي عامل تنظيف">أبي عامل تنظيف</button></div></div><div id=msgs class=chat-msgs aria-live=polite></div><form id=cf class=chat-in><input name=m maxlength=500 required placeholder="ماذا تحتاج؟" aria-label="اكتب رسالتك"><button class=send aria-label="إرسال"><svg class=ic viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></form></section>`;
 const msgs=$('#msgs'),now=()=>new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 const bot=(html)=>{const r=document.createElement('div');r.className='brow';r.innerHTML=`<img loading=lazy decoding=async class=bav src=/hand.png alt=""><div class=bcol><div class="bub b">${html}</div><small class=btime>${now()}</small></div>`;msgs.append(r);msgs.scrollTop=msgs.scrollHeight;return r};
 const user=(text)=>{const r=document.createElement('div');r.className='urow';r.innerHTML=`<div class=bcol><div class="bub u">${esc(text)}</div><small class=btime>${now()}</small></div>`;msgs.append(r);msgs.scrollTop=msgs.scrollHeight};
-bot('<b>مرحبًا بك في منصة المساعد</b><br>أستطيع إيجاد الشخص المناسب من مقدمي الخدمات المسجلين في المنصة.<br><br>اكتب طلبك أو اختر من الأمثلة أدناه.');
-const ask=async text=>{document.querySelectorAll('.svc-pick,.trust-pts').forEach(x=>x.style.display='none');user(text);const w=bot('<span class=wait>جاري البحث عن المتاحين في المنصة</span><span class=typing><span></span><span></span><span></span></span>');
+
+const ask=async text=>{document.querySelectorAll('.svc-pick,.trust-pts,#hero').forEach(x=>x.style.display='none');user(text);const w=bot('<span class=wait>جاري البحث عن المتاحين في المنصة</span><span class=typing><span></span><span></span><span></span></span>');
 try{const r=await api('/assistant','POST',{message:text});w.remove();
 bot(esc(r.reply)+(r.needLogin?'<div class=row style="margin-top:8px"><a class=btn href="#/login">سجّل دخولك</a></div>':''));
 if(r.providers&&r.providers.length){const card=document.createElement('div');card.className='urow';card.innerHTML=`<div class=sumcard><div class=grow><b>لقد وجدت لك ${r.providers.length} مساعدًا مسجلًا في المنصة</b><small>يمكنك مراجعة ملفاتهم والتواصل معهم عبر طلب، أو العودة للمحادثة لمزيد من التفاصيل.</small></div>${ic(I.user)}</div>`;msgs.append(card);
@@ -182,43 +182,48 @@ function accountView(u, pv, avg, done, isH, pl) {
     </figure>`).join('');
   const addTile = `<button class=acc-add id=addWork type=button aria-label="إضافة صورة أو فيديو">+</button>`;
 
+  const rv = pv.reviews || [];
+  const avgN = rv.length ? (rv.reduce((a, r) => a + (+r.stars || 0), 0) / rv.length).toFixed(1) : '0.0';
+  const cover = pics[0] && pics[0].url && !pics[0].video ? `background-image:url('${pics[0].url}')` : '';
+  const mailIc = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
+  const revHtml = rv.length
+    ? rv.map(r => `<div class=pv-rev><div class=row><b>${esc(r.name)}</b><span>${'★'.repeat(+r.stars||0)+'☆'.repeat(5-(+r.stars||0))}</span></div>${r.comment ? `<small>${esc(r.comment)}</small>` : ''}<small>${r.at}</small></div>`).join('')
+    : '<div class=empty>لا توجد تقييمات بعد</div>';
   return `${ACC_CSS}
 <div class=acc>
-  <div class=acc-top>
-    <h1>حسابي</h1>
-    <div class=acc-icons>
-      
-      <a class=acc-ic href="#/settings" aria-label="المزيد">${ic(I.more)}</a>
+  <div class=pv-cover style="${cover}"></div>
+  <div class=pv-head>
+    <button class=pv-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(pv.avatar, u.name)}</button>
+    <div class=pv-icons>
+      <button class=pv-ic type=button data-ptab=loc aria-label="الموقع">${ic(I.pin)}</button>
+      <a class=pv-ic href="#/contact" aria-label="تواصل معنا">${mailIc}</a>
     </div>
   </div>
-
-  <div class=acc-head>
-    <button class=acc-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(pv.avatar,u.name)}</button>
-    ${isH?`<div class=acc-stats>
-      <div><b>${pics.length||'—'}</b><small>أعمال</small></div>
-      <div><b>${done||'—'}</b><small>مهمة مكتملة</small></div>
-      <div><b>${avg}</b><small>التقييم</small></div>
-    </div>`:''}
-  </div>
-
-  <div class=acc-name>
-    <h2>${esc(u.name)}</h2>
+  <div class=pv-name>
+    <h2>${esc(u.name)}${isH ? ' <span class=pv-ver aria-label="حساب موثّق">✓</span>' : ''}</h2>
     ${pv.avatar ? '<button class=lnk id=avDel type=button>حذف الصورة الشخصية</button>' : ''}
-    <small>${isH ? 'مساعد' : 'عميل'}${u.city ? ' · ' + ic(I.pin) + ' ' + esc(u.city) : ''}${u.active ? '' : ' · الحساب معطّل'}</small>
+    <p class=pv-bio>${bio ? esc(bio) : 'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>
+    ${isH ? `<div class=pv-rate><span>★</span><b>${avgN}</b><small>(${rv.length} تقييم)</small></div>` : ''}
   </div>
-
-  <p class=acc-bio>${bio
-    ? esc(bio)
-    : 'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>
-
-  <div class=acc-btns>
-    <a class=btn href="#/chats">محادثاتي</a>${u.account_type==='helper'?'<a class="btn gray" href="#/hala">حساب هلا</a><a class="btn gray" href="#/platform-dues">مستحقات المنصة</a>':''}
-    
+  <div class=pv-btns>
+    <a class="pv-btn gray" href="#/chats">محادثاتي</a>
+    <a class="pv-btn" href="#/profile/gallery">معرض الأعمال</a>
   </div>
-
+  ${u.account_type === 'helper' ? '<div class=acc-btns><a class="btn gray" href="#/hala">حساب هلا</a><a class="btn gray" href="#/platform-dues">مستحقات المنصة</a></div>' : ''}
+  <div class=pv-tabs role=tablist>
+    <button type=button class=on data-ptab=about>عنّي</button>
+    <button type=button data-ptab=loc>الموقع</button>
+    <button type=button data-ptab=rev>تقييمات المساعد</button>
+  </div>
+  <div class=pv-panel data-panel=about>
+    <p class=pv-text>${bio ? esc(bio) : 'لم تكتب نبذة بعد.'}</p>
+  </div>
+  <div class=pv-panel data-panel=loc hidden>
+    <p class=pv-text>${u.city ? ic(I.pin) + ' ' + esc(u.city) : 'لم تحدد المدينة بعد.'}</p>
+  </div>
+  <div class=pv-panel data-panel=rev hidden>${revHtml}</div>
   ${u.account_type === 'helper' ? '' : `<div class=acc-done><span>${pl && pl.accepted ? 'التعهد موقّع' : 'التعهد غير موقّع'}</span></div>`}
-
-  ${accTabs(pics)}
+  <div class=pv-posts>${accTabs(pics)}</div>
 </div>`;
 }
 

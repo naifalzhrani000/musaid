@@ -882,3 +882,39 @@ body.dchat-mode .dc-back svg{width:26px;height:26px}
 #nav #mb{order:-1;margin-inline-start:0}
 #nav .bell{margin-inline-start:0}
 .menu-panel{inset-inline-end:auto!important;inset-inline-start:12px!important}
+
+/* الصفحة الرئيسية: شعار وعبارة وأمثلة ثم خانة الكتابة أسفل الشاشة */
+.home-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 16px 8px}
+.home-hero .hero-mark{width:64px;height:64px;object-fit:contain;margin-bottom:18px}
+.home-hero h1{font-size:26px;font-weight:700;color:#0f4f3c;margin:0 0 8px}
+.home-hero p{color:#5b6b66;font-size:15px;margin:0 0 22px;max-width:320px}
+.home-hero .chips{display:flex;gap:8px;overflow-x:auto;width:100%;padding:4px 0 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.home-hero .chips::-webkit-scrollbar{display:none}
+.home-hero .chip{flex:0 0 auto;white-space:nowrap;background:#f1f3f2;border:0;border-radius:12px;padding:12px 14px;font:inherit;font-size:14px;color:#1f2d28;cursor:pointer}
+
+/* صفحة حسابي: غلاف، صورة شخصية، أزرار، وتبويبات (عنّي / الموقع / التقييمات) */
+.pv-cover{height:190px;background:#0f4f3c center/cover no-repeat;border-radius:0 0 18px 18px;position:relative}
+.pv-head{display:flex;justify-content:space-between;align-items:flex-end;padding:0 16px;margin-top:-44px;position:relative}
+.pv-av{width:86px;height:86px;border-radius:18px;border:3px solid #fff;background:#fff;padding:0;overflow:hidden;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.pv-av img,.pv-av .av-ph{width:100%;height:100%;object-fit:cover;display:block}
+.pv-icons{display:flex;gap:10px;padding-bottom:6px}
+.pv-ic{width:44px;height:44px;border-radius:12px;border:0;background:#eef2f1;color:#1f2d28;display:grid;place-items:center;cursor:pointer;text-decoration:none}
+.pv-name{padding:12px 16px 0}
+.pv-name h2{margin:0;font-size:20px;color:#111;display:flex;align-items:center;gap:6px}
+.pv-ver{color:#16a34a;font-size:16px}
+.pv-bio{margin:6px 0 4px;color:#5b6b66;font-size:14px;line-height:1.6}
+.pv-rate{display:flex;align-items:center;gap:6px;font-size:14px}
+.pv-rate span{color:#f5b301}
+.pv-rate small{color:#6b7280}
+.pv-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px 0}
+.pv-btn{display:block;text-align:center;padding:12px;border-radius:12px;background:#0f4f3c;color:#fff;text-decoration:none;font-weight:700}
+.pv-btn.gray{background:#eef2f1;color:#0f4f3c}
+.pv-tabs{display:flex;justify-content:space-around;margin-top:16px;border-bottom:1px solid #e5e7eb}
+.pv-tabs button{background:none;border:0;padding:10px 4px;font:inherit;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent}
+.pv-tabs button.on{color:#111;border-bottom-color:#111}
+.pv-panel{padding:14px 16px}
+.pv-panel[hidden]{display:none}
+.pv-text{margin:0;color:#374151;line-height:1.7;font-size:14px}
+.pv-rev{border-bottom:1px solid #eef0f2;padding:10px 0}
+.pv-rev small{display:block;color:#6b7280;margin-top:4px}
+.pv-posts{padding:0 0 16px}
