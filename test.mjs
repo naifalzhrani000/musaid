@@ -295,7 +295,7 @@ const aid=(await o(`/direct/${hid}/agreements`,'POST',{amount:300,description:'�
 await h(`/agreements/${aid}/approve`,'POST');await h(`/agreements/${aid}/request-completion`,'POST');await o(`/agreements/${aid}/confirm-completion`,'POST');await payHala(aid);
 const w=(await h('/wallet')).j;assert.equal(w.agr_due,0,'العمولة تُخصم عند الدفع فلا رصيد مستحق');
 const dRow=(()=>{const d=new DatabaseSync(DBF);const r=d.prepare('SELECT amount,status FROM agreement_commissions WHERE agreement_id=?').get(aid);d.close();return r})();
-assert.equal(dRow.status,'paid');assert.equal(dRow.amount,6,'العمولة 2% من 300');
+assert.equal(dRow.status,'paid');assert.equal(dRow.amount,15,'العمولة 5% من 300');
 });
 
 test('رؤوس الأمان: سياسة المحتوى موجودة على الصفحة الرئيسية',async()=>{
@@ -701,7 +701,7 @@ assert.equal((await cl()(`/admin/users/${me.id}/profile`)).s,401,'الزائر �
 
 test('إعدادات المنصة: يقرأها المدير وحده، ويعرض الواجهة الحفظ نفسه',async()=>{
 const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
-const s=(await admin('/admin/settings')).j;assert.ok('commission_percent' in s&&'iban' in s&&'org_cr' in s,'المفاتيح القابلة للتحرير');
+const s=(await admin('/admin/settings')).j;assert.ok('iban' in s&&'org_cr' in s,'المفاتيح القابلة للتحرير');
 assert.equal((await cl()('/admin/settings')).s,401,'غير المدير لا يقرأ الإعدادات');
 });
 
@@ -738,7 +738,7 @@ const hid=(await h('/me')).j.user.id;
 const aid=(await o(`/direct/${hid}/agreements`,'POST',{amount:1000,description:'اختبار هلا'})).j.id;
 await h(`/agreements/${aid}/approve`,'POST');
 const det=(await o(`/agreements/${aid}`)).j;
-assert.equal(det.total_amount,1150,'العميل يدفع الخدمة مع الضريبة');assert.equal(det.helper_net,980,'صافي المساعد بعد 2%');
+assert.equal(det.total_amount,1150,'العميل يدفع الخدمة مع الضريبة');assert.equal(det.helper_net,950,'صافي المساعد بعد 5%');
 assert.equal((await o(`/agreements/${aid}/record-payment`,'POST')).s,403,'لا سداد يدوي من العميل');
 assert.equal((await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agreement_id:aid,amount:1150})})).status,401,'الإشعار بلا سر مرفوض');
 const wh=b=>fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body:JSON.stringify(b)}).then(r=>r.status);
@@ -984,10 +984,9 @@ assert.equal(ok.status,200,'الإشعار الموقّع بسر المساعد 
 assert.ok((await o(`/agreements/${r2.j.id}`)).j.paid_at,'الاتفاق مدفوع');
 
 // مستحقات المنصة: تُصدر من الإدارة، وتُسوَّى عند تأكيدها
-assert.equal((await adm(`/admin/helpers/${hid}/platform-invoice`,'POST')).s,400,'الدفع الأونلاين خصم المستحقات السابقة تلقائيًا');
 await openTask();const r3=await h(`/direct/${oid}/payment-link`,'POST',{description:'طلب كاش أخير',amount:150});
 assert.equal((await o(`/agreements/${r3.j.id}/choose-cash`,'POST')).s,200);assert.equal((await h(`/agreements/${r3.j.id}/cash-received`,'POST')).s,200);
-const pi=await adm(`/admin/helpers/${hid}/platform-invoice`,'POST');assert.equal(pi.s,200);assert.ok(pi.j.number.startsWith('PI-'));assert.ok(pi.j.amount>0);
+const pl=(await h('/helper/platform-invoices')).j;const pi={s:200,j:pl.find(x=>x.number.startsWith('PI-')&&x.status==='unpaid')};assert.ok(pi.j,'فاتورة تُنشأ تلقائيًا بعد تأكيد الكاش');assert.ok(pi.j.amount>0);
 assert.ok((await h('/helper/platform-invoices')).j.some(x=>x.number===pi.j.number),'المساعد يرى الفاتورة');
 assert.equal((await adm(`/admin/platform-invoices/${pi.j.id}/mark-paid`,'POST',{note:'تحويل'})).s,200);
 assert.equal((await adm(`/admin/platform-invoices/${pi.j.id}/mark-paid`,'POST',{})).s,400,'لا تُسدَّد مرتين');
