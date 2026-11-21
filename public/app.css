@@ -876,3 +876,9 @@ body.dchat-mode .rate-card .btn{width:100%}
 .pg-back-btn svg{flex:0 0 auto}
 body.dchat-mode .dc-back{width:44px;height:44px;min-width:44px;border:0;background:transparent;color:#222;display:grid;place-items:center;padding:0;cursor:pointer;flex:0 0 auto}
 body.dchat-mode .dc-back svg{width:26px;height:26px}
+
+/* زر القائمة (☰) في أقصى اليمين */
+#nav .hact{display:flex;align-items:center;gap:6px}
+#nav #mb{order:-1;margin-inline-start:0}
+#nav .bell{margin-inline-start:0}
+.menu-panel{inset-inline-end:auto!important;inset-inline-start:12px!important}

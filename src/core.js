@@ -65,7 +65,7 @@ for(const [col,def] of [['paid_at','TEXT']]){if(!db.prepare("SELECT 1 x FROM pra
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('attachments') WHERE name='ext_key'").get())db.exec("ALTER TABLE attachments ADD COLUMN ext_key TEXT");
 for(const [col,def] of [['helper_type',"TEXT NOT NULL DEFAULT ''"],['vat_verified','INT NOT NULL DEFAULT 0'],['helper_type_request','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
 for(const [col,def] of [['cash_hold','INT NOT NULL DEFAULT 0']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
-for(const [col,def] of [['vat_amount','REAL'],['total_amount','REAL'],['helper_net','REAL'],['payment_ref','TEXT'],['paid_via','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
+for(const [col,def] of [['vat_amount','REAL'],['total_amount','REAL'],['helper_net','REAL'],['payment_ref','TEXT'],['paid_via','TEXT'],['materials','REAL']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 // vat_verified: 0 = قيد المراجعة (يعمل)، 1 = معتمد، 2 = مرفوض (موقوف حتى يعدّل الرقم)
 // تشفير مفاتيح المساعد (AES-256-GCM)، والمفتاح من متغير البيئة SECRETS_KEY (32 بايت بصيغة base64)
 const secretsKey=()=>{const b=Buffer.from(process.env.SECRETS_KEY||'','base64');return b.length===32?b:null};
@@ -78,21 +78,23 @@ db.exec("DROP TABLE IF EXISTS invoices"); // إلغاء نظام الفواتي�
 db.exec("DROP TABLE IF EXISTS chat_invoices");
 db.exec("CREATE TABLE IF NOT EXISTS helper_hala(user_id INTEGER PRIMARY KEY REFERENCES users(id),api_key_enc TEXT NOT NULL,webhook_secret_enc TEXT NOT NULL,last4 TEXT,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
 db.exec("CREATE TABLE IF NOT EXISTS platform_invoices(id INTEGER PRIMARY KEY,number TEXT UNIQUE NOT NULL,helper_id INT NOT NULL REFERENCES users(id),amount REAL NOT NULL,commission_ids TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'unpaid',issued_at TEXT DEFAULT CURRENT_TIMESTAMP,paid_at TEXT,paid_note TEXT)");
+if(!db.prepare("SELECT 1 x FROM pragma_table_info('platform_invoices') WHERE name='vat_amount'").get())db.exec("ALTER TABLE platform_invoices ADD COLUMN vat_amount REAL NOT NULL DEFAULT 0");
 db.exec("CREATE TABLE IF NOT EXISTS tasks(id INTEGER PRIMARY KEY,client_id INT NOT NULL REFERENCES users(id),helper_id INT NOT NULL REFERENCES users(id),status TEXT NOT NULL,agreement_id INT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('tasks') WHERE name='rated'").get())db.exec("ALTER TABLE tasks ADD COLUMN rated INT NOT NULL DEFAULT 0");
 for(const [col,def] of [['source','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 db.exec("CREATE TABLE IF NOT EXISTS agreement_notes(agreement_id INTEGER PRIMARY KEY REFERENCES agreements(id),notes TEXT NOT NULL DEFAULT '',updated_at TEXT)");
 
+db.exec("DELETE FROM settings WHERE key='commission_percent'"); // تنظيف: حذف أي نسبة قديمة مخزّنة
 const VAT_THRESHOLD=375000;
 // توريدات المنصة الخاضعة: المنصة تستلم العمولة فقط، فلا تُحسب قيمة المهمة كاملة إلا للمساعد غير المسجل (مورّد مفترض) إن كان العد الاحتياطي مفعّلًا
-const supplyFor=(amount,hid)=>{const h=get('SELECT vat_status,vat_number FROM users WHERE id=?',hid)||{};const taxed=h.vat_status==='registered'&&!!h.vat_number;if(taxed)return Math.round(Number(amount)*commissionPctFor())/100;return Number(amount)};
-const supplyOf=a=>supplyFor(a.amount,helperOf(a));
+const supplyOf=a=>Math.round(Number(a.amount)*COMMISSION_PCT)/100; // توريد المنصة = عمولتها فقط
 const turnover12m=()=>all("SELECT amount,a_id,b_id FROM agreements WHERE paid_at IS NOT NULL AND paid_at>=datetime('now','-365 days')").reduce((s,a)=>s+supplyOf(a),0);
 // called BEFORE a new agreement is priced: if the platform's supplies would reach the threshold, VAT is switched on first
 const activateVatIfNeeded=(extra)=>{if(SET().platform_vat_registered==='1')return true;if(turnover12m()+Number(extra||0)<VAT_THRESHOLD)return false;
 run("INSERT OR REPLACE INTO settings(key,value) VALUES('platform_vat_registered','1')");run("INSERT OR REPLACE INTO settings(key,value) VALUES('platform_vat_activated_at',?)",new Date().toISOString());
 all("SELECT id FROM users WHERE role='admin'").forEach(a=>notify(a.id,'بلغ إجمالي توريدات المنصة حد التسجيل الإلزامي 375,000 ريال، وفُعّلت ضريبة القيمة المضافة تلقائيًا','#/admin'));return true};
-const commissionPctFor=()=>Number(SET().commission_percent)||15;
+const COMMISSION_PCT=5; // نسبة عمولة المنصة الثابتة (5%)
+const commissionPctFor=()=>COMMISSION_PCT;
 const ensureCommission=(id)=>{const a=get('SELECT * FROM agreements WHERE id=?',id);if(!a||!a.paid_at)return;const pct=commissionPctFor(helperOf(a));run("INSERT OR IGNORE INTO agreement_commissions(agreement_id,helper_id,amount,status,paid_at) VALUES(?,?,?,'paid',datetime('now'))",id,helperOf(a),Math.round(a.amount*pct)/100)};
 const clientOf=a=>helperOf(a)===a.a_id?a.b_id:a.a_id;
 const CATALOG_VERSION='4';
@@ -153,7 +155,7 @@ const own=(u,id)=>{if(!id)return null;if(!get('SELECT 1 x FROM attachments WHERE
 const PV=4;
 const pledgeBody=s=>[
 `1. أقرّ بأنني اطلعت على شروط المنصة وسياسة الخصوصية، وأن هذا التعهد ملزم لي نظامًا.`,
-`2. ألتزم بسداد عمولة للمنصة قدرها ${s.commission_percent||15}% من السعر النهائي المتفق عليه في كل مهمة أو اتفاق يتم عبر المنصة (طلب أو محادثة)، سواء تم الدفع بالتحويل المباشر أو بأي وسيلة أخرى.`,
+`2. ألتزم بسداد عمولة للمنصة قدرها ${COMMISSION_PCT}% من السعر النهائي المتفق عليه في كل مهمة أو اتفاق يتم عبر المنصة (طلب أو محادثة)، سواء تم الدفع بالتحويل المباشر أو بأي وسيلة أخرى.`,
 `3. تُخصم العمولة تلقائيًا من المبلغ المدفوع عبر بوابة هلا عند نجاح الدفع، ويُوزَّع الباقي على المساعد دون أي تحويل يدوي من الطرفين. ولا تُستحق عن المهمة الملغاة أو المعترض عليها أو الجزء غير المنفَّذ.`,
 `4. ألتزم بعدم التحايل على المنصة، فلا أتفق مع طالب المساعدة على إتمام المهمة أو الدفع خارجها لتفادي العمولة. وإذا ثبت ذلك استحقت المنصة العمولة كاملة، مع حقها في المطالبة بالتعويض عما لحقها من ضرر أمام الجهة المختصة.`,
 `5. عند التأخر عن السداد يحق للمنصة: (أ) إيقاف حسابي أو منعي من التقدم لمهام جديدة، (ب) مطالبتي بالمبلغ المستحق، (ج) اللجوء إلى الجهات القضائية والتنفيذية والتحكيمية المختصة في المملكة لاستيفاء حقها.`,
@@ -239,7 +241,7 @@ const cityOpen=city=>{
   return true;
 };
 
-export {pushCfg,pushKeyProblem,pushTest,verified,cityCoverage,cityOpen,CITY_OPEN_PCT,macOf,DB_PATH, notifyEmail, activateVatIfNeeded, supplyFor, supplyOf, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, commissionPctFor, syncCashHold, helperHalaSecret, encSecret, secretsKey};
+export {pushCfg,pushKeyProblem,pushTest,verified,cityCoverage,cityOpen,CITY_OPEN_PCT,macOf,DB_PATH, notifyEmail, activateVatIfNeeded, supplyOf, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, commissionPctFor, COMMISSION_PCT, syncCashHold, helperHalaSecret, encSecret, secretsKey};
 
 // تنظيف محاولات الدخول القديمة عند التشغيل (الجدول كان ينمو بلا حد)
 try{run('DELETE FROM login_attempts WHERE t<?',Date.now()-864e5)}catch{}

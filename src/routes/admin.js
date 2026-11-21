@@ -17,10 +17,10 @@ route('POST','/admin/rules',c=>{const a=adm(c),p=+c.b.points;if(!Number.isIntege
 run('UPDATE reward_rules SET points=? WHERE key=?',p,c.b.key);audit(a.id,'rule',`${c.b.key}=${p}`);return{ok:1}});
 route('POST','/admin/users/(\\d+)/active',c=>{const a=adm(c),why=str(c.b.reason,3,300,'السبب');if(+c.p[0]===a.id)throw err(400,'لا يمكنك تعطيل حسابك');
 run('UPDATE users SET active=? WHERE id=?',c.b.active?1:0,+c.p[0]);if(!c.b.active)run('DELETE FROM sessions WHERE user_id=?',+c.p[0]);audit(a.id,'user_active',`${c.p[0]}:${c.b.active}:${why}`);return{ok:1}});
-route('POST','/admin/settings',c=>{const a=adm(c),b=c.b,ib=String(b.iban||'').replace(/\s/g,'').toUpperCase(),cp=+b.commission_percent||0,gd=b.commission_grace_days===''||b.commission_grace_days==null?3:Math.max(0,Math.floor(+b.commission_grace_days||0));if(!/^SA\d{22}$/.test(ib))throw err(400,'رقم الآيبان غير صالح (SA متبوعة بـ 22 رقمًا)');if(cp<0||cp>100)throw err(400,'نسبة العمولة من 0 إلى 100');
-const v={bank_name:str(b.bank_name,2,80,'اسم البنك'),account_name:str(b.account_name,2,120,'اسم الحساب'),iban:ib,commission_percent:String(cp),commission_grace_days:String(gd)};for(const k of ['org_name','org_cr','dispute_clause','penalty_rules','support_email','support_phone','support_address'])if(String(b[k]||'').trim())v[k]=str(b[k],2,3000,k);
+route('POST','/admin/settings',c=>{const a=adm(c),b=c.b,ib=String(b.iban||'').replace(/\s/g,'').toUpperCase(),gd=b.commission_grace_days===''||b.commission_grace_days==null?3:Math.max(0,Math.floor(+b.commission_grace_days||0));if(!/^SA\d{22}$/.test(ib))throw err(400,'رقم الآيبان غير صالح (SA متبوعة بـ 22 رقمًا)');if(cp<0||cp>100)throw err(400,'نسبة العمولة من 0 إلى 100');
+const v={bank_name:str(b.bank_name,2,80,'اسم البنك'),account_name:str(b.account_name,2,120,'اسم الحساب'),iban:ib,commission_grace_days:String(gd)};for(const k of ['org_name','org_cr','dispute_clause','penalty_rules','support_email','support_phone','support_address'])if(String(b[k]||'').trim())v[k]=str(b[k],2,3000,k);
 for(const k of ['terms_text','privacy_text'])if(String(b[k]||'').trim())v[k]=str(b[k],2,20000,k);for(const k of ['cancel_suspend_days']){if(String(b[k]??'')!==''){const n=Math.floor(+b[k]);if(!(n>=1&&n<=3650))throw err(400,'قيمة غير صالحة لإعدادات الإلغاء');v[k]=String(n)}}
-for(const k in v)run('INSERT INTO settings VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',k,v[k]);audit(a.id,'settings',`iban=${ib};commission=${cp}`);return{ok:1}});
+for(const k in v)run('INSERT INTO settings VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',k,v[k]);audit(a.id,'settings',`iban=${ib}`);return{ok:1}});
 route('GET','/admin/users/(\\d+)/pledge',c=>{adm(c);const r=get('SELECT text,ip,accepted_at FROM pledges WHERE user_id=? ORDER BY id DESC',c.p[0]);if(!r)throw err(404,'لم يوقّع هذا المستخدم التعهد بعد');return r});
 route('POST','/admin/users/(\\d+)/lift',c=>{const a=adm(c),why=str(c.b.reason,3,300,'السبب');run('UPDATE users SET flagged=0,suspended_until=NULL WHERE id=?',+c.p[0]);audit(a.id,'lift',`${c.p[0]}:${why}`);notify(+c.p[0],'تم رفع القيود عن حسابك','#/profile');return{ok:1}});
 route('GET','/admin/finance',c=>{adm(c);
@@ -312,14 +312,7 @@ route('GET','/admin/export',c=>{
 });
 
 // ملف المستخدم للإدارة: بياناته، أقسامه، تقييماته، وطلباته
-route('POST','/admin/helpers/(\\d+)/platform-invoice',c=>tx(()=>{const a=adm(c),hid=+c.p[0];const h=get("SELECT id,name FROM users WHERE id=? AND account_type='helper'",hid);if(!h)throw err(404,'المساعد غير موجود');
-const rows=all("SELECT id,amount FROM agreement_commissions WHERE helper_id=? AND status='due' ORDER BY id",hid);if(!rows.length)throw err(400,'لا توجد مستحقات مفتوحة لهذا المساعد');
-const total=Math.round(rows.reduce((t,r)=>t+Number(r.amount),0)*100)/100;const y=new Date().getFullYear();const n=get('SELECT COUNT(*)+1 n FROM platform_invoices WHERE number LIKE ?',`PI-${y}-%`).n;const number=`PI-${y}-${String(n).padStart(4,'0')}`;
-const id=Number(run('INSERT INTO platform_invoices(number,helper_id,amount,commission_ids) VALUES(?,?,?,?)',number,hid,total,JSON.stringify(rows.map(r=>r.id))).lastInsertRowid);
-run('INSERT INTO audit_log(admin_id,action,detail) VALUES(?,?,?)',a.id,'platform_invoice_issued',`${number}:helper=${hid}:amount=${total}`);
-notify(hid,`أصدرت المنصة فاتورة مستحقات رقم ${number} بقيمة ${total} ريال، وتُسدَّد بالطريقة المتفق عليها عبر حسابك في هلا`,'#/platform-dues');
-return{ok:1,id,number,amount:total}}));
-route('GET','/admin/platform-invoices',c=>{adm(c);return all('SELECT p.id,p.number,p.amount,p.status,p.issued_at,p.paid_at,u.name helper FROM platform_invoices p JOIN users u ON u.id=p.helper_id ORDER BY p.id DESC LIMIT 200')});
+route('GET','/admin/platform-invoices',c=>{adm(c);return all('SELECT p.id,p.number,p.amount,p.vat_amount,p.status,p.issued_at,p.paid_at,u.name helper FROM platform_invoices p JOIN users u ON u.id=p.helper_id ORDER BY p.id DESC LIMIT 200')});
 route('POST','/admin/platform-invoices/(\\d+)/mark-paid',c=>tx(()=>{const a=adm(c),id=+c.p[0];const r=get('SELECT * FROM platform_invoices WHERE id=?',id);if(!r)throw err(404,'الفاتورة غير موجودة');if(r.status==='paid')throw err(400,'الفاتورة مسددة');
 const ids=JSON.parse(r.commission_ids||'[]').map(Number).filter(Boolean);if(ids.length)run(`UPDATE agreement_commissions SET status='settled',paid_at=datetime('now') WHERE status='due' AND helper_id=? AND id IN (${ids.map(()=>'?').join(',')})`,r.helper_id,...ids);
 run("UPDATE platform_invoices SET status='paid',paid_at=datetime('now'),paid_note=? WHERE id=?",String(c.b.note||'').trim().slice(0,200),id);
@@ -340,7 +333,7 @@ route('GET','/admin/users/(\\d+)/profile',c=>{
 route('GET','/admin/admins',c=>{adm(c);return all("SELECT id,name,email,active,created_at FROM users WHERE role='admin' ORDER BY id")});
 
 // إعدادات المنصة للمدير: قراءة كل المفاتيح القابلة للتحرير
-const SETTING_KEYS=['bank_name','account_name','iban','commission_percent','commission_grace_days','org_name','org_cr','dispute_clause','penalty_rules','support_email','support_phone','support_address','platform_vat_registered','platform_vat_number'];
+const SETTING_KEYS=['bank_name','account_name','iban','commission_grace_days','org_name','org_cr','dispute_clause','penalty_rules','support_email','support_phone','support_address','platform_vat_registered','platform_vat_number'];
 route('GET','/admin/settings',c=>{adm(c);const out={};for(const k of SETTING_KEYS)out[k]=SET()[k]??'';return out});
 
 // اختبار محرك المطابقة للمدير: أي الأقسام تطابق عبارة بحث، دون حفظ شيء
