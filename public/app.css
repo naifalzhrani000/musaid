@@ -917,7 +917,7 @@ body:has(.home-hero) .chat-in .send{background:transparent;color:#1d2b2a;box-sha
 /* حسابي (مطابق للمرجع) */
 .acc .pv-cover{position:relative;height:230px;background:#cdd5d1 center/cover no-repeat}
 .pv-back{position:absolute;top:14px;inset-inline-start:14px;width:42px;height:42px;border:0;border-radius:12px;background:#fff;color:#111;display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
-.pv-covtitle{position:absolute;top:14px;inset-inline-start:66px;height:42px;display:flex;align-items:center;color:rgba(255,255,255,.75);font-weight:500;font-size:17px}
+.pv-covedit{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}.pv-back{z-index:2}.pv-covtitle{pointer-events:none;z-index:1;position:absolute;top:14px;inset-inline-start:66px;height:42px;display:flex;align-items:center;color:rgba(255,255,255,.75);font-weight:500;font-size:17px}
 .pv-head{margin-top:-40px;padding:0 4px;position:relative;display:flex}
 .pv-av{width:76px;height:76px;border-radius:14px;border:3px solid #fff;background:#fff;color:#0f4f3c;font-size:28px;font-weight:700;padding:0;overflow:hidden;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,.12);display:grid;place-items:center}
 .pv-av img{width:100%;height:100%;object-fit:cover;display:block}
@@ -970,3 +970,9 @@ body:has(.home-hero) .home-hero .chips{width:100%;max-width:100%;padding:0 16px;
 body:has(.home-hero) .home-hero .chips-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0;overflow:visible}
 body:has(.home-hero) .home-hero .chip{justify-content:flex-start;min-width:0;white-space:normal;line-height:1.4;min-height:52px}
 body:has(.home-hero) .chat-in{margin-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+
+/* صفحة حسابي: بلا شريط أخضر علوي، والغلاف يبدأ من أعلى الشاشة */
+body.acct>header{display:none!important}
+body.acct .acc .pv-cover{height:calc(230px + env(safe-area-inset-top,0px))}
+body.acct .pv-back,body.acct .pv-covtitle{top:calc(14px + env(safe-area-inset-top,0px))}
+body.acct #app{padding-top:0!important}
