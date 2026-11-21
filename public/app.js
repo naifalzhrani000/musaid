@@ -16,10 +16,10 @@ function renderBottom(){const bn=$('#bn');if(bn)bn.innerHTML=''}
 async function exportData(){try{const d=await api('/me/export');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download='my-data.json';document.body.append(a);a.click();a.remove();toast('تم تجهيز ملف بياناتك')}catch(x){toast(x.message,1)}}
 function toggleMenu(){const m=$('#menu');m.hidden=!m.hidden}
 function closeMenu(){const m=$('#menu');if(m)m.hidden=true}
-document.addEventListener('click',e=>{const pt=e.target.closest&&e.target.closest('[data-ptab]');if(pt){const k=pt.dataset.ptab;document.querySelectorAll('.pv-tabs [data-ptab]').forEach(b=>b.classList.toggle('on',b.dataset.ptab===k));document.querySelectorAll('[data-panel]').forEach(p=>p.hidden=p.dataset.panel!==k);return}if(e.target.closest('#mb,#hmb')){toggleMenu();return}if(!e.target.closest('#menu'))closeMenu()});
+document.addEventListener('click',e=>{const pt=e.target.closest&&e.target.closest('[data-ptab]');if(pt){const k=pt.dataset.ptab;document.querySelectorAll('.pv-tabs [data-ptab]').forEach(b=>b.classList.toggle('on',b.dataset.ptab===k));document.querySelectorAll('[data-panel]').forEach(p=>p.hidden=p.dataset.panel!==k);return}if(e.target.closest('#mb,#hmb,#hav')){toggleMenu();return}if(!e.target.closest('#menu'))closeMenu()});
 let pcHtml='';
 function nav(){const u=me.user,h=location.hash||'#/',a=(l,t)=>`<a href="${l}" class="${h===l?'on':''}">${t}</a>`;const isHome=h==='#/'||h==='#'||h==='';
-$('#nav').innerHTML=`<a class=logo href="#/"><span class=mark><img loading=lazy decoding=async src=/hand.png alt=""></span>المساعد</a>${isHome?`<div class=pcircles id=pc aria-label="آخر المنشورات">${pcHtml}</div>`:''}<div class=hact>${u?`<a class=bell href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<a class=hlogin href="#/login">تسجيل الدخول</a>'}<button id=mb aria-label="القائمة">${ic(I.menu)}</button></div>`;
+$('#nav').innerHTML=`<a class=logo href="#/"><span class=mark><img loading=lazy decoding=async src=/hand.png alt=""></span>المساعد</a>${isHome?`<div class=pcircles id=pc aria-label="آخر المنشورات">${pcHtml}</div>`:''}${isHome?`<button class=home-av id=hav type=button aria-label="القائمة">${esc(((me.user&&me.user.name)||'؟').trim().charAt(0))}</button>`:''}<div class=hact>${u?`<a class=bell href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<a class=hlogin href="#/login">تسجيل الدخول</a>'}<button id=mb aria-label="القائمة">${ic(I.menu)}</button></div>`;
 $('#menu').innerHTML=a('#/','المساعد الذكي')+(u?a('#/profile/data','ملفي الشخصي'):'')+a('#/feed','المنشورات العامة')+(isStandalone()?'':'<a href="#" data-act=installApp>تثبيت التطبيق</a>')+(u&&u.account_type==='helper'?a('#/follow','متابعة'):'')+(u?a('#/chats','محادثاتي')+a('#/profile','حسابي')+`<a href="#" data-act=toggleAllNotify>${allNotifyOn()?'إيقاف كل الإشعارات':'تفعيل كل الإشعارات'}</a>`+(['admin','staff'].includes(u.role)?a('#/manage','الإدارة'):''):'')+(u?'<a href="#" data-act="exportData">تصدير بياناتي</a><a href="#/settings">الإعدادات</a>'+''+'<a href="#" data-act="logout">تسجيل الخروج</a>':'')+'<div class=menu-legal>'+(u&&u.account_type==='helper'?a('#/profile/bio','النبذة'):'')+a('#/faq','الأسئلة الشائعة')+a('#/complaints','سياسة الشكاوى')+a('#/about','من نحن')+a('#/contact','تواصل معنا')+a('#/terms','الشروط والأحكام')+a('#/privacy','سياسة الخصوصية')+'</div>';
 try{if(me.user&&navigator.setAppBadge){me.unread?navigator.setAppBadge(me.unread):navigator.clearAppBadge()}}catch{}
 renderBottom(h);$('#menu').onclick=e=>{if(e.target.tagName==='A')closeMenu()}}
@@ -36,7 +36,7 @@ document.querySelectorAll('#idays button').forEach(b=>b.onclick=()=>{st.d=+b.dat
 document.querySelectorAll('#itabs button').forEach(b=>b.onclick=()=>{st.t=b.dataset.t;paint()});paint()}
 
 async function home(){const feedBtn=`<a class=hbtn href="#/feed" aria-label="المنشورات العامة">${ic(I.feed)}</a>`;const bell=me.user?`<a class=hbtn href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<span class=hbtn></span>',avatar=`<button class=hbtn id=hmb type=button aria-label="القائمة">${ic(I.menu)}</button>`;
-app.innerHTML=`<section class=chat-wrap><div class=chat-top><div class=ctitle><img loading=lazy decoding=async class=ctl-logo src=/hand.png alt=""><div><b>منصة المساعد</b><small>خدمتك تبدأ من هنا</small></div></div><div class=ctl-actions>${feedBtn}${bell}${avatar}</div></div><div id=hero class=home-hero><img loading=lazy decoding=async class=hero-mark src=/hand.png alt=""><h1>من تحتاج اليوم؟</h1><p>اكتب طلبك وسنجد لك مساعدًا مسجلًا في المنصة</p><div class=chips><button type=button class="sug chip" data-ask="أبي سباك يصلح تسريب مياه">أبي سباك يصلح تسريب مياه</button><button type=button class="sug chip" data-ask="أبي كهربائي يصلح قاطع">أبي كهربائي يصلح قاطع</button><button type=button class="sug chip" data-ask="أبي فني تكييف">أبي فني تكييف</button><button type=button class="sug chip" data-ask="أبي نجار لتركيب باب">أبي نجار لتركيب باب</button><button type=button class="sug chip" data-ask="أبي فني دهانات">أبي فني دهانات</button><button type=button class="sug chip" data-ask="أبي عامل تنظيف">أبي عامل تنظيف</button></div></div><div id=msgs class=chat-msgs aria-live=polite></div><form id=cf class=chat-in><input name=m maxlength=500 required placeholder="ماذا تحتاج؟" aria-label="اكتب رسالتك"><button class=send aria-label="إرسال"><svg class=ic viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></form></section>`;
+app.innerHTML=`<section class=chat-wrap><div class=chat-top><div class=ctitle><img loading=lazy decoding=async class=ctl-logo src=/hand.png alt=""><div><b>منصة المساعد</b><small>خدمتك تبدأ من هنا</small></div></div><div class=ctl-actions>${feedBtn}${bell}${avatar}</div></div><div id=hero class=home-hero><span class=hero-mark role=img aria-label="المساعد"></span><h1>من تحتاج اليوم؟</h1><p>اكتب طلبك وسنجد لك مساعدًا مسجلًا في المنصة</p><div class=chips><div class=chips-row><button type=button class=chip data-ask="أبي سباك يصلح تسريب مياه"><span class=chip-ic>🔧</span><span>أبي سباك يصلح تسريب مياه</span></button><button type=button class=chip data-ask="أبي كهربائي يصلح قاطع"><span class=chip-ic>⚡</span><span>أبي كهربائي يصلح قاطع</span></button><button type=button class=chip data-ask="أبي فني تكييف"><span class=chip-ic>❄️</span><span>أبي فني تكييف</span></button></div><div class=chips-row><button type=button class=chip data-ask="أبي نجار لتركيب باب"><span class=chip-ic>🪚</span><span>أبي نجار لتركيب باب</span></button><button type=button class=chip data-ask="أبي فني دهانات"><span class=chip-ic>🎨</span><span>أبي فني دهانات</span></button><button type=button class=chip data-ask="أبي عامل تنظيف"><span class=chip-ic>🧹</span><span>أبي عامل تنظيف</span></button></div><div class=chips-row><button type=button class=chip data-ask="أبي تركيب سخان مياه"><span class=chip-ic>🚿</span><span>أبي تركيب سخان مياه</span></button><button type=button class=chip data-ask="أبي تمديد إنارة"><span class=chip-ic>💡</span><span>أبي تمديد إنارة</span></button><button type=button class=chip data-ask="أبي صيانة منزلية"><span class=chip-ic>🧰</span><span>أبي صيانة منزلية</span></button></div></div></div><div id=msgs class=chat-msgs aria-live=polite></div><form id=cf class=chat-in><input name=m maxlength=500 required placeholder="ماذا تحتاج؟" aria-label="اكتب رسالتك"><button class=send aria-label="إرسال"><svg class=ic viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></form></section>`;
 const msgs=$('#msgs'),now=()=>new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 const bot=(html)=>{const r=document.createElement('div');r.className='brow';r.innerHTML=`<img loading=lazy decoding=async class=bav src=/hand.png alt=""><div class=bcol><div class="bub b">${html}</div><small class=btime>${now()}</small></div>`;msgs.append(r);msgs.scrollTop=msgs.scrollHeight;return r};
 const user=(text)=>{const r=document.createElement('div');r.className='urow';r.innerHTML=`<div class=bcol><div class="bub u">${esc(text)}</div><small class=btime>${now()}</small></div>`;msgs.append(r);msgs.scrollTop=msgs.scrollHeight};
@@ -51,7 +51,7 @@ if(r.noMatch){if(r.sections&&r.sections.length){const b=bot('<div>لم نجد ا
 msgs.scrollTop=msgs.scrollHeight}
 catch(x){w.remove();bot(`<span style="color:#8a2b1c">${esc(x.message||'حدث خطأ، حاول مرة أخرى.')}</span>`)}};
 $('#cf').onsubmit=e=>{e.preventDefault();const v=e.target.m.value.trim();if(v.length<3){toast('اكتب طلبك في جملة واضحة',1);return}e.target.m.value='';ask(v)};
-document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>ask(b.textContent));document.querySelectorAll('.svc').forEach(b=>b.onclick=()=>ask(b.dataset.ask));}
+document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>ask(b.textContent));document.querySelectorAll('.svc,.chip').forEach(b=>b.onclick=()=>ask(b.dataset.ask));}
 const CAT_ICO=['🚿','⚡','❄️','🪑','🔩','🎨','🧹','🪳','🚚','💻','🖌️','📣','📷','🧾','🗂️','🖊️','🎓','🏠','🌿','🚗','🛞','🎉','🍽️','🧵','💅','🏋️','🏢','⚖️','📱','🛡️','👶','🧓','📦','🖨️','☀️','💧','✈️','🐾','⚓','🚨','🛒','🏛️'];
 const specBoxes=(cats,sel=[])=>`<input class=cat-q type=search placeholder="ابحث عن قسم..." aria-label="ابحث عن قسم">`+cats.map((c,i)=>`<label class=cat-card data-n="${esc(c.name)}"><input type=checkbox name=cat value=${c.id}${sel.includes(c.id)?' checked':''}><span class=cat-ic aria-hidden=true>${CAT_ICO[i]||'🔹'}</span><b>${esc(c.name)}</b><span class=cat-dot aria-hidden=true></span></label>`).join('');
 const specLimit=e=>{const box=e.currentTarget;if(box.querySelectorAll('input[name=cat]:checked').length>2){e.target.checked=false;toast('يمكن اختيار قسمين كحد أقصى',1)}};
@@ -112,17 +112,29 @@ if(!targets.length){location.hash='#/profile';return}
 targets.forEach(t=>{t.hidden=false});
 for(const c of [...app.children]){if(!targets.some(t=>c===t||c.contains(t)))c.style.display='none'}
 app.insertAdjacentHTML('afterbegin',`<a class=lnk href="#/settings" style="display:inline-block;margin:6px 0">‹ الإعدادات</a><h2 style="margin:6px 0 10px;color:#0f4f3c">${titles[k]||''}</h2>`)}
-async function profileAccount(){if(!me.user){location.hash='#/login';return}const p=await api('/providers/'+me.user.id);p.showcase=me.user.account_type==='helper'?await api('/me/showcase').catch(()=>[]):[];
-const isH=me.user.account_type==='helper',pics=p.portfolio||[],bio=(p.bio||'').trim();
-const avg=Number(p.avg)>0?p.avg:'—',done=p.done||0;
-const tiles=pics.map(x=>`<figure>${mediaTag(x)}${x.caption?`<figcaption>${esc(x.caption)}</figcaption>`:''}</figure>`).join('');
+async function profileAccount(){if(!me.user){location.hash='#/login';return}
+const p=await api('/providers/'+me.user.id),isH=me.user.account_type==='helper';
+p.showcase=isH?await api('/me/showcase').catch(()=>[]):[];
+const rv=isH?await api('/helper/reviews').catch(()=>null):null;
+const pics=p.portfolio||[],bio=(p.bio||'').trim(),isVid=x=>/^video\//.test(x.mime||'');
+const cv=(p.showcase.find(x=>!isVid(x))||pics.find(x=>!isVid(x))||{}).attachment_id;
+const cover=cv?` style="background-image:url('/api/files/${+cv}')"`:'';
+const name=esc(p.name&&!/@/.test(p.name)?p.name:(me.user.name||'حسابي'));
+const avg=rv&&rv.avg!=null?rv.avg:(Number(p.avg)>0?p.avg:'—'),cnt=rv?rv.count:(p.count||0);
+const chips=(p.skills||[]).length?p.skills.map(t=>`<span class=pv-chip>${esc(t)}</span>`).join(''):'<small class=pv-muted>لم تُضف تخصصات بعد</small>';
+const revs=rv&&rv.reviews.length?rv.reviews.map(x=>`<div class=pv-rev><div class=row><b>${esc(x.rater)}</b><span>${'★'.repeat(+x.stars||0)}</span></div>${x.comment?`<small>${esc(x.comment)}</small>`:''}</div>`).join(''):'<div class=empty>لا توجد تقييمات بعد.</div>';
+const sv=a=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${a}</svg>`;
+const mailIc=sv('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'),chatIc=sv('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>'),backIc='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
 app.innerHTML=ACC_CSS+`<div class=acc>
-<div class=acc-top><h1>حسابي</h1><div class=acc-icons><a class=acc-ic href="#/settings" aria-label="المزيد">${ic(I.more)}</a></div></div>${isH?showcaseBlock(p):''}
-<div class=acc-head><button class=acc-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(p.avatar,p.name)}</button>${isH?`<div class=acc-stats><div><b>${pics.length||'—'}</b><small>أعمال</small></div><div><b>${done||'—'}</b><small>مهمة مكتملة</small></div><div><b>${avg}</b><small>التقييم</small></div></div>`:''}</div>
-<div class=acc-name><h2>${esc(p.name&&!/@/.test(p.name)?p.name:(me.user.name||'حسابي'))}</h2>${me.user.email?`<small class=acc-mail><bdi dir=ltr>${esc(me.user.email)}</bdi></small>`:''}${p.avatar?'<button class=lnk id=avDel type=button>حذف الصورة الشخصية</button>':''}<small>${isH?'مساعد':'عميل'}${p.city?' · '+ic(I.pin)+' '+esc(p.city):''}</small></div>
-<p class=acc-bio>${bio?esc(bio):'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>
-<div class=acc-btns><a class=btn href="#/chats">محادثاتي</a><a class="btn gray" href="#/profile/gallery">معرض الأعمال</a></div>
-${accTabs(pics)}
+<div class=pv-cover${cover}><button type=button class=pv-back data-back aria-label="رجوع">${backIc}</button><span class=pv-covtitle>حسابي</span></div>
+<div class=pv-head><button class=pv-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(p.avatar,p.name)}</button></div>
+<div class=pv-name><div class=pv-titlerow><div class=pv-title><h2>${name}${isH?'<span class=pv-ver aria-label="حساب موثّق">✔</span>':''}</h2><p class=pv-bio>${bio?esc(bio):'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>${isH?`<div class=pv-rate><span>★</span><b>${avg}</b><small>(${cnt} تقييم)</small></div>`:''}</div><div class=pv-icons><button class=pv-ic type=button data-ptab=loc aria-label="الموقع">${ic(I.pin)}</button><a class=pv-ic href="#/contact" aria-label="تواصل معنا">${mailIc}</a></div></div>${p.avatar?'<button class=lnk id=avDel type=button>حذف الصورة الشخصية</button>':''}</div>
+<div class=pv-btns><a class="pv-btn gray" href="#/chats">${chatIc}<span>محادثاتي</span></a><a class=pv-btn href="#/profile/gallery"><span>معرض الأعمال</span></a></div>
+<div class=pv-tabs role=tablist><button type=button class=on data-ptab=about>عنّي</button><button type=button data-ptab=loc>الموقع</button>${isH?'<button type=button data-ptab=rev>التقييمات</button>':''}</div>
+<div class=pv-panel data-panel=about>${isH?`<h3 class=pv-h>التخصص</h3><div class=pv-chips>${chips}</div>`:''}<h3 class=pv-h>عنّي</h3><p class=pv-text>${bio?esc(bio):'لم تكتب نبذة بعد.'}</p>${isH?showcaseBlock(p):''}</div>
+<div class=pv-panel data-panel=loc hidden><p class=pv-text>${p.city?ic(I.pin)+' '+esc(p.city):'لم تحدد المدينة بعد.'}</p></div>
+${isH?`<div class=pv-panel data-panel=rev hidden>${revs}</div>`:''}
+<div class=pv-posts>${accTabs(pics)}</div>
 </div>`}
 const SETTINGS_ITEMS=[['الإشعارات والتواصل','notify'],['تفعيل صلاحية المدير','admin'],['الأمان','password'],['حذف الحساب','danger']];
 async function settingsPage(){if(!me.user){location.hash='#/login';return}const su=await api('/setup-status').catch(()=>({needed:false}));const isH=me.user.account_type==='helper';const items=SETTINGS_ITEMS.filter(([,k])=>!['points','ledger'].includes(k)&&(isH||!['specs','bio','gallery'].includes(k))&&(k!=='admin'||su.needed));app.innerHTML=`<h2 style="margin:8px 0 12px">الإعدادات</h2><div class=panel style="padding:0">${items.map(([t,k],i)=>`<a href="${k==='wallet'?'#/wallet':'#/profile/'+k}" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #eef0f2;text-decoration:none;color:inherit"><span>${i+1}- ${t}</span><span style="color:#9ca3af">‹</span></a>`).join('')}</div>`}
@@ -182,48 +194,43 @@ function accountView(u, pv, avg, done, isH, pl) {
     </figure>`).join('');
   const addTile = `<button class=acc-add id=addWork type=button aria-label="إضافة صورة أو فيديو">+</button>`;
 
-  const rv = pv.reviews || [];
-  const avgN = rv.length ? (rv.reduce((a, r) => a + (+r.stars || 0), 0) / rv.length).toFixed(1) : '0.0';
-  const cover = pics[0] && pics[0].url && !pics[0].video ? `background-image:url('${pics[0].url}')` : '';
-  const mailIc = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
-  const revHtml = rv.length
-    ? rv.map(r => `<div class=pv-rev><div class=row><b>${esc(r.name)}</b><span>${'★'.repeat(+r.stars||0)+'☆'.repeat(5-(+r.stars||0))}</span></div>${r.comment ? `<small>${esc(r.comment)}</small>` : ''}<small>${r.at}</small></div>`).join('')
-    : '<div class=empty>لا توجد تقييمات بعد</div>';
   return `${ACC_CSS}
 <div class=acc>
-  <div class=pv-cover style="${cover}"></div>
-  <div class=pv-head>
-    <button class=pv-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(pv.avatar, u.name)}</button>
-    <div class=pv-icons>
-      <button class=pv-ic type=button data-ptab=loc aria-label="الموقع">${ic(I.pin)}</button>
-      <a class=pv-ic href="#/contact" aria-label="تواصل معنا">${mailIc}</a>
+  <div class=acc-top>
+    <h1>حسابي</h1>
+    <div class=acc-icons>
+      
+      <a class=acc-ic href="#/settings" aria-label="المزيد">${ic(I.more)}</a>
     </div>
   </div>
-  <div class=pv-name>
-    <h2>${esc(u.name)}${isH ? ' <span class=pv-ver aria-label="حساب موثّق">✓</span>' : ''}</h2>
+
+  <div class=acc-head>
+    <button class=acc-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(pv.avatar,u.name)}</button>
+    ${isH?`<div class=acc-stats>
+      <div><b>${pics.length||'—'}</b><small>أعمال</small></div>
+      <div><b>${done||'—'}</b><small>مهمة مكتملة</small></div>
+      <div><b>${avg}</b><small>التقييم</small></div>
+    </div>`:''}
+  </div>
+
+  <div class=acc-name>
+    <h2>${esc(u.name)}</h2>
     ${pv.avatar ? '<button class=lnk id=avDel type=button>حذف الصورة الشخصية</button>' : ''}
-    <p class=pv-bio>${bio ? esc(bio) : 'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>
-    ${isH ? `<div class=pv-rate><span>★</span><b>${avgN}</b><small>(${rv.length} تقييم)</small></div>` : ''}
+    <small>${isH ? 'مساعد' : 'عميل'}${u.city ? ' · ' + ic(I.pin) + ' ' + esc(u.city) : ''}${u.active ? '' : ' · الحساب معطّل'}</small>
   </div>
-  <div class=pv-btns>
-    <a class="pv-btn gray" href="#/chats">محادثاتي</a>
-    <a class="pv-btn" href="#/profile/gallery">معرض الأعمال</a>
+
+  <p class=acc-bio>${bio
+    ? esc(bio)
+    : 'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>
+
+  <div class=acc-btns>
+    <a class=btn href="#/chats">محادثاتي</a>${u.account_type==='helper'?'<a class="btn gray" href="#/hala">حساب هلا</a><a class="btn gray" href="#/platform-dues">مستحقات المنصة</a>':''}
+    
   </div>
-  ${u.account_type === 'helper' ? '<div class=acc-btns><a class="btn gray" href="#/hala">حساب هلا</a><a class="btn gray" href="#/platform-dues">مستحقات المنصة</a></div>' : ''}
-  <div class=pv-tabs role=tablist>
-    <button type=button class=on data-ptab=about>عنّي</button>
-    <button type=button data-ptab=loc>الموقع</button>
-    <button type=button data-ptab=rev>تقييمات المساعد</button>
-  </div>
-  <div class=pv-panel data-panel=about>
-    <p class=pv-text>${bio ? esc(bio) : 'لم تكتب نبذة بعد.'}</p>
-  </div>
-  <div class=pv-panel data-panel=loc hidden>
-    <p class=pv-text>${u.city ? ic(I.pin) + ' ' + esc(u.city) : 'لم تحدد المدينة بعد.'}</p>
-  </div>
-  <div class=pv-panel data-panel=rev hidden>${revHtml}</div>
+
   ${u.account_type === 'helper' ? '' : `<div class=acc-done><span>${pl && pl.accepted ? 'التعهد موقّع' : 'التعهد غير موقّع'}</span></div>`}
-  <div class=pv-posts>${accTabs(pics)}</div>
+
+  ${accTabs(pics)}
 </div>`;
 }
 
@@ -390,7 +397,7 @@ function plusSetup(id,reload,proposeAgr){const btn=$('#plusBtn'),menu=$('#plusMe
 const legal=kind=>{const t=kind==='terms'?'الشروط والأحكام':kind==='complaints'?'سياسة الشكاوى وفض النزاعات':'سياسة الخصوصية';app.innerHTML=`<section class=legal><div class=lg-art>${LG_ART[kind]||''}</div><h1>${t}</h1><p class=draft>مسودة: هذا النص لم يُعتمد بعد، ويجب مراجعته من محامٍ مختص قبل نشره رسميًا.</p><div id=lgs>${LEGAL[kind].map(([h,b])=>`<h2>${esc(h)}</h2><p>${esc(b).replace(/\n/g,'<br>')}</p>`).join('')}</div><p class=meta-l id=lo></p></section>`;
 orgInfo().then(o=>{const txt=kind==='complaints'?null:o[kind==='terms'?'terms_text':'privacy_text'];if(txt)$('#lgs').innerHTML=txt.split(/\n\s*\n/).map(x=>`<p>${esc(x.trim())}</p>`).join('');$('#lo').innerHTML=`المنشأة المالكة للمنصة: ${o.org_name?esc(o.org_name)+(o.org_cr?'، سجل تجاري رقم '+esc(o.org_cr):''):'[اسم المؤسسة ورقم السجل التجاري]'}`})};
 const routes=[[/^#\/hala$/,halaPage],[/^#\/platform-dues$/,platformDuesPage],[/^#\/(mine|new|r\/\d+|chat\/\d+\/\d+)$/,()=>{location.hash='#/'}],[/^#\/settings$/,settingsPage],[/^#\/wallet$/,walletPage],[/^#\/follow$/,followPage],[/^#\/direct\/(\d+)$/,directChat],[/^#\/verify\/([0-9a-f]{64})$/,verifyPage],[/^#\/profile\/gallery$/,feedPage],[/^#\/profile\/(\w+)$/,profileSub],[/^#\/insights$/,insights],[/^#\/manage(?:\/([\w/]+))?$/,t=>loadAdmin().then(()=>manage(t))],[/^#\/chats$/,chats],[/^#\/profile$/,profileWithRevs],[/^#\/notifs$/,notifs],[/^#\/login$/,()=>auth(false)],[/^#\/admin-login$/,()=>auth(false)],[/^#\/register$/,()=>auth(true)],[/^#\/complaints$/,()=>legal('complaints')],[/^#\/faq$/,faqPage],[/^#\/agreement\/(\d+)$/,agreementPage],[/^#\/about$/,about],[/^#\/contact$/,contact],[/^#\/forgot$/,forgot],[/^#\/reset\/([0-9a-f]{64})$/,resetPage],[/^#\/p\/(\d+)$/,provider],[/^#\/verify-email$/,verifyEmailPage],[/^#\/feed$/,feedPage],[/^#\/terms$/,()=>legal('terms')],[/^#\/privacy$/,()=>legal('privacy')],[/^#\/admin$/,()=>{location.hash='#/manage'}]];
-function addBack(h){document.querySelectorAll('.pg-back').forEach(n=>n.remove());if(document.body.classList.contains('dchat-mode')||h==='#/'||h==='#'||h===''||!app.firstChild)return;app.insertAdjacentHTML('afterbegin',`<div class=pg-back><button type=button class=pg-back-btn data-back aria-label="رجوع"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg><span>رجوع</span></button></div>`)}
+function addBack(h){document.querySelectorAll('.pg-back').forEach(n=>n.remove());if(document.body.classList.contains('dchat-mode')||h==='#/'||h==='#'||h===''||!app.firstChild||app.querySelector('.pv-cover'))return;app.insertAdjacentHTML('afterbegin',`<div class=pg-back><button type=button class=pg-back-btn data-back aria-label="رجوع"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg><span>رجوع</span></button></div>`)}
 document.addEventListener('input',e=>{const f=e.target.form;if(!f||!f.elements.total||!['amount','materials'].includes(e.target.name))return;const w=Number(f.elements.amount.value)||0,m=Number(f.elements.materials.value)||0,v=Number(f.elements.vat.value)||0;f.elements.total.value=(Math.round((w+m)*(1+v)*100)/100).toFixed(2)});
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-back]');if(!b)return;e.preventDefault();if(history.length>1)history.back();else location.hash='#/'});
 async function route(){const h=location.hash||'#/';document.body.classList.remove('dchat-mode');nav();$('#ft').hidden=true;document.body.classList.toggle('home',h==='#/'||h==='#'||h==='');if(document.body.classList.contains('home'))loadPC();if(/#\/(new|profile|notifs|admin(?!-login)|mine|chats|chat)/.test(h)&&!me.user)return location.hash='#/login';
@@ -572,5 +579,5 @@ if(nextRate)return;
 if(!t&&isH&&cs){b.hidden=false;b.textContent='بدء المهمة';b.onclick=async()=>{try{await api('/direct/'+id+'/task','POST');toast('تم بدء المهمة');await taskUi(id)}catch(x){toast(x.message,1)}}}
 else if(t&&t.status==='requested'&&!isH){b.hidden=false;b.textContent='قبول المهمة';b.onclick=async()=>{try{await api('/tasks/'+t.id+'/accept','POST');toast('تم قبول المهمة');await taskUi(id)}catch(x){toast(x.message,1)}}}}
 function rateCard(r){return `<form class="rate-card" data-rate="${+r.id}"><b>قيّم المساعد</b><div class="rc-stars">${[5,4,3,2,1].map(n=>`<label><input type=radio name=stars value=${n}><span>${n} ★</span></label>`).join('')}</div><textarea name=comment maxlength=500 rows=2 placeholder="أضف تعليقًا (اختياري)"></textarea><button class=btn type=submit>إرسال التقييم</button></form>`}
-async function profileWithRevs(){await profileAccount();if(!me.user||me.user.account_type!=='helper')return;const r=await api('/helper/reviews').catch(()=>null);if(!r)return;app.insertAdjacentHTML('beforeend',`<section class=panel><h3>تقييمات العملاء</h3><b>★ ${r.avg??'—'} (${r.count})</b>${r.reviews.length?r.reviews.map(x=>`<div class=row><span><b>${esc(x.rater)}</b>${x.comment?`<br><small>${esc(x.comment)}</small>`:''}</span><b>${'★'.repeat(x.stars)}</b></div>`).join(''):'<div class=empty>لا توجد تقييمات بعد.</div>'}</section>`)}
+async function profileWithRevs(){await profileAccount()}
 
