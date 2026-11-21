@@ -667,6 +667,28 @@ assert.equal((await liker('/feed/comments/'+c1.id+'/delete','POST')).s,200,'صا
 assert.equal((await cl()('/feed/'+post.id+'/comments')).j.length,0);
 });
 
+test('المنشورات: تبويب متابعة يعرض منشورات من أتابعهم فقط، والمتابعة بالتبديل',async()=>{
+const w=cl();await w('/register','POST',{name:'ناشر متابَع',email:'fp3@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
+await verifyEmail(w);await w('/profile','POST',{name:'ناشر متابَع',phone:'0500009703'});
+await w('/feed','POST',{body:'منشور المتابَع'});
+const other=cl();await other('/register','POST',{name:'ناشر آخر',email:'fp4@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
+await verifyEmail(other);await other('/profile','POST',{name:'ناشر آخر',phone:'0500009704'});
+await other('/feed','POST',{body:'منشور غير متابَع'});
+const fan=cl();await fan('/register','POST',{name:'متابِع',email:'fp5@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
+await verifyEmail(fan);
+const all=(await fan('/feed')).j;const target=all.find(p=>p.body==='منشور المتابَع');assert.ok(target);
+assert.equal((await fan('/feed?tab=following')).j.length,0,'لا متابعات: التبويب فارغ');
+assert.equal((await cl()('/feed/follow/'+target.user_id,'POST')).s,401,'المتابعة للمسجلين فقط');
+assert.deepEqual((await cl()('/feed?tab=following')).j,[],'الزائر يرى تبويب المتابعة فارغًا');
+const f1=(await fan('/feed/follow/'+target.user_id,'POST')).j;assert.equal(f1.following,true);
+const fl=(await fan('/feed?tab=following')).j;
+assert.ok(fl.length>0&&fl.every(p=>p.user_id===target.user_id&&p.followed===true),'منشورات المتابَع فقط');
+assert.ok(!fl.find(p=>p.body==='منشور غير متابَع'));
+assert.equal((await w('/feed/follow/'+target.user_id,'POST')).s,400,'لا يتابع نفسه');
+const f2=(await fan('/feed/follow/'+target.user_id,'POST')).j;assert.equal(f2.following,false,'الضغط الثاني يلغي المتابعة');
+assert.equal((await fan('/feed?tab=following')).j.length,0);
+});
+
 test('لوحة الرئيسية: أرقام وسلاسل من قاعدة البيانات، والمدير وحده',async()=>{
 const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
 const d=(await admin('/admin/dashboard?days=7')).j;

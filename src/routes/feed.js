@@ -3,19 +3,36 @@ import {route, db, all, get, run, need, verified, adm, str, own, hitOr429, err, 
 db.exec(`CREATE TABLE IF NOT EXISTS post_likes(post_id INT NOT NULL REFERENCES posts(id),user_id INT NOT NULL REFERENCES users(id),PRIMARY KEY(post_id,user_id));
 CREATE TABLE IF NOT EXISTS post_comments(id INTEGER PRIMARY KEY,post_id INT NOT NULL REFERENCES posts(id),user_id INT NOT NULL REFERENCES users(id),body TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS posts(id INTEGER PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id),body TEXT NOT NULL,attachment_id INT REFERENCES attachments(id),hidden INT NOT NULL DEFAULT 0,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-CREATE TABLE IF NOT EXISTS post_reports(post_id INT NOT NULL,user_id INT NOT NULL,PRIMARY KEY(post_id,user_id));`);
+CREATE TABLE IF NOT EXISTS post_reports(post_id INT NOT NULL,user_id INT NOT NULL,PRIMARY KEY(post_id,user_id));
+CREATE TABLE IF NOT EXISTS user_follows(follower_id INT NOT NULL REFERENCES users(id),followed_id INT NOT NULL REFERENCES users(id),created_at TEXT DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(follower_id,followed_id));`);
 
 const REPORT_HIDE_AT = 3;
 
-// Public: anyone can read the feed
+// Public: anyone can read the feed. ?tab=following => posts from followed accounts only (signed-in users)
 route('GET','/feed',c=>{
-  const before=+(c.q?.before)||0, me=c.u?.id||0;
+  const before=+(c.q?.before)||0, me=c.u?.id||0, following=c.q?.tab==='following';
+  if(following&&!me)return [];
   return all(`SELECT p.id,p.body,p.created_at,p.user_id,u.name,u.account_type,a.mime,p.attachment_id,
     (SELECT COUNT(*) FROM post_likes l WHERE l.post_id=p.id) likes,
     (SELECT COUNT(*) FROM post_comments k WHERE k.post_id=p.id) comments,
-    (SELECT COUNT(*) FROM post_likes l WHERE l.post_id=p.id AND l.user_id=?) liked
+    (SELECT COUNT(*) FROM post_likes l WHERE l.post_id=p.id AND l.user_id=?) liked,
+    (SELECT COUNT(*) FROM user_follows f WHERE f.follower_id=? AND f.followed_id=p.user_id) followed
     FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN attachments a ON a.id=p.attachment_id
-    WHERE p.hidden=0 AND u.active=1 AND (?=0 OR p.id<?) ORDER BY p.id DESC LIMIT 30`,me,before,before).map(r=>({...r,liked:!!r.liked}));
+    WHERE p.hidden=0 AND u.active=1 AND (?=0 OR p.id<?)
+    ${following?'AND p.user_id IN (SELECT followed_id FROM user_follows WHERE follower_id=?)':''}
+    ORDER BY p.id DESC LIMIT 30`,me,me,before,before,...(following?[me]:[])).map(r=>({...r,liked:!!r.liked,followed:!!r.followed}));
+});
+
+// متابعة حساب أو إلغاء متابعته (تبديل): للمسجلين فقط
+route('POST','/feed/follow/(\\d+)',c=>{
+  const u=need(c),id=+c.p[0];
+  if(id===u.id)throw err(400,'لا يمكنك متابعة نفسك');
+  if(!get('SELECT 1 x FROM users WHERE id=? AND active=1',id))throw err(404,'الحساب غير موجود');
+  hitOr429('follow|'+u.id,+(process.env.FOLLOW_PER_HOUR)||200);
+  const was=!!get('SELECT 1 x FROM user_follows WHERE follower_id=? AND followed_id=?',u.id,id);
+  if(was)run('DELETE FROM user_follows WHERE follower_id=? AND followed_id=?',u.id,id);
+  else run('INSERT OR IGNORE INTO user_follows(follower_id,followed_id) VALUES(?,?)',u.id,id);
+  return{ok:1,following:!was};
 });
 
 // آخر منشورين عامّين فيهم صورة أو فيديو (لدوائر الشريط العلوي)
