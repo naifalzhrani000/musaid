@@ -1210,3 +1210,4 @@ label.check input[type=radio]{min-height:0;min-width:0;padding:0;box-sizing:bord
 .dt-lk{display:inline-block;margin-top:4px;color:var(--g);font-weight:700;text-decoration:none;min-height:32px}
 @media (max-width:380px){.dt-nm{font-size:19px}.dt-mode span{display:none}}
 @media (prefers-reduced-motion:reduce){.dt-tabs *{transition:none!important}}
+
