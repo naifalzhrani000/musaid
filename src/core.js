@@ -109,12 +109,13 @@ const addExtraKeywords=()=>{for(const [name,words] of Object.entries(EXTRA_KEYWO
 addExtraKeywords();
 try{db.exec("ALTER TABLE skill_categories ADD COLUMN mode TEXT NOT NULL DEFAULT 'onsite'");db.exec("UPDATE skill_categories SET mode='online' WHERE name='تقنية وتصميم'")}catch{}
 db.exec("UPDATE users SET account_type='helper' WHERE account_type='client' AND id IN (SELECT user_id FROM user_sections)");
-db.exec("UPDATE users SET iban=NULL,national_id=NULL");
+// تنظيف لمرة واحدة: الهوية والآيبان القديمان في users (النسخة الفعلية للآيبان في helper_extra). يُسجَّل في settings فلا يتكرر عند كل تشغيل
+if(!get("SELECT 1 x FROM settings WHERE key='legacy_pii_scrubbed'")){db.exec("UPDATE users SET iban=NULL,national_id=NULL");run("INSERT OR REPLACE INTO settings(key,value) VALUES('legacy_pii_scrubbed','1')")}
 const err=(s,m)=>Object.assign(new Error(m),{s});
 const tx=f=>{db.exec('BEGIN IMMEDIATE');try{const r=f();db.exec('COMMIT');return r}catch(e){db.exec('ROLLBACK');throw e}};
 const hash=p=>{const s=crypto.randomBytes(16).toString('hex');return s+':'+crypto.scryptSync(p,s,64).toString('hex')};
 const check=(p,h)=>{try{const [s,x]=String(h||'').split(':');if(!s||!x)return false;const a=crypto.scryptSync(p,s,64),b=Buffer.from(x,'hex');return b.length===a.length&&crypto.timingSafeEqual(a,b)}catch{return false}};
-const notify=(u,t,l,{mail=true}={})=>{const r=run('INSERT INTO notifications(user_id,text,link) VALUES(?,?,?)',u,t,l??null);pushTo(u,t,l);if(mail)notifyEmail(u,'إشعار جديد',t,l&&l.startsWith('#/')?l.slice(1):'/notifs');return r};
+const notify=(u,t,l,{mail=true}={})=>{l=safeLink(l);const r=run('INSERT INTO notifications(user_id,text,link) VALUES(?,?,?)',u,t,l??null);pushTo(u,t,l);if(mail)notifyEmail(u,'إشعار جديد',t,l&&l.startsWith('#/')?l.slice(1):'/notifs');return r};
 const pushHits=new Map();
 const vapidSubject=()=>{const ok=v=>v&&/^(mailto:[^@\s]+@[^@\s]+\.[^@\s]+|https:\/\/[^\s]+)$/.test(v)&&!/example\.(com|org|net)/i.test(v);const e=process.env.VAPID_SUBJECT,a=process.env.ADMIN_EMAIL?'mailto:'+process.env.ADMIN_EMAIL:'',u=(process.env.APP_URL||'').replace(/\/$/,'');return ok(e)?e:ok(a)?a:ok(u)?u:e||'mailto:admin@example.com'};
 const pushCfg=()=>{const publicKey=cleanKey(process.env.VAPID_PUBLIC_KEY),privateKey=cleanKey(process.env.VAPID_PRIVATE_KEY);return publicKey&&privateKey?{publicKey,privateKey,subject:vapidSubject()}:null};
@@ -135,6 +136,10 @@ return{sent:0,reason:'تعذر الاتصال بخدمة الدفع'+(ex?': '+ex
 const bal=u=>get('SELECT COALESCE(SUM(delta),0) b FROM points_ledger WHERE user_id=?',u).b;
 const award=(u,key,ref)=>{const p=get('SELECT points FROM reward_rules WHERE key=?',key)?.points||0;if(p>0&&run('INSERT OR IGNORE INTO points_ledger(user_id,delta,reason,ref) VALUES(?,?,?,?)',u,p,key,ref).changes)notify(u,`أُضيفت ${p} نقطة إلى محفظتك`,'#/profile')};
 const audit=(a,act,d)=>run('INSERT INTO audit_log(admin_id,action,detail) VALUES(?,?,?)',a,act,d);
+// رابط الإشعار يجب أن يكون مسارًا داخليًا (#/...) فقط، وإلا يُهمل
+const safeLink=l=>{const s=String(l??'');return s.length<=200&&/^#\/[A-Za-z0-9_\-\/.?=&%#]*$/.test(s)?s:null};
+// نسخة احتياطية بصلاحية 0600 من لحظة الإنشاء: يُنشأ ملف فارغ مقيّد أولًا ثم يُملأ بـ VACUUM INTO
+const vacuumTo=f=>{fs.writeFileSync(f,'',{mode:0o600,flag:'wx'});try{db.exec(`VACUUM INTO '${f.replace(/'/g,"''")}'`);fs.chmodSync(f,0o600)}catch(e){try{fs.unlinkSync(f)}catch{}throw e}};
 const startSession=(res,uid)=>{const t=crypto.randomBytes(32).toString('hex'),priv=['admin','staff'].includes(get('SELECT role FROM users WHERE id=?',uid)?.role),ttl=priv?432e5:6048e5;run('INSERT INTO sessions VALUES(?,?,?)',sha(t),uid,Date.now()+ttl);res.setHeader('Set-Cookie',`sid=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${ttl/1000}${((process.env.APP_URL||'').startsWith('https')||res.req.headers['x-forwarded-proto']==='https')?'; Secure':''}`)};
 const userOf=t=>t?get('SELECT u.id,u.name,u.email,u.city,u.role,u.active,u.account_type,u.phone,u.address,u.short_address,u.map_url,u.email_verified,u.notify_email,u.push_enabled,u.perms,u.vat_status,u.vat_number,u.helper_type,u.vat_verified FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.exp>? AND u.active=1',sha(t),Date.now()):undefined;
 const need=c=>{if(!c.u)throw err(401,'سجّل الدخول أولًا');return c.u};
@@ -241,7 +246,7 @@ const cityOpen=city=>{
   return true;
 };
 
-export {pushCfg,pushKeyProblem,pushTest,verified,cityCoverage,cityOpen,CITY_OPEN_PCT,macOf,DB_PATH, notifyEmail, activateVatIfNeeded, supplyOf, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, commissionPctFor, COMMISSION_PCT, syncCashHold, helperHalaSecret, encSecret, secretsKey};
+export {pushCfg,pushKeyProblem,pushTest,verified,cityCoverage,cityOpen,CITY_OPEN_PCT,macOf,DB_PATH, notifyEmail, activateVatIfNeeded, supplyOf, RESTORE_PENDING, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, ACT, applyPenalty, blocked, cleanSearch, hx, likeEsc, matchSections, msgMailAt, notifyMessageMail, stripAl, toksOf, hitOr429, can, helperOf, clientOf, ensureCommission, needsVat, commissionPctFor, COMMISSION_PCT, syncCashHold, helperHalaSecret, encSecret, secretsKey, safeLink, vacuumTo};
 
 // تنظيف محاولات الدخول القديمة عند التشغيل (الجدول كان ينمو بلا حد)
 try{run('DELETE FROM login_attempts WHERE t<?',Date.now()-864e5)}catch{}

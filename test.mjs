@@ -1087,3 +1087,34 @@ const body=JSON.stringify({agreement_id:pl.j.id,amount:tot,reference:'SB'+pl.j.i
 assert.equal((await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body})).status,200);
 assert.equal((await h(`/direct/${oid}/task`)).j.task,null,'السداد أنهى المهمة');
 });
+test('الكوكي: يُطابق اسم sid بالضبط ولا يُقبل xsid',async()=>{
+ const lr=await fetch(B+'/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'admin@t.sa',password:'12345678'})});
+ const sid=/sid=(\w+)/.exec(lr.headers.get('set-cookie'))[1];
+ const authed=async ck=>!!(await(await fetch(B+'/api/me',{headers:{cookie:ck}})).json()).user;
+ assert.equal(await authed('sid='+sid),true);
+ assert.equal(await authed('a=1; sid='+sid),true);
+ assert.equal(await authed('xsid='+sid),false,'اسم ينتهي بـ sid لا يُقبل');
+ assert.equal(await authed('mysid='+sid),false);
+});
+test('روابط الإشعارات: مسار داخلي (#/) فقط، ويُرفض javascript: وdata:',async()=>{
+ const adm=cl();await adm('/login','POST',{email:'admin@t.sa',password:'12345678'});
+ for(const bad of ['javascript:alert(1)','data:text/html,x','https://evil.example/x','//evil.example'])assert.equal((await adm('/admin/broadcast','POST',{text:'اختبار الرابط',link:bad,audience:'all'})).s,400,bad);
+ assert.equal((await adm('/admin/broadcast','POST',{text:'اختبار الرابط',link:'#/notifs',audience:'all'})).s,200);
+});
+test('تنظيف الهوية والآيبان القديمين يعمل مرة واحدة فقط، لا عند كل تشغيل',async()=>{
+ const dbf=join(tmpdir(),'pii'+Date.now()+'.db');
+ const boot=async()=>{const p=spawn('node',['server.js'],{env:{...process.env,RESEND_API_KEY:'',PORT:3993,DB_FILE:dbf,ADMIN_EMAIL:'admin@t.sa',ADMIN_SETUP_TOKEN:'x'},stdio:'ignore'});await new Promise(r=>setTimeout(r,1200));return p};
+ const stop=async p=>{p.kill();await new Promise(r=>setTimeout(r,400))};
+ const q=f=>{const d=new DatabaseSync(dbf);try{return f(d)}finally{d.close()}};
+ let p=await boot();
+ try{ await stop(p);
+  q(d=>d.exec("INSERT INTO users(name,email,pass,iban,national_id) VALUES('x','pii1@t.sa','p','SA0000000000000000000000','1000000001')"));
+  p=await boot(); await stop(p);
+  assert.equal(q(d=>d.prepare("SELECT iban FROM users WHERE email='pii1@t.sa'").get()).iban,'SA0000000000000000000000','إعادة التشغيل لا تمسح بعد التنظيف الأول');
+  q(d=>d.exec("DELETE FROM settings WHERE key='legacy_pii_scrubbed'"));
+  p=await boot(); await stop(p);
+  const r=q(d=>d.prepare("SELECT iban,national_id FROM users WHERE email='pii1@t.sa'").get());
+  assert.equal(r.iban,null);assert.equal(r.national_id,null);
+  assert.equal(q(d=>d.prepare("SELECT value v FROM settings WHERE key='legacy_pii_scrubbed'").get()).v,'1');
+ }finally{try{p.kill()}catch{}}
+});

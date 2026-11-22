@@ -51,7 +51,7 @@ route('POST','/me/extra',c=>tx(()=>{const u=need(c);const h=get('SELECT account_
 if(kind==='org'){const name=str(c.b.number,2,120,'اسم المؤسسة أو الشركة');saveExtra(u.id,kind,name,null);return{ok:1}}
 if(!att)throw err(400,kind==='iban'?'أرفق صورة شهادة الآيبان':'أرفق شعار المساعد');
 if(kind==='logo'){saveExtra(u.id,kind,null,att);return{ok:1}}
-const ib=String(c.b.number||'').replace(/\s/g,'').toUpperCase();if(!/^SA\d{22}$/.test(ib))throw err(400,'رقم الآيبان غير صالح (SA متبوعة بـ 22 رقمًا)');saveExtra(u.id,kind,ib,att);run('UPDATE users SET iban=? WHERE id=?',ib,u.id);return{ok:1}}));
+const ib=String(c.b.number||'').replace(/\s/g,'').toUpperCase();if(!/^SA\d{22}$/.test(ib))throw err(400,'رقم الآيبان غير صالح (SA متبوعة بـ 22 رقمًا)');saveExtra(u.id,kind,ib,att);return{ok:1}}));
 route('POST','/me/docs/delete',c=>tx(()=>{const u=need(c);const kind=c.b.kind;if(kind==='vat')throw err(400,'الرقم الضريبي لا يُحذف من هنا لأنه يحدد طريقة الفوترة، تواصل مع الدعم');
 if(['cr','address'].includes(kind))run('DELETE FROM helper_docs WHERE user_id=? AND kind=?',u.id,kind);else if(['iban','logo','org'].includes(kind)){run('DELETE FROM helper_extra WHERE user_id=? AND kind=?',u.id,kind);if(kind==='iban')run('UPDATE users SET iban=NULL WHERE id=?',u.id)}else throw err(400,'نوع ورقة غير صالح');return{ok:1}}));
 // العرض المميز للمساعد: 3 صور ومقطع فيديو واحد. يُخزَّن في الإعدادات، وتُوسَّع الحصص لاحقًا من هنا فقط.
