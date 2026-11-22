@@ -1215,3 +1215,5 @@ label.check input[type=radio]{min-height:0;min-width:0;padding:0;box-sizing:bord
 /* زر القائمة (الثلاث شرطات) في أعلى اليمين في كل الصفحات */
 #nav #mb{order:-1;margin-inline-start:0;display:inline-grid!important;place-items:center}
 .pf2-top #pfMenu{order:-1}
+/* الصفحة الرئيسية للزائر: زر تسجيل الدخول يأخذ مكان اسم التطبيق في الوسط، فيُخفى الاسم لتفادي التداخل */
+body:has(.home-hero) #nav .logo:has(~ .hact .hlogin){display:none}
