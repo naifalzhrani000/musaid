@@ -902,9 +902,10 @@ body:has(.home-hero) #nav .logo{position:absolute;left:50%;transform:translateX(
 body:has(.home-hero) #nav .logo .mark{display:none}
 body:has(.home-hero) #nav .pcircles{display:none}
 
-body:has(.home-hero) #nav .hact{order:0;display:flex;align-items:center;gap:8px}
+body:has(.home-hero) #nav .hact{order:0;display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-inline-start:auto}
 body:has(.home-hero) #nav .hact .ic,body:has(.home-hero) #nav .bell{color:#201b2d}
 body:has(.home-hero) #nav .home-av{order:9;width:36px;height:36px;border-radius:50%;border:0;background:#e0dbec;color:#201b2d;font:inherit;font-weight:600;cursor:pointer}
+body:has(.home-hero) #nav a.home-av{display:inline-grid;place-items:center;text-decoration:none}
 body:has(.home-hero) .chat-wrap{background:transparent;box-shadow:none}
 body:has(.home-hero) .home-hero h1{color:#201b2d;font-size:28px;font-weight:500;margin:0 0 0}
 body:has(.home-hero) .home-hero p{display:none}
