@@ -901,7 +901,7 @@ body:has(.home-hero) #nav{background:#fbfafd;box-shadow:none;border:0;position:r
 body:has(.home-hero) #nav .logo{position:absolute;left:50%;transform:translateX(-50%);color:#201b2d;font-size:17px;font-weight:600;text-decoration:none;white-space:nowrap}
 body:has(.home-hero) #nav .logo .mark{display:none}
 body:has(.home-hero) #nav .pcircles{display:none}
-body:has(.home-hero) #nav #mb{display:none}
+
 body:has(.home-hero) #nav .hact{order:0;display:flex;align-items:center;gap:8px}
 body:has(.home-hero) #nav .hact .ic,body:has(.home-hero) #nav .bell{color:#201b2d}
 body:has(.home-hero) #nav .home-av{order:9;width:36px;height:36px;border-radius:50%;border:0;background:#e0dbec;color:#201b2d;font:inherit;font-weight:600;cursor:pointer}
@@ -951,7 +951,7 @@ body:has(.home-hero) .chat-in .send{background:transparent;color:#201b2d;box-sha
 @media (max-width:600px){.acc .pv-cover,.pv-tabs,.pv-panel{margin-inline:calc(50% - 50vw);width:100vw}.pv-tabs{padding-inline:12px}.pv-panel{padding-inline:16px}}
 
 /* الرئيسية: إخفاء ما لا يظهر في الصورة المرجعية (القائمة القديمة، الأيقونة البيضاء، رسم الخلفية) */
-body:has(.home-hero) #nav #mb{display:none!important}
+
 body:has(.home-hero) #nav .logo .mark{display:none!important}
 body:has(.home-hero) #nav{box-shadow:none!important;border:0!important}
 body:has(.home-hero) .chat-wrap::before{display:none}
@@ -1211,3 +1211,7 @@ label.check input[type=radio]{min-height:0;min-width:0;padding:0;box-sizing:bord
 @media (max-width:380px){.dt-nm{font-size:19px}.dt-mode span{display:none}}
 @media (prefers-reduced-motion:reduce){.dt-tabs *{transition:none!important}}
 
+
+/* زر القائمة (الثلاث شرطات) في أعلى اليمين في كل الصفحات */
+#nav #mb{order:-1;margin-inline-start:0;display:inline-grid!important;place-items:center}
+.pf2-top #pfMenu{order:-1}
