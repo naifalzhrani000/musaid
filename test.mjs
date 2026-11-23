@@ -1150,4 +1150,12 @@ test('إحالة المحلات: التسجيل عبر بطاقة المحل ي�
   const m=QR.matrix(url);
   assert.ok(m.length>=21&&(m.length-17)%4===0,'حجم الرمز صالح لإصدار QR');
   assert.ok(QR.svg(url).startsWith('<svg'));
+  // رمز QR النقطي لصفحة مشاركة الملف: فراغ وسطي للشعار في المنتصف تمامًا، والنقاط خارجه فقط
+  const L=QR.layout(url,{logo:.18}),bx=L.box;
+  assert.ok(bx.size>=5&&bx.x*2+bx.size===L.n,'فراغ الشعار في وسط الرمز');
+  assert.ok(L.dots.every(([x,y])=>!(x>=bx.x&&x<bx.x+bx.size&&y>=bx.y&&y<bx.y+bx.size)),'لا نقاط داخل فراغ الشعار');
+  assert.equal(QR.layout(url,{logo:0}).box.size,0);
+  const ds=QR.dotsSvg(url,{logoHref:'/logo-new.png',logoView:'40 130 390 250'});
+  assert.ok(ds.startsWith('<svg')&&ds.includes('/logo-new.png'));
+  assert.ok(QR.paths(url).dots.length>0&&QR.paths(url).finders.length>0);
 });

@@ -165,7 +165,7 @@ ${own?`<button class=pf2-fab id=addWork type=button aria-label="إضافة صو�
 const root=app.querySelector('.pf2');
 root.addEventListener('click',e=>{const b=e.target.closest('[data-pt]');if(!b)return;const k=b.dataset.pt;if(k==='docs'){location.hash=docsHref;return}if(k==='set'){location.hash='#/settings';return}if(k==='chats'){location.hash='#/chats';return}root.querySelectorAll('.pf2-tabs [data-pt]').forEach(x=>x.classList.toggle('on',x.dataset.pt===k));root.querySelectorAll('[data-pp]').forEach(x=>x.hidden=x.dataset.pp!==k)});
 {const qb=$('#pfQr');if(qb)qb.onclick=()=>openShopCard(p)}
-$('#pfShare').onclick=async()=>{const url=shopUrl(p.id,isH);try{if(navigator.share)await navigator.share({title:'منصة المساعد',text:p.name||'',url});else{await navigator.clipboard.writeText(url);toast('تم نسخ رابط الملف')}}catch(x){if(x&&x.name!=='AbortError')toast('تعذّرت المشاركة',1)}}}
+$('#pfShare').onclick=()=>openProfileShare(p,shopUrl(p.id,isH))}
 const SETTINGS_ITEMS=[['الإشعارات والتواصل','notify'],['الأمان','password'],['حذف الحساب','danger']];
 async function settingsPage(){if(!me.user){location.hash='#/login';return}const isH=me.user.account_type==='helper';const items=SETTINGS_ITEMS.filter(([,k])=>!['points','ledger'].includes(k)&&(isH||!['specs','bio','gallery'].includes(k)));app.innerHTML=`<h2 style="margin:8px 0 12px">الإعدادات</h2><div class=panel style="padding:0">${items.map(([t,k],i)=>`<a href="${k==='wallet'?'#/wallet':'#/profile/'+k}" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #ece8f8;text-decoration:none;color:inherit"><span>${i+1}- ${t}</span><span style="color:#9c94a8">‹</span></a>`).join('')}</div>`}
 async function walletPage(){if(!me.user){location.hash='#/login';return}const w=await api('/wallet');
@@ -549,6 +549,95 @@ function openShopCard(p){
   ov.querySelector('#qrcPrint').onclick=()=>window.print();
   ov.querySelector('#qrcShare').onclick=async()=>{try{if(navigator.share)await navigator.share({title:name,text:'امسح الرمز أو افتح الرابط للتواصل مع '+name,url});else{await navigator.clipboard.writeText(url);toast('تم نسخ رابط المحل')}}catch(x){if(x&&x.name!=='AbortError')toast('تعذّرت المشاركة',1)}};
   document.body.append(ov);
+}
+// صفحة مشاركة الملف الشخصي (على نمط مشاركة الانستقرام): رمز QR بشعار المساعد + مشاركة / نسخ الرابط / تنزيل
+const SHARE_LOGO_VIEW='40 130 390 250'; // حدود اليد داخل logo-new.png بلا الهوامش البيضاء
+const SHARE_STYLES=['شعار','ألوان'];
+async function copyText(t){
+  try{await navigator.clipboard.writeText(t);return true}catch{
+    const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.cssText='position:fixed;opacity:0';
+    document.body.append(a);a.select();let ok=false;try{ok=document.execCommand('copy')}catch{}a.remove();return ok;
+  }
+}
+// صورة PNG للبطاقة (نفس شكل الصفحة) للتنزيل
+async function shareImage(url,name,style){
+  const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const logo=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error('logo'));i.src='/logo-new.png'});
+  try{await document.fonts.load("700 56px 'IBM Plex Sans Arabic'")}catch{}
+  const F="'IBM Plex Sans Arabic',Tahoma,sans-serif",PURPLE='#5331b6';
+  if(style===0){
+    x.fillStyle='#ece8fc';x.fillRect(0,0,W,H);
+    x.globalCompositeOperation='multiply';x.globalAlpha=.55;
+    const cell=190,sw=132,sh=sw*512/468;
+    for(let r=0;r*cell<H+cell;r++)for(let q=-1;q*cell<W+cell;q++){
+      x.save();x.translate(q*cell+(r%2?cell/2:0)+sw/2,r*cell+sh/2);x.rotate(((r+q)%2?1:-1)*.24);x.drawImage(logo,-sw/2,-sh/2,sw,sh);x.restore();
+    }
+    x.globalAlpha=1;x.globalCompositeOperation='source-over';
+  }else{
+    const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,PURPLE);g.addColorStop(1,'#8a6cff');x.fillStyle=g;x.fillRect(0,0,W,H);
+  }
+  const cw=800,ch=900,cx=(W-cw)/2,cy=(H-ch)/2-30;
+  x.save();x.shadowColor='rgba(13,10,44,.22)';x.shadowBlur=60;x.shadowOffsetY=18;x.fillStyle='#fff';
+  x.beginPath();if(x.roundRect)x.roundRect(cx,cy,cw,ch,64);else x.rect(cx,cy,cw,ch);x.fill();x.restore();
+  const q=QR.paths(url,{logo:.18}),qs=640,u=qs/q.n,qx=cx+(cw-qs)/2,qy=cy+70;
+  x.save();x.translate(qx,qy);x.scale(u,u);x.fillStyle=PURPLE;
+  x.fill(new Path2D(q.dots));x.fill(new Path2D(q.finders),'evenodd');x.restore();
+  if(q.box.size){
+    const pad=.5,bs=(q.box.size-2*pad)*u,lw=bs,lh=bs*250/390,lx=qx+(q.box.x+pad)*u,ly=qy+q.box.y*u+(q.box.size*u-lh)/2;
+    x.drawImage(logo,40,130,390,250,lx,ly,lw,lh);
+  }
+  x.textAlign='center';x.textBaseline='middle';x.direction='rtl';x.fillStyle=PURPLE;
+  let fs=64;x.font=`700 ${fs}px ${F}`;
+  while(x.measureText(name).width>cw-120&&fs>28){fs-=2;x.font=`700 ${fs}px ${F}`}
+  x.fillText(name,W/2,cy+70+qs+(ch-70-qs)/2);
+  x.font=`600 40px ${F}`;
+  if(style===0){const tw=x.measureText('منصة المساعد').width+90;x.fillStyle='#ece8fc';x.beginPath();if(x.roundRect)x.roundRect(W/2-tw/2,H-160,tw,100,50);else x.rect(W/2-tw/2,H-160,tw,100);x.fill()}
+  x.fillStyle=style===0?PURPLE:'#fff';x.fillText('منصة المساعد',W/2,H-110);
+  return new Promise(ok=>c.toBlob(ok,'image/png'));
+}
+function openProfileShare(p,url){
+  const name=String(p.name||'المساعد');
+  let qr;
+  try{qr=QR.dotsSvg(url,{logoHref:'/logo-new.png',logoView:SHARE_LOGO_VIEW,label:'رمز QR لملف '+name})}
+  catch{copyText(url).then(ok=>toast(ok?'تم نسخ رابط الملف':'تعذّرت المشاركة',!ok));return}
+  const opener=document.activeElement;
+  const ic=d=>`<svg viewBox="0 0 24 24" width=24 height=24 fill=none stroke=currentColor stroke-width=1.8 stroke-linecap=round stroke-linejoin=round aria-hidden=true>${d}</svg>`;
+  const ICX='<path d="M6 6l12 12M18 6 6 18"/>',ICS='<path d="M12 15V3.500M7.500 8 12 3.500 16.500 8M5 12.500v7h14v-7"/>',
+    ICL='<path d="M10 14a4 4 0 0 0 5.700 0l3-3a4 4 0 0 0-5.700-5.700l-1 1M14 10a4 4 0 0 0-5.700 0l-3 3a4 4 0 0 0 5.700 5.700l1-1"/>',
+    ICD='<path d="M12 4v11M7.500 10.500 12 15l4.500-4.500M5 19.500h14"/>';
+  const ov=document.createElement('div');
+  ov.className='shr';ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');ov.setAttribute('aria-label','مشاركة الملف الشخصي');
+  const cell=74,cols=Math.min(Math.ceil(innerWidth/cell)+1,24),rows=Math.min(Math.ceil(innerHeight/cell)+1,16);
+  let pat='';for(let r=0;r<rows;r++)for(let k=0;k<cols;k++)pat+=`<img src="/logo-new.png" alt="" class="${r%2?'o':''}${(r+k)%2?' a':''}">`;
+  ov.innerHTML=`<div class=shr-pat aria-hidden=true style="grid-template-columns:repeat(${cols},${cell}px)">${pat}</div>
+  <div class=shr-top><button type=button class=shr-x id=shrX aria-label="إغلاق">${ic(ICX)}</button><button type=button class=shr-pill id=shrSt aria-live=polite aria-label="تغيير شكل الخلفية">${SHARE_STYLES[0]}</button><span class=shr-sp></span></div>
+  <div class=shr-body><div class=shr-card><div class=shr-qr>${qr}</div><p class=shr-name>${esc(name)}</p></div>
+  <div class=shr-acts><button type=button class=shr-act id=shrSh>${ic(ICS)}<span>مشاركة الملف</span></button><button type=button class=shr-act id=shrCp>${ic(ICL)}<span>نسخ الرابط</span></button><button type=button class=shr-act id=shrDl>${ic(ICD)}<span>تنزيل</span></button></div></div>`;
+  let st=0;
+  const onKey=e=>{if(e.key==='Escape')close()};
+  const close=()=>{document.removeEventListener('keydown',onKey);removeEventListener('hashchange',close);ov.remove();if(opener&&opener.focus)opener.focus()};
+  document.addEventListener('keydown',onKey);addEventListener('hashchange',close);
+  ov.querySelector('#shrX').onclick=close;
+  const pill=ov.querySelector('#shrSt');
+  pill.onclick=()=>{st=(st+1)%SHARE_STYLES.length;ov.classList.toggle('shr-c',st===1);pill.textContent=SHARE_STYLES[st]};
+  ov.querySelector('#shrSh').onclick=async()=>{
+    try{if(navigator.share)await navigator.share({title:'منصة المساعد',text:name,url});else toast((await copyText(url))?'تم نسخ الرابط':'تعذّر النسخ',0)}
+    catch(x){if(x&&x.name!=='AbortError')toast('تعذّرت المشاركة',1)}
+  };
+  ov.querySelector('#shrCp').onclick=async()=>{const ok=await copyText(url);toast(ok?'تم نسخ الرابط':'تعذّر النسخ',!ok)};
+  const dl=ov.querySelector('#shrDl');
+  dl.onclick=async()=>{
+    dl.disabled=true;
+    try{
+      const blob=await shareImage(url,name,st);if(!blob)throw new Error('png');
+      const file=new File([blob],'musaed-qr-'+p.id+'.png',{type:'image/png'});
+      // على الجوال تظهر قائمة المشاركة التي فيها «حفظ الصورة»؛ وعلى الحاسب يُنزَّل الملف مباشرة
+      if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file]});
+      else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('تم تنزيل الصورة')}
+    }catch(x){if(!(x&&x.name==='AbortError'))toast('تعذّر تنزيل الصورة',1)}
+    dl.disabled=false;
+  };
+  ov.tabIndex=-1;document.body.append(ov);ov.focus({preventScroll:true});
 }
 async function boot(){captureShopRef();me=await api('/me');route();verifyBanner();notifyBanner();renderFooter();syncPush();pushBanner()}
 addEventListener('hashchange',route);boot().catch(()=>{app.innerHTML='<section class=panel style="text-align:center"><h3>تعذّر الاتصال بالخادم</h3><small>تأكد من اتصالك بالإنترنت ثم أعد المحاولة.</small><p><button class=btn type=button onclick="location.reload()">إعادة المحاولة</button></p></section>'});

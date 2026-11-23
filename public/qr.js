@@ -153,7 +153,42 @@ function svg(text,opts){
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${N} ${N}" role="img" aria-label="${o.label}" shape-rendering="crispEdges"><rect width="${N}" height="${N}" fill="${o.light}"/><path d="${d}" fill="${o.dark}"/></svg>`;
 }
 
-const QR={matrix:encodeMatrix,svg};
+// تخطيط نقطي: نقاط دائرية + أنماط بحث مدوّرة + فراغ في الوسط للشعار (logo = نسبة عرض الفراغ من عرض الرمز).
+// مستوى التصحيح M يتحمل هذا الفراغ الصغير. يُستخدم لرسم SVG ولرسم canvas بنفس الشكل.
+function layout(text,opts){
+  const o=Object.assign({logo:0.18},opts||{});
+  const mod=encodeMatrix(text),n=mod.length;
+  let L=o.logo>0?Math.round(n*o.logo):0;
+  if(L&&(L%2)!==(n%2))L++;
+  const s=(n-L)/2,e=s+L,dots=[];
+  const fin=(x,y)=>(x<7&&y<7)||(x>=n-7&&y<7)||(x<7&&y>=n-7);
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(mod[y][x]&&!fin(x,y)&&!(L&&x>=s&&x<e&&y>=s&&y<e))dots.push([x,y]);
+  return {n,dots,finders:[[0,0],[n-7,0],[0,n-7]],box:{x:s,y:s,size:L}};
+}
+
+function rr(x,y,w,h,r){
+  return `M${x+r} ${y}h${w-2*r}a${r} ${r} 0 0 1 ${r} ${r}v${h-2*r}a${r} ${r} 0 0 1 -${r} ${r}h-${w-2*r}a${r} ${r} 0 0 1 -${r} -${r}v-${h-2*r}a${r} ${r} 0 0 1 ${r} -${r}z`;
+}
+
+// مسارات SVG جاهزة (نقاط + أنماط البحث) تُستعمل في SVG وفي Path2D لرسم الصورة المنزَّلة بنفس الشكل
+function paths(text,opts){
+  const l=layout(text,opts),r=0.44;
+  let dots='';
+  for(const [x,y] of l.dots)dots+=`M${x+0.5-r} ${y+0.5}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 -${2*r} 0`;
+  let finders='';
+  for(const [x,y] of l.finders)finders+=rr(x,y,7,7,1)+rr(x+1,y+1,5,5,0.6)+rr(x+2,y+2,3,3,0.7);
+  return {n:l.n,dots,finders,box:l.box};
+}
+
+// SVG نقطي بلا خلفية؛ الشعار (صورة) يوضع في الفراغ الوسطي إن مُرِّر logoHref
+function dotsSvg(text,opts){
+  const o=Object.assign({dark:'#5331b6',label:'QR code',logo:0.18,logoHref:'',logoView:'0 0 1 1'},opts||{});
+  const p=paths(text,{logo:o.logoHref?o.logo:0}),b=p.box,pad=0.5;
+  const img=o.logoHref&&b.size?`<svg x="${b.x+pad}" y="${b.y+pad}" width="${b.size-2*pad}" height="${b.size-2*pad}" viewBox="${o.logoView}" preserveAspectRatio="xMidYMid meet"><image href="${o.logoHref}" width="468" height="512"/></svg>`:'';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${p.n} ${p.n}" role="img" aria-label="${o.label}"><path d="${p.dots}" fill="${o.dark}"/><path d="${p.finders}" fill="${o.dark}" fill-rule="evenodd"/>${img}</svg>`;
+}
+
+const QR={matrix:encodeMatrix,svg,layout,paths,dotsSvg};
 if(typeof module!=='undefined'&&module.exports)module.exports=QR;
 else root.QR=QR;
 })(typeof window!=='undefined'?window:globalThis);
