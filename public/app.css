@@ -1218,3 +1218,17 @@ label.check input[type=radio]{min-height:0;min-width:0;padding:0;box-sizing:bord
 .pf2-top #pfMenu{order:-1}
 /* الصفحة الرئيسية للزائر: زر تسجيل الدخول يأخذ مكان اسم التطبيق في الوسط، فيُخفى الاسم لتفادي التداخل */
 body:has(.home-hero) #nav .logo:has(~ .hact .hlogin){display:none}
+
+/* الأوراق الرسمية: نموذج واحد وبطاقات مدمجة وزر حفظ واحد */
+.docs-all{gap:14px}
+.docs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.doc-card{display:grid;gap:8px;align-content:start;border:1px solid var(--b);border-radius:14px;padding:12px;background:var(--surface)}
+.doc-card.wide{grid-column:1/-1}
+.doc-card h4{margin:0;font-size:15px;color:var(--g)}
+.doc-card label{display:grid;gap:4px;font-size:13px}
+.doc-card input{min-height:40px;padding:8px 10px}
+.doc-up{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.doc-up .btn{width:auto;min-height:38px;padding:6px 14px;font-size:14px}
+.doc-card .lnk{justify-self:start;min-height:0;padding:0;font-size:13px}
+.docs-save{display:flex;justify-content:center;padding-top:4px}
+.docs-save .btn{width:auto;min-width:220px;max-width:100%;padding:10px 32px;font-weight:600;text-align:center}
