@@ -65,6 +65,8 @@ for(const [col,def] of [['paid_at','TEXT']]){if(!db.prepare("SELECT 1 x FROM pra
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('attachments') WHERE name='ext_key'").get())db.exec("ALTER TABLE attachments ADD COLUMN ext_key TEXT");
 for(const [col,def] of [['helper_type',"TEXT NOT NULL DEFAULT ''"],['vat_verified','INT NOT NULL DEFAULT 0'],['helper_type_request','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
 for(const [col,def] of [['cash_hold','INT NOT NULL DEFAULT 0']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
+// إحالة المحلات: العميل المسجّل عبر بطاقة QR محل (مؤسسة/شركة) يُنسب إليه، ويُحفظ أول تسجيل فقط
+for(const [col,def] of [['referred_by','INT'],['referred_at','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
 for(const [col,def] of [['vat_amount','REAL'],['total_amount','REAL'],['helper_net','REAL'],['payment_ref','TEXT'],['paid_via','TEXT'],['materials','REAL']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 // vat_verified: 0 = قيد المراجعة (يعمل)، 1 = معتمد، 2 = مرفوض (موقوف حتى يعدّل الرقم)
 // تشفير مفاتيح المساعد (AES-256-GCM)، والمفتاح من متغير البيئة SECRETS_KEY (32 بايت بصيغة base64)
@@ -76,6 +78,8 @@ const needsVat=u=>!!u&&u.account_type==='helper'&&u.vat_status==='registered'&&u
 const helperOf=a=>{const h=get("SELECT id FROM users WHERE id=? AND account_type='helper'",a.a_id);return h?a.a_id:a.b_id};
 db.exec("DROP TABLE IF EXISTS invoices"); // إلغاء نظام الفواتير: حُذفت السجلات القديمة بموافقة المالك
 db.exec("DROP TABLE IF EXISTS chat_invoices");
+// مسح بطاقة QR لمحل: سجل واحد لكل مسح (بلا هوية الزائر)، يُستخدم لإحصاء المسح ونسبة التسجيل
+db.exec("CREATE TABLE IF NOT EXISTS shop_scans(id INTEGER PRIMARY KEY,shop_id INT NOT NULL REFERENCES users(id),at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE INDEX IF NOT EXISTS ix_shop_scans ON shop_scans(shop_id)");
 db.exec("CREATE TABLE IF NOT EXISTS helper_hala(user_id INTEGER PRIMARY KEY REFERENCES users(id),api_key_enc TEXT NOT NULL,webhook_secret_enc TEXT NOT NULL,last4 TEXT,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
 db.exec("CREATE TABLE IF NOT EXISTS platform_invoices(id INTEGER PRIMARY KEY,number TEXT UNIQUE NOT NULL,helper_id INT NOT NULL REFERENCES users(id),amount REAL NOT NULL,commission_ids TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'unpaid',issued_at TEXT DEFAULT CURRENT_TIMESTAMP,paid_at TEXT,paid_note TEXT)");
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('platform_invoices') WHERE name='vat_amount'").get())db.exec("ALTER TABLE platform_invoices ADD COLUMN vat_amount REAL NOT NULL DEFAULT 0");

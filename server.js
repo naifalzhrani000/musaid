@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import zlib from 'node:zlib';
 const apiHits=new Map();
 const INDEX_RAW=fs.readFileSync(new URL('./public/index.html',import.meta.url),'utf8');const INDEX_HTML=()=>{const b=(process.env.APP_URL||'').replace(/\/$/,'');return b?INDEX_RAW.replace('content="/og.png"',`content="${b}/og.png"`):INDEX_RAW};
-const STATIC={};for(const f of ['app.css','app.js','admin.js','splash.js']){const body=fs.readFileSync(new URL('./public/'+f,import.meta.url));STATIC['/'+f]={type:f.endsWith('.css')?'text/css; charset=utf-8':'application/javascript; charset=utf-8',body,gz:zlib.gzipSync(body,{level:9}),etag:'"'+crypto.createHash('sha1').update(body).digest('hex').slice(0,16)+'"'}};
+const STATIC={};for(const f of ['app.css','app.js','admin.js','splash.js','qr.js']){const body=fs.readFileSync(new URL('./public/'+f,import.meta.url));STATIC['/'+f]={type:f.endsWith('.css')?'text/css; charset=utf-8':'application/javascript; charset=utf-8',body,gz:zlib.gzipSync(body,{level:9}),etag:'"'+crypto.createHash('sha1').update(body).digest('hex').slice(0,16)+'"'}};
 import {PORT, db, err, userOf, R, get, pushCfg, pushKeyProblem, vacuumTo} from './src/core.js';
 import {pipeline} from 'node:stream';
 // اسم الكوكي مثبّت في بداية الاسم: لا يطابق مثل xsid أو mysid

@@ -359,6 +359,19 @@ route('GET','/admin/helper-performance',c=>{
     FROM users u WHERE u.account_type='helper' AND u.role!='admin' ORDER BY completed DESC, u.id LIMIT 200`,`-${days} days`,`-${days} days`,`-${days} days`).map(r=>({...r,days}));
 });
 
+// المحلات والإحالات: كل مؤسسة/شركة وعدد العملاء الذين سجّلوا عبر بطاقة QR الخاصة بها
+route('GET','/admin/shops',c=>{can(c,'support');return all(`SELECT u.id,u.name,u.city,u.active,
+    (SELECT COUNT(*) FROM shop_scans s WHERE s.shop_id=u.id) scans,
+    (SELECT COUNT(*) FROM users x WHERE x.referred_by=u.id) clients,
+    (SELECT COUNT(*) FROM users x WHERE x.referred_by=u.id AND EXISTS(SELECT 1 FROM agreements g WHERE g.a_id=x.id OR g.b_id=x.id)) active_clients,
+    (SELECT COUNT(*) FROM agreements g WHERE g.status='completed' AND (g.a_id IN (SELECT id FROM users WHERE referred_by=u.id) OR g.b_id IN (SELECT id FROM users WHERE referred_by=u.id))) completed,
+    (SELECT MAX(x.referred_at) FROM users x WHERE x.referred_by=u.id) last_at
+  FROM users u WHERE u.account_type='helper' ORDER BY clients DESC, u.id LIMIT 500`)});
+route('GET','/admin/shops/(\\d+)/clients',c=>{can(c,'support');const id=+c.p[0];const shop=get("SELECT id,name FROM users WHERE id=? AND account_type='helper'",id);if(!shop)throw err(404,'المحل غير موجود');
+  return{shop,clients:all(`SELECT u.id,u.name,u.city,u.account_type,u.referred_at,
+    (SELECT COUNT(*) FROM agreements g WHERE g.a_id=u.id OR g.b_id=u.id) orders
+    FROM users u WHERE u.referred_by=? ORDER BY u.referred_at DESC LIMIT 1000`,id)}});
+
 // بلاغ محادثة واحد للإدارة: بيانات البلاغ والطرفان، والقرار السابق إن وُجد
 route('GET','/admin/reports/(\\d+)',c=>{
   can(c,'support');

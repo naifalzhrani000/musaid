@@ -1118,3 +1118,36 @@ test('تنظيف الهوية والآيبان القديمين يعمل مرة 
   assert.equal(q(d=>d.prepare("SELECT value v FROM settings WHERE key='legacy_pii_scrubbed'").get()).v,'1');
  }finally{try{p.kill()}catch{}}
 });
+
+// إحالة المحلات: رابط بطاقة المحل ينسب العميل المسجّل إليه، وتظهر النسبة في قسم الإدارة
+test('إحالة المحلات: التسجيل عبر بطاقة المحل ينسب العميل، ولا يُنسب لغير المحل، وتراه الإدارة فقط',async()=>{
+  const {pathToFileURL}=await import('node:url');
+  await import(pathToFileURL(join(process.cwd(),'public','qr.js')).href);
+  const shop=cl();
+  assert.equal((await shop('/register','POST',{name:'محل النور',email:'shop-ref@t.sa',password:'12345678',terms:1,age:1,phone:ph()})).s,200);
+  const shopId=(await shop('/me')).j.user.id;
+  {const d=new DatabaseSync(DBF);d.prepare("UPDATE users SET account_type='helper',helper_type='establishment' WHERE id=?").run(shopId);d.close()}
+  const cli=cl();
+  assert.equal((await cli('/register','POST',{name:'عميل الإحالة',email:'ref-client@t.sa',password:'12345678',terms:1,age:1,phone:ph(),ref:String(shopId)})).s,200);
+  const other=cl();
+  assert.equal((await other('/register','POST',{name:'عميل بلا محل',email:'ref-none@t.sa',password:'12345678',terms:1,age:1,phone:ph(),ref:'999999'})).s,200,'رمز إحالة غير صالح لا يمنع التسجيل');
+  const adm=cl();await adm('/login','POST',{email:'admin@t.sa',password:'12345678'});
+  assert.equal((await other('/shops/'+shopId+'/scan','POST',{})).j.ok,1,'المسح العام يُسجَّل للمحل');
+  assert.equal((await other('/shops/'+shopId+'/scan','POST',{})).j.ok,1);
+  assert.equal((await other('/shops/999999/scan','POST',{})).j.ok,0,'مسح رقم غير صالح لا يُحسب');
+  const row=(await adm('/admin/shops')).j.find(s=>s.id===shopId);
+  assert.ok(row,'المحل يظهر في قائمة المحلات');
+  assert.equal(row.clients,1);
+  assert.equal(row.scans,2,'عدد المسوحات');
+  const list=(await adm('/admin/shops/'+shopId+'/clients')).j;
+  assert.equal(list.shop.name,'محل النور');
+  assert.deepEqual(list.clients.map(c=>c.name),['عميل الإحالة']);
+  assert.equal((await adm('/admin/shops/999999/clients')).s,404);
+  assert.equal((await cli('/admin/shops')).s,403,'العميل لا يرى قائمة المحلات');
+  // رمز QR: الرابط المرمّز يُقرأ كما هو
+  const QR=globalThis.QR;
+  const url=`https://musaed.sa/?ref=${shopId}#/p/${shopId}`;
+  const m=QR.matrix(url);
+  assert.ok(m.length>=21&&(m.length-17)%4===0,'حجم الرمز صالح لإصدار QR');
+  assert.ok(QR.svg(url).startsWith('<svg'));
+});
