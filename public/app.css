@@ -1291,3 +1291,15 @@ a.pf2-row small{color:#5331b6}
 .shr button:focus-visible{outline:3px solid var(--m);outline-offset:2px}
 @media (prefers-reduced-motion:no-preference){.shr{animation:shrIn .22s ease-out}@keyframes shrIn{from{opacity:0;transform:translateY(14px)}}}
 @media print{.shr{display:none!important}}
+
+/* إصلاح تشوه بطاقة رابط الدفع: منع تمدد المحتوى خارج البطاقة */
+body.dchat-mode .dc-linkcard{box-sizing:border-box;width:min(86%,290px);max-width:100%;min-width:0;overflow:hidden;grid-template-columns:minmax(0,1fr);align-self:flex-end}
+body.dchat-mode .dc-linkcard>*{min-width:0}
+body.dchat-mode .dc-linkcard .lc-head>div{min-width:0;flex:1;display:grid;gap:2px}
+body.dchat-mode .dc-linkcard .lc-head b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;unicode-bidi:plaintext;text-align:start;direction:ltr}
+body.dchat-mode .dc-linkcard .lc-rate{display:block;white-space:nowrap}
+body.dchat-mode .dc-linkcard .dc-kv{min-width:0}
+body.dchat-mode .dc-linkcard .dc-kv b{white-space:nowrap;text-align:end}
+body.dchat-mode .dc-linkcard .dc-acts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin:6px 0 0}
+body.dchat-mode .dc-linkcard .dc-acts button{min-height:42px;font-size:14px;padding:0 6px;white-space:normal;line-height:1.25;text-align:center;min-width:0}
+body.dchat-mode .dc-linkcard .dc-acts button:only-child{grid-column:1/-1}
