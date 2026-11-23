@@ -118,8 +118,10 @@ if(isH&&TAB[k]){app.insertAdjacentHTML('afterbegin',`<div class=dt-tabs role=nav
 else if(k==='data'){}
 else if(k==='specs'&&!isH)app.insertAdjacentHTML('afterbegin','<h2 style="margin:6px 0 10px;color:#0d0a2c">التحويل إلى مساعد</h2>')
 else app.insertAdjacentHTML('afterbegin',`<h2 style="margin:6px 0 10px;color:#0d0a2c">${titles[k]||''}</h2>`)}
-async function profileAccount(viewId){if(!me.user){location.hash='#/login';return}
-const own=!viewId||+viewId===me.user.id;
+async function profileAccount(viewId){
+// الملف العام متاح للزائر بلا تسجيل دخول؛ ملفك أنت يتطلب الدخول
+if(!me.user&&!viewId){location.hash='#/login';return}
+const own=!!me.user&&(!viewId||+viewId===me.user.id);
 const p=await api('/providers/'+(own?me.user.id:viewId)),isH=own?me.user.account_type==='helper':!!p.is_helper;
 const pics=p.portfolio||[],bio=(p.bio||'').trim(),isVid=x=>/^video\//.test(x.mime||'');
 const cv=p.cover||(pics.find(x=>!isVid(x))||{}).attachment_id;
