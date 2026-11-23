@@ -22,6 +22,8 @@ import './src/routes/feed.js';
 import './src/routes/follow.js';
 import './src/routes/accounting.js';
 import './src/routes/admin.js';
+import './src/routes/ai.js';
+import {startScheduler as startAi} from './src/ai/center.js';
 // ---- عنوان العميل: لا يُقرأ من الرأس إلا خلف وكيل موثوق (TRUST_PROXY=1) ----
 const TRUST_PROXY=process.env.TRUST_PROXY==='1';
 const clientIp=req=>{if(process.env.CF_PROXY==='1'&&req.headers['cf-connecting-ip']){const c=String(req.headers['cf-connecting-ip']).trim();if(c)return c}if(TRUST_PROXY){const x=String(req.headers['x-forwarded-for']||'').split(',').pop().trim();if(x)return x}return req.socket.remoteAddress||''};
@@ -58,5 +60,5 @@ if(out?.raw){res.setHeader('Content-Type',out.mime);res.setHeader('Cache-Control
 res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify(out))}}
 throw err(404,'غير موجود')}catch(e){if(!e.s||e.s>=500)console.error('[unhandled]',String(req.url).split('?')[0],e.stack||e.message);if(!e.s&&/UNIQUE constraint failed: users\.(national_id|phone)/.test(String(e.message)))Object.assign(e,{s:409,message:'هذه الهوية أو الجوال مسجّلة على حساب آخر'});const s=e.s||(e instanceof SyntaxError?400:500);res.statusCode=s;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({error:e.s?e.message:s===400?'بيانات غير صالحة':'خطأ في الخادم'}))}});
 server.headersTimeout=15000;server.requestTimeout=60000;server.keepAliveTimeout=65000;
-server.listen(PORT,()=>{console.log('http://localhost:'+PORT);if(!process.env.VAPID_PUBLIC_KEY||!process.env.VAPID_PRIVATE_KEY)console.warn('push: مفاتيح VAPID غير مضبوطة، لن تصل إشعارات الدفع للجوال');else if(pushKeyProblem())console.warn('push: '+pushKeyProblem()+' — إشعارات الدفع معطّلة حتى تُصحَّح المفاتيح في الاستضافة');else if(/example\.(com|org|net)/i.test(pushCfg().subject))console.warn('push: غيّر VAPID_SUBJECT إلى بريد حقيقي (آبل ترفض أحيانًا example.com)');if(!process.env.MAIL_FROM||/resend\.dev/i.test(process.env.MAIL_FROM))console.warn('mail: MAIL_FROM يستخدم نطاق Resend التجريبي، وسيذهب البريد إلى الرسائل المزعجة. وثّق نطاقك في Resend')});
+server.listen(PORT,()=>{console.log('http://localhost:'+PORT);startAi();if(!process.env.VAPID_PUBLIC_KEY||!process.env.VAPID_PRIVATE_KEY)console.warn('push: مفاتيح VAPID غير مضبوطة، لن تصل إشعارات الدفع للجوال');else if(pushKeyProblem())console.warn('push: '+pushKeyProblem()+' — إشعارات الدفع معطّلة حتى تُصحَّح المفاتيح في الاستضافة');else if(/example\.(com|org|net)/i.test(pushCfg().subject))console.warn('push: غيّر VAPID_SUBJECT إلى بريد حقيقي (آبل ترفض أحيانًا example.com)');if(!process.env.MAIL_FROM||/resend\.dev/i.test(process.env.MAIL_FROM))console.warn('mail: MAIL_FROM يستخدم نطاق Resend التجريبي، وسيذهب البريد إلى الرسائل المزعجة. وثّق نطاقك في Resend')});
 for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{console.log('shutdown:',sig);server.close(()=>{try{db.exec('PRAGMA wal_checkpoint(TRUNCATE)');db.close()}catch{}process.exit(0)});setTimeout(()=>process.exit(0),8000).unref()});
