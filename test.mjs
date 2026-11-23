@@ -19,7 +19,7 @@ const vfy=async(c)=>{const id=(await c('/me')).j.user.id;const d=new DatabaseSyn
 const verifyEmail=async(c)=>{const id=(await c('/me')).j.user.id;const d=new DatabaseSync(DBF);d.prepare('UPDATE users SET email_verified=1 WHERE id=?').run(id);d.close();};
 const payReq=async(id,amt)=>{const r=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body:JSON.stringify({request_id:id,amount:amt,reference:'RQ'+id})});return{s:r.status,j:await r.json()}};
 const payHala=async(id)=>{const r=await fetch(B+'/api/payments/hala/webhook',{method:'POST',headers:{'content-type':'application/json','x-hala-secret':'test-hala'},body:JSON.stringify({agreement_id:id,amount:99999,reference:'R'+id})});return r.status};
-test('الحسابات المشتركة للاختبارات اللاحقة',async()=>{const adm=await reg('admin');await reg('o2');assert.equal((await adm('/admin/bootstrap','POST',{token:'test-token'})).s,200);});
+test('الحسابات المشتركة للاختبارات اللاحقة',async()=>{const adm=await reg('admin');const o2=await reg('o2');{const d=new DatabaseSync(DBF);d.prepare("UPDATE users SET email_verified=0,role='user' WHERE email='admin@t.sa'").run();d.close()}assert.equal((await adm('/admin/stats')).s,403,'بريد المالك غير الموثّق لا يمنح صلاحية');await verifyEmail(adm);assert.equal((await adm('/admin/stats')).s,200,'بريد المالك الموثّق يصير مديرًا');await verifyEmail(o2);assert.equal((await o2('/admin/stats')).s,403,'غير المالك لا يصير مديرًا ولو وُثّق بريده');});
 test('المالية والمصروفات والنشاط وصلاحيات الإدارة',async()=>{
 const adm=cl();await adm('/login','POST',{email:'admin@t.sa',password:'12345678'});
 const user=await cl();await user('/login','POST',{email:'o2@t.sa',password:'12345678'});

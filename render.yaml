@@ -19,7 +19,6 @@ services:
       - {key: APP_SECRET, generateValue: true}
       - {key: APP_URL, sync: false}
       - {key: ADMIN_EMAIL, sync: false}
-      - {key: ADMIN_SETUP_TOKEN, sync: false}
       - {key: RESEND_API_KEY, sync: false}
       - {key: MAIL_FROM, sync: false}
       - {key: VAPID_PUBLIC_KEY, sync: false}

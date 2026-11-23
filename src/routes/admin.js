@@ -49,9 +49,6 @@ if(d==='approve'){run("UPDATE skills SET status='approved' WHERE id=?",s.id);run
 if(d==='reject'){const why=str(c.b.reason,3,300,'السبب');run('DELETE FROM user_skills WHERE skill_id=?',s.id);run('DELETE FROM skill_keywords WHERE skill_id=?',s.id);run('DELETE FROM skills WHERE id=?',s.id);audit(a.id,'skill_reject',`${s.name}:${why}`);if(s.suggested_by)notify(s.suggested_by,`لم تُعتمد مهارة «${s.name}»: ${why}`,'#/profile');return{ok:1}}
 throw err(400,'قرار غير صالح')});
 route('POST','/admin/skills/(\\d+)/keywords',c=>{const a=adm(c),s=get('SELECT id,name FROM skills WHERE id=?',+c.p[0]);if(!s)throw err(404,'غير موجود');const kws=String(c.b.keywords||'').split(/[,،]/).map(normAr).filter(x=>x.length>=2).slice(0,15);if(!kws.length)throw err(400,'أدخل كلمة واحدة على الأقل');for(const k of kws){run('INSERT OR IGNORE INTO skill_keywords(skill_id,word) VALUES(?,?)',s.id,k);run('INSERT OR IGNORE INTO section_keywords(category_id,word) SELECT category_id,? FROM skills WHERE id=?',k,s.id)}audit(a.id,'skill_keywords',`${s.name}:${kws.join(',')}`);return{ok:1}});
-route('POST','/admin/bootstrap',c=>{const u=need(c),T=process.env.ADMIN_SETUP_TOKEN||'';if(!T)throw err(404,'غير متاح');if(get("SELECT 1 x FROM users WHERE role='admin'"))throw err(403,'تم إعداد المدير مسبقًا');
-if(!ADMIN||u.email!==ADMIN)throw err(403,'هذا الحساب ليس حساب المالك');const t=String(c.b.token||'');if(t.length!==T.length||!crypto.timingSafeEqual(Buffer.from(t),Buffer.from(T)))throw err(403,'الرمز غير صحيح');
-run("UPDATE users SET role='admin' WHERE id=?",u.id);audit(u.id,'bootstrap_admin',`user:${u.id}`);return{ok:1}});
 
 const RESTORE_PREVIEW=DB_PATH+'.preview';
 const restoreBackupDir=process.env.BACKUP_DIR||path.join(path.dirname(path.resolve(DB_PATH)),'backups');

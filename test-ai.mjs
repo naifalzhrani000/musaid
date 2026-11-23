@@ -14,7 +14,7 @@ const audits=(where='1=1')=>db(d=>d.prepare('SELECT * FROM ai_audit WHERE '+wher
 let adm,u1,u2,u3,u4;
 
 test('تجهيز: مدير وأربعة مستخدمين',async()=>{
-  adm=await reg('admin');assert.equal((await adm('/admin/bootstrap','POST',{token:'x'})).s,200);
+  adm=await reg('admin');assert.equal((await adm('/admin/stats')).s,200);
   [u1,u2,u3,u4]=[await reg('u1'),await reg('u2'),await reg('u3'),await reg('u4')];
 });
 
