@@ -123,6 +123,7 @@ async function profileAccount(viewId){
 if(!me.user&&!viewId){location.hash='#/login';return}
 const own=!!me.user&&(!viewId||+viewId===me.user.id);
 const p=await api('/providers/'+(own?me.user.id:viewId)),isH=own?me.user.account_type==='helper':!!p.is_helper;
+const shop=isH?await api('/shop/'+p.id).catch(()=>({products:[]})):{products:[]};
 const pics=p.portfolio||[],bio=(p.bio||'').trim(),isVid=x=>/^video\//.test(x.mime||'');
 const cv=p.cover||(pics.find(x=>!isVid(x))||{}).attachment_id;
 const name=esc(own?(p.name&&!/@/.test(p.name)?p.name:(me.user.name||'حسابي')):(p.name||''));
@@ -137,15 +138,17 @@ const showQrBtn=isH&&(own||['admin','staff'].includes(me.user.role))?`<button ty
 const verified=showBadge?`<span class=pf2-ver aria-label="حساب موثّق">${g(IC.tick,14,'pf2-vt')}</span>`:'';
 const avatar=own?`<button class=pf2-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(p.avatar,p.name)}</button>`:`<div class=pf2-av>${avHtml(p.avatar,p.name)}</div>`;
 const docsHref=isH?'#/profile/docs':'#/profile/email';
-const tabs=own?[['svc','خدماتي',IC.bag],['chats','محادثاتي',IC.chat],['docs','التوثيق',IC.shield],['set','الإعدادات',IC.gear]]:[['svc','الخدمات',IC.bag],['wk','الأعمال',IC.img],['rev','التقييمات',IC.star]];
+const tabs=own?[['svc',isH?'منتجاتي':'خدماتي',IC.bag],['chats','محادثاتي',IC.chat],['docs','التوثيق',IC.shield],['set','الإعدادات',IC.gear]]:[['svc',isH?'المنتجات':'الخدمات',IC.bag],['wk','الأعمال',IC.img],['rev','التقييمات',IC.star]];
 const sub=sk.length?sk.slice(0,3).map(esc).join(' • '):(isH?'مساعد':'عميل');
 const phone=own?(me.user.phone?esc(me.user.phone):'—'):'';
 const addr=esc(city||(own?'—':''));
 const works=Array.from({length:4},(_,i)=>pics[i]?`<div class=pf2-w>${mediaTag(pics[i])}</div>`:(own?`<div class="pf2-w pf2-w0">${g(IC.img,22)}</div>`:'')).join('');
 const revs=(p.reviews||[]).length?p.reviews.map(x=>`<div class=pf2-rv><div><b>${esc(x.name)}</b><span class=pf2-st>${'★'.repeat(+x.stars||0)}</span></div>${x.comment?`<p>${esc(x.comment)}</p>`:''}</div>`).join(''):'<div class=pf2-empty>لا توجد تقييمات بعد.</div>';
+const shopCards=(shop.products||[]).map(x=>`<article class=shop-card><div class=shop-body><h4>${esc(x.title)}</h4>${x.description?`<p>${esc(x.description)}</p>`:''}</div><div class=shop-foot><b class=shop-price>${Number(x.price).toLocaleString('en-US')} <small>ريال</small></b>${own?`<button type=button class="shop-btn shop-del" data-del="${+x.id}">حذف</button>`:`<button type=button class=shop-btn data-buy="${+x.id}">أضف للسلة</button>`}</div></article>`).join('');
+const storeBlock=`<section class=shop-sec><div class=pf2-sechead><h3><span class=pf2-hi2>${g(IC.bag,18)}</span>${own?'منتجات متجري':'المنتجات'}</h3></div>${shopCards?`<div class=shop-grid>${shopCards}</div>`:`<div class=pf2-empty>${own?'لم تضف منتجات بعد.':'لا توجد منتجات بعد.'}</div>`}${own?'<button type=button class=shop-add id=addProd>+ إضافة منتج</button>':'<button type=button class=shop-cart-btn id=openCart>سلتي</button>'}</section>`;
 const heroBg=cv?` style="background-image:url('/api/files/${+cv}')"`:'';
 app.innerHTML=`<div class=pf2>
-<div class=pf2-top><h1>${own?'ملفي الشخصي':'الملف الشخصي'}</h1><span class=pf2-sp></span>${showQrBtn}<button type=button class=pf2-ib id=pfShare aria-label="مشاركة">${g(IC.share,24)}</button><button type=button class=pf2-ib id=pfMenu aria-expanded=false aria-label="القائمة">${g(IC.menu,24)}</button></div>
+<div class=pf2-top><h1>${own&&isH?'متجري':own?'ملفي الشخصي':'الملف الشخصي'}</h1><span class=pf2-sp></span>${showQrBtn}<button type=button class=pf2-ib id=pfShare aria-label="مشاركة">${g(IC.share,24)}</button><button type=button class=pf2-ib id=pfMenu aria-expanded=false aria-label="القائمة">${g(IC.menu,24)}</button></div>
 <section class=pf2-hero${heroBg}>${own?'<button type=button class=pf2-cov id=covEdit aria-label="تغيير صورة الغلاف"></button>':''}
 <div class=pf2-fade></div>
 <span class=pf2-avail><i></i>متاح لاستقبال الطلبات</span>
@@ -157,8 +160,8 @@ ${own?`<a class=pf2-edit href="#/profile/data">${g(IC.pen,16)}<span>تعديل �
 <nav class=pf2-tabs role=tablist>${tabs.map(([k,t,d],i)=>`<button type=button role=tab class="${i?'':'on'}" data-pt="${k}">${g(d,18)}<span>${t}</span></button>`).join('')}</nav>
 <div class=pf2-panel data-pp=svc>
 <section class=pf2-card><h3><span class=pf2-hi>${g(IC.doc,15)}</span>${own&&me.user.helper_type==='individual'?'نبذة عني':'نبذة عن المحل'}</h3><p class=pf2-bio>${bio?esc(bio):(own?'لم تكتب نبذة بعد. <a href="#/profile/bio">أضفها من هنا ←</a>':'لم يكتب نبذة بعد.')}</p><div class=pf2-info>${own&&me.user.phone?`<a class=pf2-row href="tel:${esc(String(me.user.phone).replace(/\s/g,''))}" aria-label="اتصل بالجوال"><span class="pf2-hi pf2-hc">${g(IC.phone,16)}</span><div><small>الجوال · اضغط للاتصال</small><b dir=ltr>${phone}</b></div></a>`:own?`<div class=pf2-row><span class="pf2-hi pf2-hc">${g(IC.phone,16)}</span><div><small>الجوال</small><b>—</b></div></div>`:''}${p.map_url?`<a class=pf2-row href="${esc(p.map_url)}" target=_blank rel=noopener aria-label="فتح الموقع في الخرائط"><span class="pf2-hi pf2-hc">${g(IC.pin,16)}</span><div><small>العنوان · اضغط لفتح الموقع</small><b>${addr||'—'}</b></div></a>`:`<div class=pf2-row><span class="pf2-hi pf2-hc">${g(IC.pin,16)}</span><div><small>العنوان</small><b>${addr||'—'}</b></div></div>`}</div></section>
-<div class=pf2-sechead><h3><span class=pf2-hi2>${g(IC.img,18)}</span>${own?'أعمالنا السابقة':'الأعمال السابقة'}</h3><button type=button class=pf2-all data-pt="wk">${g(IC.chev,14)}<span>عرض الكل</span></button></div>
-${works.trim()?`<div class=pf2-works>${works}</div>`:'<div class=pf2-empty>لا توجد أعمال بعد.</div>'}
+${isH?storeBlock:''}${isH?'':`<div class=pf2-sechead><h3><span class=pf2-hi2>${g(IC.img,18)}</span>${own?'أعمالنا السابقة':'الأعمال السابقة'}</h3><button type=button class=pf2-all data-pt="wk">${g(IC.chev,14)}<span>عرض الكل</span></button></div>
+${works.trim()?`<div class=pf2-works>${works}</div>`:'<div class=pf2-empty>لا توجد أعمال بعد.</div>'}`}
 </div>
 <div class=pf2-panel data-pp=wk hidden>${pics.length?`<div class=pf2-grid>${pics.map(x=>`<figure>${mediaTag(x)}${x.caption?`<figcaption>${esc(x.caption)}</figcaption>`:''}</figure>`).join('')}</div>`:`<div class=pf2-empty>${own?'لم تضف أعمالًا بعد.':'لا توجد أعمال بعد.'}</div>`}</div>
 ${!own?`<div class=pf2-panel data-pp=rev hidden>${revs}</div>`:''}
@@ -167,6 +170,16 @@ ${own?`<button class=pf2-fab id=addWork type=button aria-label="إضافة صو�
 const root=app.querySelector('.pf2');
 root.addEventListener('click',e=>{const b=e.target.closest('[data-pt]');if(!b)return;const k=b.dataset.pt;if(k==='docs'){location.hash=docsHref;return}if(k==='set'){location.hash='#/settings';return}if(k==='chats'){location.hash='#/chats';return}root.querySelectorAll('.pf2-tabs [data-pt]').forEach(x=>x.classList.toggle('on',x.dataset.pt===k));root.querySelectorAll('[data-pp]').forEach(x=>x.hidden=x.dataset.pp!==k)});
 {const qb=$('#pfQr');if(qb)qb.onclick=()=>openShopCard(p)}
+root.addEventListener('click',async e=>{const buy=e.target.closest('[data-buy]'),del=e.target.closest('[data-del]'),add=e.target.closest('#addProd'),cart=e.target.closest('#openCart');if(!buy&&!del&&!add&&!cart)return;e.preventDefault();
+if(!me.user){location.hash='#/login';return}
+try{
+if(buy){await api('/shop/'+p.id+'/cart/'+(+buy.dataset.buy),'POST');toast('أُضيف المنتج للسلة');return}
+if(del){if(!confirm('حذف المنتج من المتجر؟'))return;await api('/shop/products/'+(+del.dataset.del)+'/delete','POST');toast('تم حذف المنتج');return profileAccount(viewId)}
+if(add){openModal('منتج جديد',"<label>اسم المنتج<input name=title maxlength=80 required></label><label>الوصف<textarea name=description maxlength=500 rows=3></textarea></label><label>السعر (ريال)<input name=price type=number min=1 step=0.01 required></label>",async b=>{await api('/shop/products','POST',{title:b.title,description:b.description,price:Number(b.price)});toast('تمت إضافة المنتج');await profileAccount(viewId)});return}
+if(cart){const items=await api('/shop/'+p.id+'/cart');if(!items.length){toast('السلة فارغة');return}
+const rows=items.map(i=>`<div class=shop-cart-row><span>${esc(i.title)} × ${i.qty}</span></div>`).join('');
+openModal('سلتي',rows+'<small>يُرسل ملخص السلة للمساعد في المحادثة، والسعر النهائي يحدده رابط الدفع الذي يصدره.</small>',async()=>{await api('/shop/'+p.id+'/checkout','POST');toast('أُرسلت الفاتورة للمساعد');location.hash='#/direct/'+p.id})}
+}catch(x){toast(x.message,1)}});
 $('#pfShare').onclick=()=>openProfileShare(p,shopUrl(p.id,isH))}
 const SETTINGS_ITEMS=[['الإشعارات والتواصل','notify'],['الأمان','password'],['حذف الحساب','danger']];
 async function settingsPage(){if(!me.user){location.hash='#/login';return}const isH=me.user.account_type==='helper';const items=SETTINGS_ITEMS.filter(([,k])=>!['points','ledger'].includes(k)&&(isH||!['specs','bio','gallery'].includes(k)));app.innerHTML=`<h2 style="margin:8px 0 12px">الإعدادات</h2><div class=panel style="padding:0">${items.map(([t,k],i)=>`<a href="${k==='wallet'?'#/wallet':'#/profile/'+k}" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #ece8f8;text-decoration:none;color:inherit"><span>${i+1}- ${t}</span><span style="color:#9c94a8">‹</span></a>`).join('')}</div>`}
@@ -536,7 +549,7 @@ function openShopCard(p){
   const ov=document.createElement('div');
   ov.className='qrc-ov';ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');ov.setAttribute('aria-label','بطاقة QR للمحل');
   ov.innerHTML=`<div class=qrc-wrap><article class=qrc-card>
-    <header class=qrc-top><span class=qrc-brand><img src="/logo.png" alt="">المساعد</span><span class=qrc-tag>بطاقة محل</span></header>
+    <header class=qrc-top><span class=qrc-brand><img src="/logo.png?v=3" alt="">المساعد</span><span class=qrc-tag>بطاقة محل</span></header>
     <div class=qrc-id><span class=qrc-av>${avHtml(p.avatar,p.name)}</span><div><h2>${esc(name)}</h2><p>${esc(sub)}</p></div></div>
     <div class=qrc-qr>${qr}</div>
     <p class=qrc-cta>امسح الرمز لفتح ملف ${esc(name)} والتواصل معه عبر منصة المساعد</p>

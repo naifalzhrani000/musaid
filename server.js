@@ -21,6 +21,7 @@ import './src/routes/account.js';
 import './src/routes/feed.js';
 import './src/routes/follow.js';
 import './src/routes/accounting.js';
+import './src/routes/shop.js';
 import './src/routes/admin.js';
 import './src/routes/ai.js';
 import {startScheduler as startAi} from './src/ai/center.js';

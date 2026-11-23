@@ -1160,3 +1160,20 @@ test('إحالة المحلات: التسجيل عبر بطاقة المحل ي�
   assert.ok(ds.startsWith('<svg')&&ds.includes('/logo-new.png'));
   assert.ok(QR.paths(url).dots.length>0&&QR.paths(url).finders.length>0);
 });
+
+test('متجر المساعد: منتجات وسلة وفاتورة تصل المحادثة، والسعر النهائي يبقى لرابط الدفع',async()=>{
+const h=await reg('shopH');await asHelper(h);await vfy(h);const hid=(await h('/me')).j.user.id;
+const buyer=await reg('shopB');const bid=(await buyer('/me')).j.user.id;
+const r=await h('/shop/products','POST',{title:'صنبور زاوية',description:'ستانلس عالي الجودة',price:45});assert.equal(r.s,200);const pid=r.j.id;
+assert.equal((await buyer('/shop/products','POST',{title:'مرفوض',price:9})).s,403,'العميل لا يضيف منتجات');
+assert.equal((await h('/shop/products','POST',{title:'س',price:0})).s,400,'السعر غير الصحيح مرفوض');
+assert.equal((await buyer(`/shop/${hid}/cart/${pid}`,'POST')).s,200,'العميل يضيف للسلة');
+assert.equal((await h(`/shop/${hid}/cart/${pid}`,'POST')).s,400,'لا يشتري المساعد من متجره');
+const cart=(await buyer(`/shop/${hid}/cart`)).j;assert.equal(cart.length,1);assert.equal(cart[0].qty,1);
+const co=await buyer(`/shop/${hid}/checkout`,'POST');assert.equal(co.s,200);assert.equal(co.j.total,45);
+const msgs=(await buyer(`/direct/${hid}`)).j.messages;assert.ok(msgs.some(m=>m.from_id===bid&&/فاتورة تعريفية/.test(m.body)&&/السعر النهائي يحدده رابط الدفع/.test(m.body)),'الفاتورة وصلت المحادثة');
+assert.equal((await buyer(`/shop/${hid}/cart`)).j.length,0,'السلة تُفرّغ بعد الإرسال');
+assert.equal((await buyer(`/shop/${hid}/checkout`,'POST')).s,400,'لا فاتورة من سلة فارغة');
+assert.equal((await h(`/shop/products/${pid}/delete`,'POST')).s,200);
+assert.equal((await buyer(`/shop/${hid}`)).j.products.length,0,'المنتج المحذوف يختفي من المتجر');
+});

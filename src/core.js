@@ -87,6 +87,8 @@ db.exec("CREATE TABLE IF NOT EXISTS tasks(id INTEGER PRIMARY KEY,client_id INT N
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('tasks') WHERE name='rated'").get())db.exec("ALTER TABLE tasks ADD COLUMN rated INT NOT NULL DEFAULT 0");
 for(const [col,def] of [['source','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 db.exec("CREATE TABLE IF NOT EXISTS agreement_notes(agreement_id INTEGER PRIMARY KEY REFERENCES agreements(id),notes TEXT NOT NULL DEFAULT '',updated_at TEXT)");
+// متجر المساعد: منتجات بسعر تعريفي، وسلة لكل زوج (عميل، متجر). السعر النهائي يحدده رابط الدفع لا السلة.
+db.exec("CREATE TABLE IF NOT EXISTS shop_products(id INTEGER PRIMARY KEY,helper_id INT NOT NULL REFERENCES users(id),title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',price REAL NOT NULL CHECK(price>0),active INT NOT NULL DEFAULT 1,created_at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE INDEX IF NOT EXISTS ix_shop_products_helper ON shop_products(helper_id);CREATE TABLE IF NOT EXISTS shop_cart(user_id INT NOT NULL REFERENCES users(id),product_id INT NOT NULL REFERENCES shop_products(id),qty INT NOT NULL DEFAULT 1 CHECK(qty>0),PRIMARY KEY(user_id,product_id))");
 
 db.exec("DELETE FROM settings WHERE key='commission_percent'"); // تنظيف: حذف أي نسبة قديمة مخزّنة
 const VAT_THRESHOLD=375000;
