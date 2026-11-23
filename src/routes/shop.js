@@ -7,13 +7,14 @@ const helperExists=id=>!!get("SELECT 1 x FROM users WHERE id=? AND active=1 AND 
 const money=n=>Math.round(Number(n)*100)/100;
 
 route('GET','/shop/(\\d+)',c=>{const hid=+c.p[0];if(!helperExists(hid))throw err(404,'المتجر غير موجود');
-return{products:all('SELECT id,title,description,price FROM shop_products WHERE helper_id=? AND active=1 ORDER BY id DESC',hid)}});
+return{products:all('SELECT id,title,description,price,image_id FROM shop_products WHERE helper_id=? AND active=1 ORDER BY id DESC',hid)}});
 
 route('POST','/shop/products',c=>{const u=need(c);if(!isHelper(u))throw err(403,'المتجر للمساعدين فقط');
 if(get('SELECT COUNT(*) n FROM shop_products WHERE helper_id=? AND active=1',u.id).n>=PRODUCTS_MAX)throw err(400,`وصلت للحد الأقصى من المنتجات (${PRODUCTS_MAX})`);
 const title=str(c.b.title,2,80,'اسم المنتج'),description=String(c.b.description||'').trim().slice(0,500);
 const price=money(c.b.price);if(!Number.isFinite(price)||price<=0||price>PRICE_MAX)throw err(400,'أدخل سعرًا صحيحًا بين 1 و 100000 ريال');
-const id=Number(run('INSERT INTO shop_products(helper_id,title,description,price) VALUES(?,?,?,?)',u.id,title,description,price).lastInsertRowid);
+const imageId=c.b.attachment_id?+c.b.attachment_id:null;if(imageId&&!get("SELECT 1 x FROM attachments WHERE id=? AND user_id=? AND mime LIKE 'image/%'",imageId,u.id))throw err(400,'الصورة غير صالحة');
+const id=Number(run('INSERT INTO shop_products(helper_id,title,description,price,image_id) VALUES(?,?,?,?,?)',u.id,title,description,price,imageId).lastInsertRowid);
 return{id}});
 
 route('POST','/shop/products/(\\d+)/delete',c=>{const u=need(c),id=+c.p[0];const p=get('SELECT helper_id FROM shop_products WHERE id=? AND active=1',id);

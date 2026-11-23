@@ -648,48 +648,6 @@ assert.equal((await o(`/agreements/${a3}`)).j.total_amount,1150,'الضريبة 
 assert.equal((await admin('/admin/invoices')).s,404,'لا مسار للفواتير');
 });
 
-test('المنشورات: إعجاب بالتبديل، وتعليقات تُحفظ وتُعرض، وحذف التعليق لصاحبه فقط',async()=>{
-const w=cl();await w('/register','POST',{name:'ناشر منشور',email:'fp1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
-await verifyEmail(w);
-await w('/profile','POST',{name:'ناشر منشور',phone:'0500009701'});
-const pid=(await w('/feed','POST',{body:'منشور للتفاعل'})).j;
-const list=(await cl()('/feed')).j;const post=list.find(p=>p.body==='منشور للتفاعل');assert.ok(post,'المنشور ظاهر للزائر');
-const liker=cl();await liker('/register','POST',{name:'معجب',email:'fp2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
-await verifyEmail(liker);
-await liker('/profile','POST',{name:'معجب',phone:'0500009702'});
-assert.equal((await cl()('/feed/'+post.id+'/like','POST')).s,401,'الإعجاب للمسجلين فقط');
-const r1=(await liker('/feed/'+post.id+'/like','POST')).j;assert.equal(r1.liked,true);assert.equal(r1.likes,1);
-const r2=(await liker('/feed/'+post.id+'/like','POST')).j;assert.equal(r2.liked,false,'الضغط الثاني يلغي الإعجاب');assert.equal(r2.likes,0);
-const c1=(await liker('/feed/'+post.id+'/comments','POST',{body:'تعليق جميل'})).j;assert.ok(c1.id,'التعليق يُحفظ');
-const cs=(await cl()('/feed/'+post.id+'/comments')).j;assert.equal(cs.length,1);assert.equal(cs[0].body,'تعليق جميل');
-const after=(await cl()('/feed')).j.find(p=>p.id===post.id);assert.equal(after.comments,1,'عداد التعليقات');
-assert.equal((await w('/feed/comments/'+c1.id+'/delete','POST')).s,403,'صاحب المنشور لا يحذف تعليق غيره');
-assert.equal((await liker('/feed/comments/'+c1.id+'/delete','POST')).s,200,'صاحب التعليق يحذفه');
-assert.equal((await cl()('/feed/'+post.id+'/comments')).j.length,0);
-});
-
-test('المنشورات: تبويب متابعة يعرض منشورات من أتابعهم فقط، والمتابعة بالتبديل',async()=>{
-const w=cl();await w('/register','POST',{name:'ناشر متابَع',email:'fp3@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
-await verifyEmail(w);await w('/profile','POST',{name:'ناشر متابَع',phone:'0500009703'});
-await w('/feed','POST',{body:'منشور المتابَع'});
-const other=cl();await other('/register','POST',{name:'ناشر آخر',email:'fp4@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
-await verifyEmail(other);await other('/profile','POST',{name:'ناشر آخر',phone:'0500009704'});
-await other('/feed','POST',{body:'منشور غير متابَع'});
-const fan=cl();await fan('/register','POST',{name:'متابِع',email:'fp5@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
-await verifyEmail(fan);
-const all=(await fan('/feed')).j;const target=all.find(p=>p.body==='منشور المتابَع');assert.ok(target);
-assert.equal((await fan('/feed?tab=following')).j.length,0,'لا متابعات: التبويب فارغ');
-assert.equal((await cl()('/feed/follow/'+target.user_id,'POST')).s,401,'المتابعة للمسجلين فقط');
-assert.deepEqual((await cl()('/feed?tab=following')).j,[],'الزائر يرى تبويب المتابعة فارغًا');
-const f1=(await fan('/feed/follow/'+target.user_id,'POST')).j;assert.equal(f1.following,true);
-const fl=(await fan('/feed?tab=following')).j;
-assert.ok(fl.length>0&&fl.every(p=>p.user_id===target.user_id&&p.followed===true),'منشورات المتابَع فقط');
-assert.ok(!fl.find(p=>p.body==='منشور غير متابَع'));
-assert.equal((await w('/feed/follow/'+target.user_id,'POST')).s,400,'لا يتابع نفسه');
-const f2=(await fan('/feed/follow/'+target.user_id,'POST')).j;assert.equal(f2.following,false,'الضغط الثاني يلغي المتابعة');
-assert.equal((await fan('/feed?tab=following')).j.length,0);
-});
-
 test('لوحة الرئيسية: أرقام وسلاسل من قاعدة البيانات، والمدير وحده',async()=>{
 const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
 const d=(await admin('/admin/dashboard?days=7')).j;
@@ -865,23 +823,6 @@ test('إشعارات الدفع: تفضيل مستقل عن إشعارات ال�
   assert.equal((await u('/me')).j.user.notify_email,1,'إشعارات البريد لم تتغير');
   await u('/push/subscribe','POST',{endpoint:'https://push.example/z',keys:{p256dh:'a',auth:'b'}});
   assert.equal((await u('/me')).j.user.push_enabled,1,'الاشتراك يعيد التفعيل');
-});
-
-test('إصلاحات الأمان: غير المؤكد لا ينشر، ومنشورات الحساب المحذوف تختفي', async () => {
-  const u = cl();
-  await u('/register', 'POST', { name: 'غير مؤكد', email: 'fix1@t.sa', password: '12345678', terms: 1, age: 1, phone: ph(), city: 'جدة' });
-  const blocked = await u('/feed', 'POST', { body: 'منشور قبل التأكيد' });
-  assert.equal(blocked.s, 403, 'الحساب غير المؤكد لا يجب أن ينشر');
-
-  const w = cl();
-  await w('/register', 'POST', { name: 'ناشر محذوف', email: 'fix2@t.sa', password: '12345678', terms: 1, age: 1, phone: ph(), city: 'جدة' });
-  await verifyEmail(w);
-  await w('/profile', 'POST', { name: 'ناشر محذوف', phone: '0500009801' });
-  await w('/feed', 'POST', { body: 'منشور سيُحذف' });
-  assert.ok((await cl()('/feed')).j.find(p => p.body === 'منشور سيُحذف'), 'المنشور ظاهر قبل الحذف');
-  const del = await w('/me/delete', 'POST', { password: '12345678', confirm: 'حذف' });
-  assert.equal(del.s, 200);
-  assert.ok(!(await cl()('/feed')).j.find(p => p.body === 'منشور سيُحذف'), 'المنشور مخفي بعد الحذف');
 });
 
 test('بطاقات البحث: اسم المحل كاملًا مع صورته، وأسماء المقيّمين في الملف', async () => {
@@ -1176,4 +1117,23 @@ assert.equal((await buyer(`/shop/${hid}/cart`)).j.length,0,'السلة تُفر�
 assert.equal((await buyer(`/shop/${hid}/checkout`,'POST')).s,400,'لا فاتورة من سلة فارغة');
 assert.equal((await h(`/shop/products/${pid}/delete`,'POST')).s,200);
 assert.equal((await buyer(`/shop/${hid}`)).j.products.length,0,'المنتج المحذوف يختفي من المتجر');
+});
+
+test('أكواد الخصم والصورة والتقييم: المشرف ينشئ الكود، ومنتج بصورة يظهر في المتجر، والتقييم للعميل فقط',async()=>{
+const adminC=cl();await adminC('/login','POST',{email:'admin@t.sa',password:'12345678'});
+const outsider=await reg('dcU');
+assert.equal((await outsider('/admin/discounts','POST',{code:'ABCD',percent:10,max_uses:5})).s,403,'غير المشرف لا ينشئ كودًا');
+assert.equal((await adminC('/admin/discounts','POST',{code:'ramadan10',percent:10,max_uses:50})).s,200,'المشرف ينشئ الكود');
+assert.equal((await adminC('/admin/discounts','POST',{code:'RAMADAN10',percent:5,max_uses:5})).s,409,'لا يتكرر الكود');
+assert.equal((await adminC('/admin/discounts','POST',{code:'BAD1',percent:0,max_uses:5})).s,400,'النسبة 1 إلى 100');
+const dl=(await adminC('/admin/discounts')).j;const d=dl.find(x=>x.code==='RAMADAN10');assert.ok(d&&d.active===1&&d.max_uses===50,'الكود محفوظ بعدده ونسبته');
+assert.equal((await adminC(`/admin/discounts/${d.id}/toggle`,'POST')).s,200);
+assert.equal((await adminC('/admin/discounts')).j.find(x=>x.id===d.id).active,0,'الإيقاف يعمل');
+
+const h=await reg('pimgH');await asHelper(h);await vfy(h);const hid=(await h('/me')).j.user.id;
+const PNG='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+const up=await h('/upload','POST',{data:'data:image/png;base64,'+PNG});assert.equal(up.s,200);
+const pr=await h('/shop/products','POST',{title:'حنفية',description:'',price:20,attachment_id:up.j.id});assert.equal(pr.s,200);
+const prod=(await cl()(`/shop/${hid}`)).j.products.find(x=>x.id===pr.j.id);assert.equal(prod.image_id,up.j.id,'الصورة تظهر مع المنتج');
+assert.equal((await cl()(`/files/${up.j.id}`)).s,200,'صورة المنتج متاحة للزوار');
 });

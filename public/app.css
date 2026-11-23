@@ -1319,3 +1319,4 @@ body.dchat-mode .dc-linkcard .dc-acts button:only-child{grid-column:1/-1}
 .shop-cart-btn{border-style:solid;background:#5b3fd6;color:#fff;border-color:#5b3fd6}
 .shop-cart-row{padding:8px 0;border-bottom:1px solid #ece8f8}
 @media (max-width:360px){.shop-grid{grid-template-columns:1fr}}
+.shop-img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#f3f0fb}
