@@ -1,0 +1,8 @@
+node_modules/
+data.db
+data.db-*
+*.db
+*.db.preview
+.env
+.env.*
+!.env.example
