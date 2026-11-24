@@ -228,57 +228,6 @@ button.acc-add{aspect-ratio:1;width:100%;background:none;cursor:pointer;padding:
 function initialOf(name){let w=String(name||'').trim().split(/\s+/);if(w.length>1&&/^(مؤسس[ةه]|شرك[ةه])$/.test(w[0]))w=w.slice(1);let s=w[0]||'';if(/^ال.{2,}/u.test(s))s=s.slice(2);return [...s][0]||'؟'}
 function avHtml(av,name){return av?`<img loading=lazy decoding=async src="/api/files/${+av}" alt="">`:esc(initialOf(name))}
 function mediaTag(x){return /^video\//.test(x.mime||'')?`<video src="/api/files/${x.attachment_id}" controls playsinline preload="metadata"></video>`:`<img src="/api/files/${x.attachment_id}" alt="" loading="lazy">`}
-/* u: المستخدم، pv: الملف العام (bio, portfolio, reviews)، avg/done: أرقام محسوبة، pl: التعهد */
-function accountView(u, pv, avg, done, isH, pl) {
-  const pics = pv.portfolio || [];
-  const bio = (pv.bio || '').trim();
-  const tiles = pics.map(x => `
-    <figure>
-      ${mediaTag(x)}
-      ${x.caption ? `<figcaption>${esc(x.caption)}</figcaption>` : ''}
-    </figure>`).join('');
-  const addTile = `<button class=acc-add id=addWork type=button aria-label="إضافة صورة أو فيديو">+</button>`;
-
-  return `${ACC_CSS}
-<div class=acc>
-  <div class=acc-top>
-    <h1>حسابي</h1>
-    <div class=acc-icons>
-      
-      <button type=button class=acc-ic id=pfMenu aria-expanded=false aria-label="القائمة" style="border:0;background:none;padding:0;cursor:pointer">${ic(I.more)}</button>
-    </div>
-  </div>
-
-  <div class=acc-head>
-    <button class=acc-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(pv.avatar,u.name)}</button>
-    ${isH?`<div class=acc-stats>
-      <div><b>${pics.length||'—'}</b><small>أعمال</small></div>
-      <div><b>${done||'—'}</b><small>مهمة مكتملة</small></div>
-      <div><b>${avg}</b><small>التقييم</small></div>
-    </div>`:''}
-  </div>
-
-  <div class=acc-name>
-    <h2>${esc(u.name)}</h2>
-    ${pv.avatar ? '<button class=lnk id=avDel type=button>حذف الصورة الشخصية</button>' : ''}
-    <small>${isH ? 'مساعد' : 'عميل'}${u.city ? ' · ' + ic(I.pin) + ' ' + esc(u.city) : ''}${u.active ? '' : ' · الحساب معطّل'}</small>
-  </div>
-
-  <p class=acc-bio>${bio
-    ? esc(bio)
-    : 'لم تكتب نبذة بعد. <a href="#/profile/gallery">أضفها من الإعدادات ←</a>'}</p>
-
-  <div class=acc-btns>
-    <a class=btn href="#/chats">محادثاتي</a>${u.account_type==='helper'?'<a class="btn gray" href="#/hala">حساب هلا</a><a class="btn gray" href="#/platform-dues">مستحقات المنصة</a>':''}
-    
-  </div>
-
-  ${u.account_type === 'helper' ? '' : `<div class=acc-done><span>${pl && pl.accepted ? 'التعهد موقّع' : 'التعهد غير موقّع'}</span></div>`}
-
-  ${accTabs(pics)}
-</div>`;
-}
-
 const DOC_LABEL={cr:'السجل التجاري',iban:'الآيبان',vat:'الشهادة الضريبية',address:'العنوان الوطني',logo:'شعار المساعد',org:'اسم المؤسسة أو الشركة'};
 const DOC_LOGO={vat:'/vat-logo.png',cr:'/business-logo.png'};
 const DOC_ICON='<svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="#5331b6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/></svg>';
@@ -302,12 +251,10 @@ const rv=pv.reviews||[],avg=rv.length?(rv.reduce((a,r)=>a+(+r.stars||0),0)/rv.le
 const parts=[u.name,u.city,u.phone,pv.bio,isH?(mine.length?1:''):1,isH?(pv.portfolio.length?1:''):1].filter(Boolean).length,pct=Math.round(parts/6*100);
 const item=(key,label,hint)=>`<a class=pf-item href="#/profile/${key}"><span><b>${label}</b>${hint?`<small>${esc(hint)}</small>`:''}</span><i>‹</i></a>`;
 const stylesheet=`<style>.pf-hero{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#ece8fc,#f6f3fe);border-radius:18px;padding:18px;margin-bottom:12px}.pf-av{width:64px;height:64px;border-radius:50%;background:#6445cc;color:#fff;display:grid;place-items:center;font-size:26px;font-weight:700;flex:0 0 auto}.pf-card,.pf-wallet{border-radius:18px;padding:16px;margin-bottom:12px}.pf-card{background:#fff;border:1px solid #e9e6f6}.pf-row{display:flex;justify-content:space-between;align-items:center}.pf-pct{color:#6445cc;font-weight:700}.pf-bar{height:8px;background:#e9e6f6;border-radius:8px;margin:10px 0;overflow:hidden}.pf-bar i{display:block;height:100%;background:#6445cc;border-radius:8px}.pf-wallet{background:linear-gradient(135deg,#5331b6,#6445cc);color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px}.pf-wallet .big{font-size:26px;font-weight:700}.pf-tag{display:inline-block;background:rgba(255,255,255,.18);border-radius:999px;padding:3px 10px;font-size:12px}.pf-wallet .btn{background:#fff;color:#5331b6;border-color:#fff}.pf-wallet small,.pf-wallet .big,.pf-wallet .big small{color:#fff}.pf-hero h2{font-size:20px;line-height:1.3}.pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}.pf-stats div{background:#fff;border:1px solid #e9e6f6;border-radius:14px;padding:12px;text-align:center}.pf-stats b{display:block;font-size:20px;color:#5331b6}.pf-group{margin:18px 0 8px;color:#5331b6;font-size:16px}.pf-list{background:#fff;border:1px solid #e9e6f6;border-radius:16px;overflow:hidden;margin-bottom:12px}.pf-item{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;background:none;border:0;border-bottom:1px solid #ede8f9;padding:14px 16px;text-align:right;font:inherit;cursor:pointer}.pf-item:last-child{border-bottom:0}.pf-item span{display:flex;flex-direction:column;gap:2px}.pf-item small{color:#625a76}.pf-item i{font-style:normal;color:#9c94a8;font-size:20px}.pf-item.off{cursor:default;opacity:.7}.pf-switch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px}.pf-types{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.pf-type{border:2px solid #e9e6f6;border-radius:14px;padding:14px;background:#fff;text-align:center}.pf-type.on{border-color:#6445cc;background:#ece8fc;color:#5331b6;font-weight:700}details.cat{border:1px solid #e9e6f6;border-radius:14px;padding:10px 12px;margin:8px 0;background:#fff}details.cat summary{font-weight:700;color:#5331b6;cursor:pointer}details.cat label.check{display:inline-flex;align-items:center;gap:6px;border:1px solid #d9d5e8;border-radius:999px;padding:6px 12px;margin:4px 4px 0 0}details.cat label.check:has(input:checked){background:#6445cc;color:#fff;border-color:#6445cc}details.cat input[type=checkbox]{accent-color:#6445cc}.pf-foot{text-align:center;color:#625a76;font-size:13px;margin:18px 0}.pf-danger{border:1px solid #fecaca;background:#fff5f5;border-radius:16px;padding:14px;margin-top:12px}.pf-danger .btn{background:#dc2626;border-color:#dc2626;color:#fff}</style>`;
-const lean=!isH;
-const html=`${stylesheet}${lean?'':accountView(u,pv,avg,done,isH,pl)}
-${lean?'':`<section class=pf-card><div class=pf-row><b>اكمل ملفك الشخصي</b><span class=pf-pct>${pct}%</span></div><div class=pf-bar><i style="width:${pct}%"></i></div><small>أضف الجوال والمدينة والنبذة${isH?'، ومعرض أعمالك':''} لزيادة فرص ظهورك.</small></section>
-<section class=pf-wallet><div><small>رصيد النقاط</small><div class=big>${w.points} <small>نقطة</small></div><span class=pf-tag>20 نقطة = ${w.riyal} ريال</span>${w.agr_due>0?`<div class=pf-due>الرصيد المالي: -${w.agr_due} ريال (عمولة اتفاق مستحقة)</div>`:''}</div><a class=btn href="#pts">تفاصيل الرصيد</a></section>`}
+const html=`${stylesheet}<section class=pf-card><div class=pf-row><b>اكمل ملفك الشخصي</b><span class=pf-pct>${pct}%</span></div><div class=pf-bar><i style="width:${pct}%"></i></div><small>أضف الجوال والمدينة والنبذة${isH?'، ومعرض أعمالك':''} لزيادة فرص ظهورك.</small></section>
+<section class=pf-wallet><div><small>رصيد النقاط</small><div class=big>${w.points} <small>نقطة</small></div><span class=pf-tag>20 نقطة = ${w.riyal} ريال</span>${w.agr_due>0?`<div class=pf-due>الرصيد المالي: -${w.agr_due} ريال (عمولة اتفاق مستحقة)</div>`:''}</div><a class=btn href="#pts">تفاصيل الرصيد</a></section>
 <div class=pf-group>ملفي الشخصي</div><div class=pf-list>${item('data','البيانات الشخصية','الاسم والجوال والعنوان')}${isH?item('gallery','معرض أعمالي',pv.portfolio.length?pv.portfolio.length+' صورة':'أضف صور أعمالك'):''}${me.user&&(me.user.role==='admin'||me.user.role==='staff')?'<a class=pf-item href="#/manage"><span><b>إدارة الموقع</b><small>لوحة الإدارة</small></span><i>‹</i></a>':''}</div>
-${lean?'':`<div class=pf-group>النقاط والمحفظة</div><div class=pf-list>${item('points','استخدام الرصيد')}${item('ledger','سجل النقاط')}<details class=pf-item style="display:block"><summary style="cursor:pointer">شروط النقاط</summary><p style="margin:8px 0 0;color:#625a76">الرصيد داخلي، لا يُحوَّل بين المستخدمين ولا يُسحب نقدًا، ولا يُعد دفعًا لقيمة المهمة.</p></details></div>`}
+<div class=pf-group>النقاط والمحفظة</div><div class=pf-list>${item('points','استخدام الرصيد')}${item('ledger','سجل النقاط')}<details class=pf-item style="display:block"><summary style="cursor:pointer">شروط النقاط</summary><p style="margin:8px 0 0;color:#625a76">الرصيد داخلي، لا يُحوَّل بين المستخدمين ولا يُسحب نقدًا، ولا يُعد دفعًا لقيمة المهمة.</p></details></div>
 <div class=pf-group>الإشعارات والتواصل</div><div class=pf-list><form id=ntf class="pf-switch"><span><b>إشعارات البريد</b><small>عند وصول رسالة جديدة في محادثاتك</small></span><label class=switch><input type=checkbox name=enabled ${u.notify_email!==0?'checked':''}><span class=slider></span></label><button class=btn style="display:none" type=submit>حفظ</button></form><form id=pushf class="pf-switch"><span><b>إشعارات الدفع</b><small>تصلك الإشعارات على جهازك حتى والمنصة مغلقة</small></span><label class=switch><input type=checkbox name=enabled ${u.push_enabled!==0?'checked':''}><span class=slider></span></label></form><a class=pf-item href="#" data-act="testPush"><span><b>إرسال إشعار تجريبي</b><small>للتأكد أن الإشعارات تصل لجوالك</small></span><i>‹</i></a>${item('email','تغيير البريد الإلكتروني',u.email)}</div>
 
 ${dtCard(u,pv,isH)}\n${!isH?`<section class=panel id=conv-wrap hidden><form id=toHelper class=form><fieldset class=acct><legend>نوع الحساب</legend><label class=check style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type=radio name=helper_type value=establishment checked> مؤسسة</label><label class=check style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type=radio name=helper_type value=company> شركة</label><small>التسجيل متاح للمؤسسات والشركات فقط، ويلزم رقمها الضريبي لاستقبال الطلبات.</small></fieldset><label id=vatWrap hidden>الرقم الضريبي (15 رقمًا يبدأ بـ 3)<input name=vat_number inputmode=numeric maxlength=15 dir=ltr pattern="3[0-9]{14}" placeholder="3XXXXXXXXXXXXXX" autocomplete=off></label><small>اختر قسمًا أو قسمين من خدماتك (مثل السباكة والكهرباء).</small><div class=secs>${specBoxes(sk.categories)}</div><button class=btn>التحويل إلى مساعد</button></form></section>`:''}
