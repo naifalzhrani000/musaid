@@ -281,7 +281,7 @@ const monHtml=(m)=>{
         ${kp('مستخدمون جدد',f(AC.new_users_24h))}
         ${kp('طلبات جديدة',f(AC.agreements_24h))}
         ${kp('رسائل',f(AC.messages_24h))}
-        ${kp('منشورات وريلز',f(AC.posts_24h))}
+        
         ${kp('دخول محظور مؤقتًا',f(AC.login_blocked),AC.login_blocked?'warn':'')}
       </div>
       <div class=mon-ks style="margin-top:10px">

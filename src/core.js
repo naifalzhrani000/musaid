@@ -87,12 +87,8 @@ db.exec("CREATE TABLE IF NOT EXISTS tasks(id INTEGER PRIMARY KEY,client_id INT N
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('tasks') WHERE name='rated'").get())db.exec("ALTER TABLE tasks ADD COLUMN rated INT NOT NULL DEFAULT 0");
 for(const [col,def] of [['source','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 db.exec("CREATE TABLE IF NOT EXISTS agreement_notes(agreement_id INTEGER PRIMARY KEY REFERENCES agreements(id),notes TEXT NOT NULL DEFAULT '',updated_at TEXT)");
-// جداول المتابعة والمنشورات: محفوظة لأن منطق المتابعة يعتمد عليها
-db.exec(`CREATE TABLE IF NOT EXISTS post_likes(post_id INT NOT NULL REFERENCES posts(id),user_id INT NOT NULL REFERENCES users(id),PRIMARY KEY(post_id,user_id));
-CREATE TABLE IF NOT EXISTS post_comments(id INTEGER PRIMARY KEY,post_id INT NOT NULL REFERENCES posts(id),user_id INT NOT NULL REFERENCES users(id),body TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-CREATE TABLE IF NOT EXISTS posts(id INTEGER PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id),body TEXT NOT NULL,attachment_id INT REFERENCES attachments(id),hidden INT NOT NULL DEFAULT 0,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-CREATE TABLE IF NOT EXISTS post_reports(post_id INT NOT NULL,user_id INT NOT NULL,PRIMARY KEY(post_id,user_id));
-CREATE TABLE IF NOT EXISTS user_follows(follower_id INT NOT NULL REFERENCES users(id),followed_id INT NOT NULL REFERENCES users(id),created_at TEXT DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(follower_id,followed_id));`);
+// المتابعة
+db.exec(`CREATE TABLE IF NOT EXISTS user_follows(follower_id INT NOT NULL REFERENCES users(id),followed_id INT NOT NULL REFERENCES users(id),created_at TEXT DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(follower_id,followed_id));`);
 // متجر المساعد: منتجات بسعر تعريفي، وسلة لكل زوج (عميل، متجر). السعر النهائي يحدده رابط الدفع لا السلة.
 db.exec("CREATE TABLE IF NOT EXISTS shop_products(id INTEGER PRIMARY KEY,helper_id INT NOT NULL REFERENCES users(id),title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',price REAL NOT NULL CHECK(price>0),active INT NOT NULL DEFAULT 1,created_at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE INDEX IF NOT EXISTS ix_shop_products_helper ON shop_products(helper_id);CREATE TABLE IF NOT EXISTS shop_cart(user_id INT NOT NULL REFERENCES users(id),product_id INT NOT NULL REFERENCES shop_products(id),qty INT NOT NULL DEFAULT 1 CHECK(qty>0),PRIMARY KEY(user_id,product_id))");
 db.exec("CREATE TABLE IF NOT EXISTS discount_codes(id INTEGER PRIMARY KEY,code TEXT UNIQUE NOT NULL,percent INT NOT NULL CHECK(percent BETWEEN 1 AND 100),max_uses INT NOT NULL CHECK(max_uses>0),used INT NOT NULL DEFAULT 0,active INT NOT NULL DEFAULT 1,created_at TEXT DEFAULT CURRENT_TIMESTAMP)");

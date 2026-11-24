@@ -169,7 +169,6 @@ route('GET','/admin/monitor',c=>{
     new_users_24h:one("SELECT COUNT(*) n FROM users WHERE created_at>=datetime('now','-1 day')"),
     agreements_24h:one("SELECT COUNT(*) n FROM agreements WHERE created_at>=datetime('now','-1 day')"),
     messages_24h:one("SELECT COUNT(*) n FROM direct_messages WHERE created_at>=datetime('now','-1 day')"),
-    posts_24h:one("SELECT COUNT(*) n FROM posts WHERE hidden=0 AND created_at>=datetime('now','-1 day')"),
     login_blocked:one('SELECT COUNT(*) n FROM login_attempts WHERE n>=5 AND t>?',Date.now()-9e5)
   };
   const notifications={

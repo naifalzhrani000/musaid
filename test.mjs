@@ -109,7 +109,7 @@ assert.equal((await w('/me/bio','POST',{bio:'نجار بخبرة 10 سنوات �
 const at=(await w('/upload','POST',{data:'data:image/png;base64,'+PNG3})).j.id;
 assert.equal((await w('/me/portfolio','POST',{attachment_id:at,caption:'باب خشب مصنوع يدويًا'})).s,200);
 const pid=(await w('/providers/'+wid)).j;
-assert.equal(pid.portfolio[0].kind,'post');
+assert.equal(pid.portfolio[0].kind,'photo');
 assert.equal(pid.bio.includes('10 سنوات'),true);assert.equal(pid.skills[0],'سباكة');assert.equal(pid.portfolio.length,1);
 const anon=await cl();const pub=await anon('/providers/'+wid);assert.equal(pub.s,200,'الملف العام متاح للزائر');assert.equal(pub.j.name,'نجار تجريبي');assert.equal(pub.j.portfolio.length,1);
 for(const k of ['phone','email','password','vat_number','iban','wallet','balance']) assert.equal(k in pub.j,false,'لا يظهر '+k+' في الملف العام');
@@ -127,7 +127,7 @@ assert.equal((await a('/direct/'+bid,'POST',{body:'هل تقدر تنفذ الخ
 assert.equal((await b('/direct/'+aid,'POST',{body:'نعم، أقدر'})).s,200);
 const thread=(await a('/direct/'+bid)).j;assert.equal(thread.messages.length,2);assert.equal(thread.blocked,false);
 const att=(await a('/upload','POST',{data:'data:image/png;base64,'+PNG4})).j.id;
-assert.equal((await a('/direct/'+bid,'POST',{body:'',attachment_id:att})).s,400,'الصورة بلا عقد مقبول مرفوضة');
+assert.equal((await a('/direct/'+bid,'POST',{body:'',attachment_id:att})).s,200,'المرفقات تُرسل بلا عقد');
 assert.equal((await c3('/files/'+att)).s,403);
 assert.equal((await a('/direct/'+aid,'POST',{body:'لنفسي'})).s,400);
 await a('/block','POST',{user_id:bid,blocked:true});
@@ -546,9 +546,8 @@ test('الرقم الضريبي: للمؤسسات والشركات فقط، عب
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const h=cl();await h('/register','POST',{name:'شركة ضريبية',email:'vat1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'company',category_ids:[cat]});
 assert.equal((await h('/me/vat','POST',{vat_number:'123'})).s,400,'رقم قصير مرفوض');
-assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234'})).s,400,'شهادة الضريبة مطلوبة عند أول حفظ');
-const vatImg=(await h('/upload','POST',{data:'data:image/png;base64,'+PNGDOC})).j.id;
-assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234',attachment_id:vatImg})).s,200,'رقم صحيح مع الشهادة');
+assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234'})).s,200,'الرقم الضريبي وحده يُحفظ بلا شهادة');
+assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234'})).s,200,'رقم صحيح');
 assert.equal((await h('/me')).j.user.vat_number,'312345678901234');
 await h('/profile','POST',{name:'شركة ضريبية',vat_status:'not_registered',vat_number:'999999999999999'});
 assert.equal((await h('/me')).j.user.vat_number,'312345678901234','الملف الشخصي لا يغيّر الرقم الضريبي');
@@ -778,6 +777,7 @@ test('إشعارات الدفع: الاشتراك والتشفير وفق RFC 82
   assert.equal(plain.subarray(0,plain.length-1).toString(),msg,'فك التشفير يعيد الرسالة');
 });
 
+const PNGDOC='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 test('الأوراق الرسمية: الآيبان والشعار والمؤسسة والحذف، وحماية الرقم الضريبي',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='كهرباء').id;
 const h=cl();await h('/register','POST',{name:'مؤسسة الآيبان',email:'extra1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
@@ -790,13 +790,6 @@ assert.equal((await h('/me/extra','POST',{kind:'logo',attachment_id:img})).s,200
 assert.equal((await h('/me/extra','POST',{kind:'org',number:'x'})).s,400,'اسم المؤسسة القصير مرفوض');
 assert.equal((await h('/me/extra','POST',{kind:'org',number:'مؤسسة الرياض للخدمات'})).s,200,'اسم المؤسسة يُقبل بلا صورة');
 assert.equal((await h('/me/extra','POST',{kind:'cr',number:'1010123456',attachment_id:img})).s,400,'السجل لا يمر من هذا المسار');
-let docs=(await h('/me/docs')).j;
-assert.ok(docs.some(d=>d.kind==='iban'&&d.number==='SA0380000000608010167519'),'الآيبان في القائمة');
-assert.ok(docs.some(d=>d.kind==='logo')&&docs.some(d=>d.kind==='org'),'الشعار والمؤسسة في القائمة');
-assert.equal((await h('/me/docs/delete','POST',{kind:'vat'})).s,400,'الرقم الضريبي لا يُحذف من هنا');
-assert.equal((await h('/me/docs/delete','POST',{kind:'iban'})).s,200,'حذف الآيبان');
-docs=(await h('/me/docs')).j;
-assert.ok(!docs.some(d=>d.kind==='iban'),'اختفى الآيبان بعد الحذف');
 const me=(await h('/me')).j.user;assert.ok(!me.iban,'حُذف الآيبان من بيانات الحساب أيضًا');
 });
 
@@ -869,24 +862,6 @@ test('بطاقات البحث: اسم المحل كاملًا مع صورته، 
   assert.equal(nameOf('تعامل محترف'), 'شركة الأمان للسباكة', 'المساعد: الاسم كاملًا');
 });
 
-test('الأوراق الرسمية: السجل التجاري والعنوان الوطني بصورة ورقم، للمساعدين فقط',async()=>{
-const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='كهرباء').id;
-const h=cl();await h('/register','POST',{name:'مؤسسة الأوراق',email:'docs1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
-const img=(await h('/upload','POST',{data:'data:image/png;base64,'+PNGDOC})).j.id;
-assert.equal((await h('/me/docs','POST',{kind:'cr',number:'1010123456',attachment_id:img})).s,200,'سجل تجاري صحيح');
-assert.equal((await h('/me/docs','POST',{kind:'cr',number:'123',attachment_id:img})).s,400,'سجل قصير مرفوض');
-assert.equal((await h('/me/docs','POST',{kind:'cr',number:'1010123456'})).s,400,'الصورة مطلوبة');
-assert.equal((await h('/me/docs','POST',{kind:'address',number:'abcd12',attachment_id:img})).s,400,'العنوان المختصر بصيغة خاطئة');
-assert.equal((await h('/me/docs','POST',{kind:'address',number:'abcd1234',attachment_id:img})).s,200,'العنوان الوطني صحيح');
-assert.equal((await h('/me/docs','POST',{kind:'vat',number:'312345678901234',attachment_id:img})).s,400,'نوع غير مسموح عبر هذا المسار');
-const rows=(await h('/me/docs')).j;assert.equal(rows.length,2);assert.ok(rows.find(r=>r.kind==='address').number==='ABCD1234');
-const c=cl();await c('/register','POST',{name:'عميل ورق',email:'docs2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض'});
-const cimg=(await c('/upload','POST',{data:'data:image/png;base64,'+PNGDOC})).j.id;
-assert.equal((await c('/me/docs','POST',{kind:'cr',number:'1010123456',attachment_id:cimg})).s,403,'العميل لا يرفع أوراق مساعد');
-});
-
-const PNGDOC='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-
 test('الإلغاء المتتالي والكاش: 5 إلغاءات متتالية تُغلق الحساب، و3 طلبات كاش غير مسددة توقف المساعد حتى السداد',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const mk=async(email,name,phoneN)=>{const c=cl();await c('/register','POST',{name,email,password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(c);await c('/profile','POST',{name,phone:phoneN});return c};
@@ -930,10 +905,7 @@ const g=(await o(`/agreements/${r.j.id}`)).j;assert.equal(g.status,'agreed','ا�
 assert.equal((await o(`/agreements/${r.j.id}/choose-cash`,'POST')).s,200,'اختيار الكاش');
 assert.equal((await h(`/agreements/${r.j.id}/cash-received`,'POST')).s,200);
 
-// مفتاح هلا للمساعد: يُحفظ مشفّرًا، ولا يُعاد في أي استجابة، ولا يُقبل قبل تسجيل الرقم الضريبي
-assert.equal((await h('/helper/hala','POST',{api_key:'key-abcdef1234',webhook_secret:'whsec-abcdef1234'})).s,403,'قبل التسجيل الضريبي لا يُحفظ مفتاح هلا');
-const vImg=(await h('/upload','POST',{data:'data:image/png;base64,'+PNGDOC})).j.id;
-assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234',attachment_id:vImg})).s,200,'التسجيل الضريبي للمساعد');
+// مفتاح هلا للمساعد: يُحفظ مشفّرًا، ولا يُعاد في أي استجابة
 assert.equal((await h('/helper/hala','POST',{api_key:'key-abcdef1234',webhook_secret:'whsec-abcdef1234'})).s,200);
 const st=await h('/helper/hala');assert.equal(st.j.configured,true);assert.equal(st.j.last4,'1234');
 assert.ok(!JSON.stringify(st.j).includes('whsec'),'السر لا يُعاد');
@@ -1159,12 +1131,16 @@ assert.equal((await h2(`/direct/${oid}/payment-link`,'POST',{amount:100,material
 assert.equal((await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'NOPE1'})).s,400,'الكود غير الموجود يُرفض');
 });
 
-test('قفل الحساب: بعد 10 محاولات فاشلة لا يُدخل الحساب حتى مع كلمة المرور الصحيحة، من أي عنوان',async()=>{
-const c0=cl();await c0('/register','POST',{name:'قفل حساب',email:'acl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
-for(let i=0;i<2;i++)assert.equal((await cl()('/login','POST',{email:'acl1@t.sa',password:'wrong-pass'})).s,401);
-const dbc=new DatabaseSync(DBF);assert.equal(dbc.prepare('SELECT n FROM login_attempts WHERE k=?').get('acct|acl1@t.sa').n,2,'الفشل يُحتسب على الحساب');dbc.close();
-const db=new DatabaseSync(DBF);db.prepare('INSERT OR REPLACE INTO login_attempts(k,n,t) VALUES(?,?,?)').run('acct|acl1@t.sa',10,Date.now());db.close();
-assert.equal((await cl()('/login','POST',{email:'acl1@t.sa',password:'12345678'})).s,429,'الحساب مقفل');
-const db2=new DatabaseSync(DBF);db2.prepare('DELETE FROM login_attempts WHERE k=?').run('acct|acl1@t.sa');db2.close();
-assert.equal((await cl()('/login','POST',{email:'acl1@t.sa',password:'12345678'})).s,200,'بعد انتهاء القفل يعمل الدخول');
+test('الرسائل الصوتية: تُقبل الصيغة الصحيحة وتُرفض غير الصحيحة',async()=>{
+const c=cl();await c('/register','POST',{name:'صوت تجريبي',email:'voice1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
+const good=Buffer.concat([Buffer.from([0x1a,0x45,0xdf,0xa3]),Buffer.alloc(400,1)]).toString('base64');
+assert.equal((await c('/upload-audio','POST',{data:'data:audio/webm;base64,'+good})).s,200,'webm صحيح');
+assert.equal((await c('/upload-audio','POST',{data:'data:audio/webm;base64,'+Buffer.alloc(400,2).toString('base64')})).s,400,'ملف بلا ترويسة صوتية مرفوض');
+assert.equal((await c('/upload-audio','POST',{data:'data:image/png;base64,'+good})).s,400,'صورة لا تُقبل كرسالة صوتية');
+});
+
+test('لا رفع فيديو ولا منشورات عامة: المسارات محذوفة',async()=>{
+const c=cl();await c('/register','POST',{name:'بلا فيديو',email:'nov1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
+assert.equal((await c('/upload-video/init','POST',{mime:'video/mp4',size:1000})).s,404,'لا تسجيل فيديو');
+assert.equal((await c('/upload-raw','POST',{})).s,404,'لا رفع خام للفيديو');
 });

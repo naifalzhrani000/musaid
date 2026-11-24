@@ -1,0 +1,140 @@
+/* English layer: translates static Arabic UI text on the page when the user picks English.
+   Whole-word matching only, longest phrases first. Long legal paragraphs stay in Arabic. */
+window.EN_DICT = {
+ 'حدث خطأ، حاول مرة أخرى':'Something went wrong, please try again',
+ 'حدث خطأ':'Something went wrong',
+ 'مسودة':'Draft','منشور':'Post','جارٍ الاتفاق':'Agreement in progress','تم اختيار مساعد':'Provider selected',
+ 'قيد التنفيذ':'In progress','مكتمل':'Completed','ملغي':'Cancelled','متنازع عليه':'Disputed','ر.س':'SAR','ريال':'SAR',
+ 'قابل للتفاوض':'Negotiable','السعر بالاتفاق':'Price by agreement','بالاتفاق':'by agreement','أخرى':'Other','عروض':'Offers',
+ 'عرض التفاصيل':'View details','تم تجهيز ملف بياناتك':'Your data file is ready',
+ 'المساعد الذكي':'Musaed AI','منصة المساعد':'Musaed platform','المساعد':'Musaed','ملفي الشخصي':'My profile','القائمة':'Menu',
+ 'الإشعارات':'Notifications','تسجيل الدخول':'Log in','بيانات الحساب':'Account details','تثبيت التطبيق':'Install app',
+ 'متابعة':'Following','محادثاتي':'My chats','متجري':'My store','إيقاف كل الإشعارات':'Turn off all notifications',
+ 'تفعيل كل الإشعارات':'Turn on all notifications','الإدارة':'Admin','الإعدادات':'Settings','تسجيل الخروج':'Log out',
+ 'العربية':'Arabic','النبذة':'Bio','الأسئلة الشائعة':'FAQ','سياسة الشكاوى':'Complaints policy','من نحن':'About us',
+ 'تواصل معنا':'Contact us','الشروط والأحكام':'Terms and conditions','سياسة الخصوصية':'Privacy policy',
+ 'تحليل الطلب':'Request analysis','أيام':'days','يومًا':'day','الكل':'All','الأكثر طلبًا':'Most requested','الفجوة':'Gap',
+ 'بحث بلا نتيجة':'No search results','لا توجد بيانات في هذه الفترة':'No data for this period',
+ 'عدد الطلبات في هذه الفترة':'Requests in this period','التخصص':'Specialty','القسم':'Category','عدد الطلبات':'Requests',
+ 'الطلبات':'Requests','المساعدون المسجلون':'Registered providers','ملاحظة':'Note','العبارة':'Phrase','التكرار':'Count','آخر مرة':'Last time',
+ 'خدمتك تبدأ من هنا':'Your service starts here','من تحتاج اليوم؟':'What do you need today?',
+ 'اكتب طلبك وسنجد لك مساعدًا مسجلًا في المنصة':'Write your request and we will find you a registered provider',
+ 'ماذا تحتاج؟':'What do you need?','اكتب رسالتك...':'Write your message...','اكتب رسالتك':'Write your message',
+ 'إرسال':'Send','جاري البحث عن المتاحين في المنصة':'Searching for available providers','سجّل دخولك':'Log in',
+ 'لقد وجدت لك':'I found you','مساعدًا مسجلًا في المنصة':'a registered provider','أنجز':'Done','مهمة':'Task','جديد':'New',
+ 'تقييم':'Rating','لا توجد تقييمات بعد':'No ratings yet','إعجاب':'Like','محادثة':'Chat','اختر التخصص':'Choose specialty',
+ 'بحث':'Search','اقترح قسمًا لخدمتك':'Suggest a category for your service','اكتب طلبك في جملة واضحة':'Write your request in one clear sentence',
+ 'ابحث عن قسم':'Search for a category','يمكن اختيار قسمين كحد أقصى':'You can choose up to two',
+ 'الرياض':'Riyadh','جدة':'Jeddah','مكة':'Makkah','المدينة':'Madinah','الدمام':'Dammam','الخبر':'Khobar','الطائف':'Taif',
+ 'تبوك':'Tabuk','أبها':'Abha','بريدة':'Buraidah','حائل':'Hail','القصيم':'Qassim','الجبيل':'Jubail','ينبع':'Yanbu',
+ 'إنشاء حساب جديد':'Create a new account','أهلًا بعودتك':'Welcome back',
+ 'اطلب خدمة سباكة أو كهرباء، أو سجّل محلك لتستقبل الطلبات':'Request a plumbing or electrical service, or register your business to receive requests',
+ 'سجّل دخولك لمتابعة طلباتك ومحادثاتك':'Log in to follow your requests and chats',
+ 'اسم المستخدم':'Username','رقم الجوال':'Phone number','كلمة المرور':'Password','أحرف على الأقل':'characters minimum',
+ 'إظهار كلمة المرور':'Show password','إخفاء':'Hide','عرض':'Show','البريد الإلكتروني':'Email','تأكيد كلمة المرور':'Confirm password',
+ 'عمري 18 سنة فأكثر':'I am 18 or older','أوافق على':'I agree to','التالي':'Next','دخول':'Log in','لديك حساب؟':'Have an account?',
+ 'ليس لديك حساب؟':'No account?','أنشئ حسابًا':'Create an account','نسيت كلمة المرور؟':'Forgot password?',
+ 'دخول الإدارة':'Admin login','كلمتا المرور غير متطابقتين':'Passwords do not match','المحادثات السابقة':'Previous chats',
+ 'إغلاق':'Close','جارٍ التحميل':'Loading','لا توجد محادثات بعد':'No chats yet',
+ 'لا توجد محادثات بعد. تبدأ المحادثة من صفحة المساعد':'No chats yet. Start a chat from a provider page',
+ 'إرفاق صورة':'Attach photo','رسالة صوتية':'Voice note','المستخدم':'User','إضافة':'Add','رابط دفع':'Payment link',
+ 'صندوق الوارد':'Inbox','أين تريد نشر هذا المقطع؟':'Where do you want to post this clip?','ريلز':'Reels',
+ 'يظهر للجميع':'Visible to everyone','المنشورات':'Posts','إضافة صورة أو فيديو':'Add photo or video',
+ 'لا توجد أعمال بعد':'No work yet','لم تضف أعمالًا بعد. ابدأ بإضافة صورة لعملك':'You have not added work yet. Start by adding a photo of your work',
+ 'إضافة ريلز':'Add reel','لا توجد ريلز بعد':'No reels yet','لم تختر ملفًا':'No file selected',
+ 'تعذّر رفع الفيديو، حاول مرة أخرى':'Could not upload video, try again','تعذّر رفع الفيديو':'Could not upload video',
+ 'تعذّر قراءة الفيديو':'Could not read video','الملف ليس صورة':'File is not an image','لم تختر صورة':'No image selected',
+ 'اختر صورة':'Choose image','الصورة تالفة أو غير مدعومة':'Image is corrupted or unsupported',
+ 'تعذّر تجهيز الصورة، جرّب صورة أخرى':'Could not prepare the image, try another','الصورة كبيرة جدًا، اختر صورة أصغر':'Image is too large, choose a smaller one',
+ 'حذف الصورة الشخصية؟':'Delete profile photo?','تم حذف الصورة الشخصية':'Profile photo deleted','تم تحديث صورة الغلاف':'Cover photo updated',
+ 'تم تحديث الصورة الشخصية':'Profile photo updated','وصف قصير للعمل':'Short description of the work','اختياري':'Optional',
+ 'تم النشر وسيظهر للجميع في المنشورات':'Published and visible to everyone in posts','لم تختر':'Not selected',
+ 'سبب البلاغ':'Report reason','تم إرسال البلاغ':'Report sent','تغيير كلمة المرور':'Change password',
+ 'المدينة وموقع الخدمة':'City and service location','قسم خدماتك':'Your service categories','معرض أعمالي':'My portfolio',
+ 'تغيير البريد الإلكتروني':'Change email','استخدام الرصيد':'Use balance','سجل النقاط':'Points history',
+ 'إشعارات البريد':'Email notifications','نوع الحساب':'Account type','حذف الحساب':'Delete account',
+ 'تفعيل صلاحية المدير':'Enable admin role','البيانات الشخصية':'Personal details','التحويل إلى مساعد':'Switch to provider',
+ 'حسابي':'My account','منطقة الرياض':'Riyadh region','منطقة مكة المكرمة':'Makkah region','مكة المكرمة':'Makkah',
+ 'منطقة المدينة المنورة':'Madinah region','المدينة المنورة':'Madinah','المنطقة الشرقية':'Eastern region',
+ 'منطقة القصيم':'Qassim region','منطقة عسير':'Asir region','منطقة تبوك':'Tabuk region','منطقة حائل':'Hail region',
+ 'منطقة جازان':'Jazan region','منطقة نجران':'Najran region','منطقة الباحة':'Al Bahah region','منطقة الجوف':'Al Jouf region',
+ 'منطقة الحدود الشمالية':'Northern Borders region','لم تُحدَّد المدينة':'City not set',
+ 'سلة هذا المتجر':'This store cart','بطاقة QR للمحل':'Store QR card','حساب موثّق':'Verified account',
+ 'تغيير الصورة الشخصية':'Change profile photo','منتجاتي':'My products','خدماتي':'My services','المنتجات':'Products',
+ 'الخدمات':'Services','الأعمال':'Work','التقييمات':'Reviews','مساعد':'provider','عميل':'client','حذف':'Delete',
+ 'أضف للسلة':'Add to cart','منتجات متجري':'My store products','لم تضف منتجات بعد':'You have not added products yet',
+ 'لا توجد منتجات بعد':'No products yet','إضافة منتج':'Add product','الملف الشخصي':'Profile','مشاركة':'Share',
+ 'تغيير صورة الغلاف':'Change cover photo','متاح لاستقبال الطلبات':'Available for requests','تعديل الملف':'Edit profile',
+ 'طلب مكتمل':'completed request','تقييم العملاء':'Client ratings','نبذة عني':'About me','نبذة عن المحل':'About the business',
+ 'لم تكتب نبذة بعد':'You have not written a bio yet','أضفها من هنا':'Add it here','لم يكتب نبذة بعد':'No bio yet',
+ 'اتصل بالجوال':'Call phone','الجوال · اضغط للاتصال':'Phone · tap to call','الجوال':'Phone',
+ 'فتح الموقع في الخرائط':'Open location in maps','العنوان · اضغط لفتح الموقع':'Address · tap to open','العنوان':'Address',
+ 'أعمالنا السابقة':'Our previous work','الأعمال السابقة':'Previous work','عرض الكل':'View all',
+ 'لم تضف أعمالًا بعد.':'No work added yet.','لا توجد أعمال بعد.':'No work yet.','أُضيف المنتج للسلة':'Product added to cart',
+ 'حذف المنتج من المتجر؟':'Remove product from store?','تم حذف المنتج':'Product deleted','منتج جديد':'New product',
+ 'اسم المنتج':'Product name','الوصف':'Description','السعر':'Price','إرفاق صورة المنتج':'Attach product photo',
+ 'تمت إضافة المنتج':'Product added','اختر صورة فقط':'Choose an image only','تم إرفاق الصورة':'Photo attached',
+ 'السلة فارغة':'Cart is empty','سلتي':'My cart',
+ 'يُرسل ملخص السلة للمساعد في المحادثة، والسعر النهائي يحدده رابط الدفع الذي يصدره':'The cart summary is sent to the provider in chat. The final price is set by the payment link they issue',
+ 'أُرسلت الفاتورة للمساعد':'Invoice sent to the provider','الإشعارات والتواصل':'Notifications and contact','الأمان':'Security',
+ 'النقاط والمحفظة':'Points and wallet','الرصيد الحالي':'Current balance','نقطة':'points',
+ 'تُضاف النقاط عند اكتمال مهمة مؤهلة':'Points are added when an eligible task is completed','الاسم':'Name','صورة':'Photo',
+ 'أضف صور أعمالك':'Add photos of your work','اكمل ملفك الشخصي':'Complete your profile',
+ 'أضف الجوال والمدينة والنبذة':'Add phone, city and bio','ومعرض أعمالك':'and your portfolio','لزيادة فرص ظهورك':'to get more visibility',
+ 'رصيد النقاط':'Points balance','الرصيد المالي':'Financial balance','عمولة اتفاق مستحقة':'Agreement commission due',
+ 'تفاصيل الرصيد':'Balance details','الاسم والجوال والعنوان':'Name, phone and address','إدارة الموقع':'Site admin',
+ 'لوحة الإدارة':'Admin panel','شروط النقاط':'Points terms','عند وصول رسالة جديدة في محادثاتك':'When a new message arrives in your chats',
+ 'إشعارات الدفع':'Payment notifications','تصلك الإشعارات على جهازك حتى والمنصة مغلقة':'Notifications reach your device even when the platform is closed',
+ 'إرسال إشعار تجريبي':'Send test notification','للتأكد أن الإشعارات تصل لجوالك':'To make sure notifications reach your phone',
+ 'حفظ التغييرات':'Save changes','حفظ النبذة':'Save bio','حفظ':'Save','إتمام طلب':'Request completed','إتمام مهمة':'Task completed',
+ 'التسجيل متاح للمؤسسات والشركات فقط، ويلزم رقمها الضريبي لاستقبال الطلبات':'Registration is for establishments and companies only, and requires a tax number to receive requests',
+ 'اختر قسمًا أو قسمين من خدماتك':'Choose one or two categories for your services','مثل السباكة والكهرباء':'such as plumbing and electrical',
+ 'يظهر اسمك في البحث، وتتواصل معك الطلبات عبر المحادثات':'Your name appears in search, and requests reach you through chats',
+ 'اختيار التخصص':'Specialty choice','كهرباء':'Electrical','سباكة':'Plumbing','معًا':'together','حفظ قسم خدماتك':'Save service categories',
+ 'اقترح تخصصًا جديدًا':'Suggest a new specialty','اسم التخصص':'Specialty name','كلمات تساعد البحث':'Keywords to help search',
+ 'اختياري، افصل بفاصلة':'Optional, separate with commas','إرسال للمراجعة':'Send for review',
+ 'يظهر للعملاء بعد اعتماد الإدارة':'Visible to clients after admin approval','كلمة المرور الحالية':'Current password',
+ 'كلمة المرور الجديدة':'New password','حفظ كلمة المرور':'Save password','البريد الحالي':'Current email','البريد الجديد':'New email',
+ 'كلمة المرور للتأكيد':'Password to confirm','تغيير البريد':'Change email','عدد النقاط':'Points amount','الخدمة أو الرسم':'Service or fee',
+ 'لا توجد عمليات بعد. تُضاف النقاط عند اكتمال مهمة مؤهلة':'No transactions yet. Points are added when an eligible task is completed',
+ 'نبذة عنك':'About you','تظهر لمن يبحث عنك':'Shown to people searching for you',
+ 'الرقم الضريبي':'Tax number','الرقم موثّق':'Tax number verified','الرقم مرفوض، صحّحه وأعد الإرسال':'Tax number rejected, correct it and resubmit',
+ 'بانتظار تحقق الإدارة من الرقم':'Waiting for admin verification','لم يُدخل رقم بعد':'No number entered yet',
+ 'حفظ الرقم الضريبي':'Save tax number','وضع المساعد':'Provider mode','رابط الموقع':'Map link','العنوان المختصر':'Short address',
+ 'حفظ أو طباعة السجل':'Save or print record','الخط الزمني':'Timeline','رجوع':'Back','المبلغ المتفق عليه':'Agreed amount',
+ 'مقدم الخدمة':'Service provider','طالب الخدمة':'Service requester','عمولة المنصة':'Platform commission',
+ 'من المبلغ المتفق عليه':'of the agreed amount','قيّم الطرف الآخر':'Rate the other party','نجوم':'stars','نجمتان':'two stars',
+ 'نجمة واحدة':'one star','تعليق':'Comment','إرسال التقييم':'Send rating','شكرًا لتقييمك':'Thanks for your rating',
+ 'طلب تغيير نوع الحساب':'Request account type change','النوع الجديد':'New type','تتم مراجعة طلب تغيير النوع من الإدارة قبل اعتماده':'Type change requests are reviewed by admin before approval',
+ 'الشهادة الضريبية':'Tax certificate','تسجيل الدفع':'Payment registration',
+ 'مؤسسة':'Establishment','شركة':'Company','فرد':'Individual','غير محدد':'Not specified',
+ 'الحالة':'Status','التاريخ':'Date','الوقت':'Time','المبلغ':'Amount','الإجمالي':'Total','المجموع':'Subtotal',
+ 'الضريبة':'Tax','الصافي':'Net','عمولة':'Commission','شغل اليد':'Labor','قطع الغيار':'Parts','الكمية':'Quantity',
+ 'الدفع':'Payment','بانتظار الدفع':'Awaiting payment','تم الدفع':'Paid','غير مدفوع':'Unpaid','إلغاء':'Cancel',
+ 'تأكيد':'Confirm','موافق':'Approve','رفض':'Reject','تعديل':'Edit','عودة':'Back','التالي':'Next','السابق':'Previous',
+ 'بحث':'Search','تصفية':'Filter','الكل':'All','نعم':'Yes','موافقة':'Approval','تنبيه':'Alert','تأكيد الحذف':'Confirm deletion',
+ 'شكوى':'Complaint','بلاغ':'Report'
+};
+(function(){
+ var EN = localStorage.getItem('lang') === 'en';
+ document.documentElement.lang = EN ? 'en' : 'ar';
+ document.documentElement.dir = EN ? 'ltr' : 'rtl';
+ if (!EN) return;
+ var AR = '[\\u0600-\\u06FF]';
+ var pairs = Object.keys(window.EN_DICT).sort(function(a,b){return b.length-a.length}).map(function(k){
+   var esc = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+   return [new RegExp('(^|[^\\u0600-\\u06FF])' + esc + '(?!' + AR + ')', 'g'), window.EN_DICT[k]];
+ });
+ var hasAr = /[؀-ۿ]/;
+ function fix(s){ for (var i=0;i<pairs.length;i++) s = s.replace(pairs[i][0], function(m,p){ return p + pairs[i][1]; }); return s; }
+ function tr(n){
+   if (n.nodeType === 3) { if (hasAr.test(n.nodeValue)) { var o = fix(n.nodeValue); if (o !== n.nodeValue) n.nodeValue = o; } return; }
+   if (n.nodeType === 1 && n.getAttribute) {
+     ['placeholder','aria-label','title'].forEach(function(a){ var v = n.getAttribute(a); if (v && hasAr.test(v)) { var o = fix(v); if (o !== v) n.setAttribute(a, o); } });
+   }
+ }
+ function walk(root){ if (!root || !root.nodeType) return; tr(root); var w = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT); var c = w.nextNode(); while (c) { tr(c); c = w.nextNode(); } }
+ walk(document.head); walk(document.body);
+ new MutationObserver(function(ms){ ms.forEach(function(m){ if (m.type === 'characterData') tr(m.target); else m.addedNodes.forEach(walk); }); })
+   .observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+})();
