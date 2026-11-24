@@ -6,7 +6,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-const PORT=+process.env.PORT||3000,ADMIN=(process.env.ADMIN_EMAIL||'').toLowerCase();
+const PORT=+process.env.PORT||3000,ADMINS=new Set((process.env.ADMIN_EMAIL||'').split(/[\s,;،]+/).map(s=>s.trim().toLowerCase()).filter(Boolean)),ADMIN=[...ADMINS][0]||'';
 const DB_PATH=process.env.DB_FILE||'data.db',RESTORE_PENDING=DB_PATH+'.restore';
 if(fs.existsSync(RESTORE_PENDING)){for(const x of [DB_PATH+'-wal',DB_PATH+'-shm'])if(fs.existsSync(x))fs.unlinkSync(x);fs.renameSync(RESTORE_PENDING,DB_PATH);console.log('restore: تم تطبيق الاستعادة من نسخة احتياطية')}
 const db=new DatabaseSync(DB_PATH);
@@ -128,7 +128,7 @@ const hash=p=>{const s=crypto.randomBytes(16).toString('hex');return s+':'+crypt
 const check=(p,h)=>{try{const [s,x]=String(h||'').split(':');if(!s||!x)return false;const a=crypto.scryptSync(p,s,64),b=Buffer.from(x,'hex');return b.length===a.length&&crypto.timingSafeEqual(a,b)}catch{return false}};
 const notify=(u,t,l,{mail=true}={})=>{l=safeLink(l);const r=run('INSERT INTO notifications(user_id,text,link) VALUES(?,?,?)',u,t,l??null);pushTo(u,t,l);if(mail)notifyEmail(u,'إشعار جديد',t,l&&l.startsWith('#/')?l.slice(1):'/notifs');return r};
 const pushHits=new Map();
-const vapidSubject=()=>{const ok=v=>v&&/^(mailto:[^@\s]+@[^@\s]+\.[^@\s]+|https:\/\/[^\s]+)$/.test(v)&&!/example\.(com|org|net)/i.test(v);const e=process.env.VAPID_SUBJECT,a=process.env.ADMIN_EMAIL?'mailto:'+process.env.ADMIN_EMAIL:'',u=(process.env.APP_URL||'').replace(/\/$/,'');return ok(e)?e:ok(a)?a:ok(u)?u:e||'mailto:admin@example.com'};
+const vapidSubject=()=>{const ok=v=>v&&/^(mailto:[^@\s]+@[^@\s]+\.[^@\s]+|https:\/\/[^\s]+)$/.test(v)&&!/example\.(com|org|net)/i.test(v);const e=process.env.VAPID_SUBJECT,a=ADMIN?'mailto:'+ADMIN:'',u=(process.env.APP_URL||'').replace(/\/$/,'');return ok(e)?e:ok(a)?a:ok(u)?u:e||'mailto:admin@example.com'};
 const pushCfg=()=>{const publicKey=cleanKey(process.env.VAPID_PUBLIC_KEY),privateKey=cleanKey(process.env.VAPID_PRIVATE_KEY);return publicKey&&privateKey?{publicKey,privateKey,subject:vapidSubject()}:null};
 const pushKeyProblem=()=>{const c=pushCfg();return c?vapidProblem(c):''};
 const pushTo=(uid,title,link)=>{const cfg=pushCfg();if(!cfg||vapidProblem(cfg))return;const pref=get('SELECT push_enabled FROM users WHERE id=?',uid);if(!pref||!pref.push_enabled)return;const nowT=Date.now(),hits=(pushHits.get(uid)||[]).filter(t=>nowT-t<600000);if(hits.length>=10){pushHits.set(uid,hits);return}hits.push(nowT);pushHits.set(uid,hits);const cnt=get('SELECT COUNT(*) n FROM notifications WHERE user_id=? AND read=0',uid).n;for(const sub of all('SELECT id,endpoint,p256dh,auth FROM push_subscriptions WHERE user_id=?',uid))sendWebPush(sub,JSON.stringify({title:'المساعد',body:String(title),url:'/'+(link||''),count:cnt}),cfg).then(async r=>{if(r.ok)return;const f=await pushFailure(r);if(f.dead)run('DELETE FROM push_subscriptions WHERE id=?',sub.id);if(f.status!==404&&f.status!==410)console.error('push: '+f.status+' '+f.reason+(f.dead?' (حُذف الاشتراك القديم)':''))}).catch(e=>console.error('push: '+e.message))};
@@ -152,8 +152,8 @@ const safeLink=l=>{const s=String(l??'');return s.length<=200&&/^#\/[A-Za-z0-9_\
 // نسخة احتياطية بصلاحية 0600 من لحظة الإنشاء: يُنشأ ملف فارغ مقيّد أولًا ثم يُملأ بـ VACUUM INTO
 const vacuumTo=f=>{fs.writeFileSync(f,'',{mode:0o600,flag:'wx'});try{db.exec(`VACUUM INTO '${f.replace(/'/g,"''")}'`);fs.chmodSync(f,0o600)}catch(e){try{fs.unlinkSync(f)}catch{}throw e}};
 const startSession=(res,uid)=>{const t=crypto.randomBytes(32).toString('hex'),priv=['admin','staff'].includes(get('SELECT role FROM users WHERE id=?',uid)?.role),ttl=priv?432e5:6048e5;run('INSERT INTO sessions VALUES(?,?,?)',sha(t),uid,Date.now()+ttl);res.setHeader('Set-Cookie',`sid=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${ttl/1000}${((process.env.APP_URL||'').startsWith('https')||res.req.headers['x-forwarded-proto']==='https')?'; Secure':''}`)};
-// مالك المنصة: الحساب ببريد ADMIN_EMAIL يصير مديرًا تلقائيًا، بشرط أن يكون البريد موثّقًا برمز التفعيل (ولا يعمل إذا عُطّل التحقق)
-const ownerPromote=u=>{if(u&&ADMIN&&VERIFY_REQUIRED&&u.email_verified===1&&u.role!=='admin'&&String(u.email).toLowerCase()===ADMIN){run("UPDATE users SET role='admin' WHERE id=?",u.id);audit(u.id,'owner_admin',`user:${u.id}`);u.role='admin'}return u};
+// مالكو المنصة: كل حساب ببريد من ADMIN_EMAIL (أكثر من بريد مفصول بفاصلة) يصير مديرًا تلقائيًا، بشرط أن يكون البريد موثّقًا برمز التفعيل (ولا يعمل إذا عُطّل التحقق)
+const ownerPromote=u=>{if(u&&ADMINS.size&&VERIFY_REQUIRED&&u.email_verified===1&&u.role!=='admin'&&ADMINS.has(String(u.email).toLowerCase())){run("UPDATE users SET role='admin' WHERE id=?",u.id);audit(u.id,'owner_admin',`user:${u.id}`);u.role='admin'}return u};
 const userOf=t=>ownerPromote(t?get('SELECT u.id,u.name,u.email,u.city,u.role,u.active,u.account_type,u.phone,u.address,u.short_address,u.map_url,u.email_verified,u.notify_email,u.push_enabled,u.perms,u.vat_status,u.vat_number,u.helper_type,u.vat_verified FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.exp>? AND u.active=1',sha(t),Date.now()):undefined);
 const need=c=>{if(!c.u)throw err(401,'سجّل الدخول أولًا');return c.u};
 const verified=c=>{const u=need(c);if(!u.email_verified&&VERIFY_REQUIRED)throw err(403,'فعّل بريدك الإلكتروني أولًا');return u};

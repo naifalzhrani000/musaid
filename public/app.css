@@ -1323,3 +1323,10 @@ body.dchat-mode .dc-linkcard .dc-acts button:only-child{grid-column:1/-1}
 
 .vn{width:220px;max-width:100%;height:40px;display:block}
 .dc-attach.rec{color:#dc2626}
+
+/* English layout: mirror hero text to the right so it does not sit under the Edit button; let category names take the free width */
+html[dir=ltr] .pf2-txt{text-align:end}
+html[dir=ltr] .pf2-rate,html[dir=ltr] .pf2-loc{justify-content:flex-end}
+html[dir=ltr] .cat-card b{flex:1}
+html[dir=ltr] .cat-card{gap:4px;padding-inline:8px}
+html[dir=ltr] .cat-card b{font-size:15px;min-width:0}

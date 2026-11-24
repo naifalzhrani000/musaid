@@ -150,14 +150,14 @@ app.innerHTML=`<div class=pf2>
 <div class=pf2-fade></div>
 ${isH?'<span class=pf2-avail><i></i>متاح لاستقبال الطلبات</span>':''}
 <div class=pf2-avwrap>${avatar}${verified}</div>
-<div class=pf2-txt><h2>${name}</h2><p class=pf2-sub>${sub}</p><p class=pf2-rate><span class=pf2-cl><b>${kfmt(cl)}</b><small>عميل</small></span><i></i><span class=pf2-rt><b>${avg}</b>${g(IC.star,17,'pf2-gold')}</span></p><p class=pf2-loc>${g(IC.pin,16)}<span>${esc(loc)}</span></p></div>
+<div class=pf2-txt><h2>${name}</h2><p class=pf2-sub>${sub}</p><p class=pf2-rate><span class=pf2-cl><b>${kfmt(cl)}</b><small data-en="Clients">عميل</small></span><i></i><span class=pf2-rt><b>${avg}</b>${g(IC.star,17,'pf2-gold')}</span></p><p class=pf2-loc>${g(IC.pin,16)}<span>${esc(loc)}</span></p></div>
 ${own?`<a class=pf2-edit href="#/profile/data">${g(IC.pen,16)}<span>تعديل الملف</span></a>`:`<a class=pf2-edit href="#/direct/${+p.id}">${g(IC.chat,16)}<span>محادثة</span></a>`}
 </section>
-${isH?`<section class=pf2-stats><div><span class="pf2-si pf2-c1">${g(IC.bag,19)}</span><b>${sk.length}</b><small>خدمات</small></div><div><span class="pf2-si pf2-c2">${g(IC.check,19)}</span><b>${done}</b><small>طلب مكتمل</small></div><div><span class="pf2-si pf2-gold">${g(IC.star,19)}</span><b>${avg}</b><small>تقييم العملاء</small></div></section>`:''}
+${isH?`<section class=pf2-stats><div><span class="pf2-si pf2-c1">${g(IC.bag,19)}</span><b>${sk.length}</b><small data-en="Services">خدمات</small></div><div><span class="pf2-si pf2-c2">${g(IC.check,19)}</span><b>${done}</b><small data-en="Completed requests">طلب مكتمل</small></div><div><span class="pf2-si pf2-gold">${g(IC.star,19)}</span><b>${avg}</b><small>تقييم العملاء</small></div></section>`:''}
 <nav class=pf2-tabs role=tablist>${tabs.map(([k,t,d],i)=>`<button type=button role=tab class="${(i||(own&&!isH))?'':'on'}" data-pt="${k}">${g(d,18)}<span>${t}</span></button>`).join('')}</nav>
 ${own&&!isH?'':`
 <div class=pf2-panel data-pp=svc>
-<section class=pf2-card><h3><span class=pf2-hi>${g(IC.doc,15)}</span>${own&&me.user.helper_type==='individual'?'نبذة عني':'نبذة عن المحل'}</h3><p class=pf2-bio>${bio?esc(bio):(own?'لم تكتب نبذة بعد. <a href="#/profile/bio">أضفها من هنا ←</a>':'لم يكتب نبذة بعد.')}</p><div class=pf2-info>${own&&me.user.phone?`<a class=pf2-row href="tel:${esc(String(me.user.phone).replace(/\s/g,''))}" aria-label="اتصل بالجوال"><span class="pf2-hi pf2-hc">${g(IC.phone,16)}</span><div><small>الجوال · اضغط للاتصال</small><b dir=ltr>${phone}</b></div></a>`:own?`<div class=pf2-row><span class="pf2-hi pf2-hc">${g(IC.phone,16)}</span><div><small>الجوال</small><b>—</b></div></div>`:''}${p.map_url?`<a class=pf2-row href="${esc(p.map_url)}" target=_blank rel=noopener aria-label="فتح الموقع في الخرائط"><span class="pf2-hi pf2-hc">${g(IC.pin,16)}</span><div><small>العنوان · اضغط لفتح الموقع</small><b>${addr||'—'}</b></div></a>`:`<div class=pf2-row><span class="pf2-hi pf2-hc">${g(IC.pin,16)}</span><div><small>العنوان</small><b>${addr||'—'}</b></div></div>`}</div></section>
+<section class=pf2-card><h3><span class=pf2-hi>${g(IC.doc,15)}</span>${own&&me.user.helper_type==='individual'?'نبذة عني':'نبذة عن المحل'}</h3><p class=pf2-bio>${bio?esc(bio):(own?'لم تكتب نبذة بعد. <a href="#/profile/bio" data-en="Add it here →">أضفها من هنا ←</a>':'لم يكتب نبذة بعد.')}</p><div class=pf2-info>${own&&me.user.phone?`<a class=pf2-row href="tel:${esc(String(me.user.phone).replace(/\s/g,''))}" aria-label="اتصل بالجوال"><span class="pf2-hi pf2-hc">${g(IC.phone,16)}</span><div><small>الجوال · اضغط للاتصال</small><b dir=ltr>${phone}</b></div></a>`:own?`<div class=pf2-row><span class="pf2-hi pf2-hc">${g(IC.phone,16)}</span><div><small>الجوال</small><b>—</b></div></div>`:''}${p.map_url?`<a class=pf2-row href="${esc(p.map_url)}" target=_blank rel=noopener aria-label="فتح الموقع في الخرائط"><span class="pf2-hi pf2-hc">${g(IC.pin,16)}</span><div><small>العنوان · اضغط لفتح الموقع</small><b>${addr||'—'}</b></div></a>`:`<div class=pf2-row><span class="pf2-hi pf2-hc">${g(IC.pin,16)}</span><div><small>العنوان</small><b>${addr||'—'}</b></div></div>`}</div></section>
 ${isH?storeBlock:''}${isH?'':`<div class=pf2-sechead><h3><span class=pf2-hi2>${g(IC.img,18)}</span>${own?'أعمالنا السابقة':'الأعمال السابقة'}</h3><button type=button class=pf2-all data-pt="wk">${g(IC.chev,14)}<span>عرض الكل</span></button></div>
 ${works.trim()?`<div class=pf2-works>${works}</div>`:'<div class=pf2-empty>لا توجد أعمال بعد.</div>'}`}
 </div>`}
@@ -598,7 +598,7 @@ async function followPage(){
   if(me.user.account_type!=='helper'){app.innerHTML='<div class=empty>هذا القسم للمساعدين فقط.</div>';return}
   let d,w;
   try{[d,w]=await Promise.all([api('/helper/follow'),api('/wallet')])}catch(x){app.innerHTML=`<div class=empty>${esc(x.message)}</div>`;return}
-  const fm=n=>Number(n||0).toLocaleString('ar-SA',{maximumFractionDigits:2})+' ر.س';
+  const fm=n=>Number(n||0).toLocaleString(document.documentElement.lang==='en'?'en-US':'ar-SA',{maximumFractionDigits:2})+' ر.س';
   const day=s=>esc(String(s||'').slice(0,10));
   const S=d.summary;
   const ST={active:'سارية',cancelled:'ملغاة'};

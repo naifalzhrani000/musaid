@@ -114,6 +114,12 @@ window.EN_DICT = {
  'تأكيد':'Confirm','موافق':'Approve','رفض':'Reject','تعديل':'Edit','عودة':'Back','التالي':'Next','السابق':'Previous',
  'بحث':'Search','تصفية':'Filter','الكل':'All','نعم':'Yes','موافقة':'Approval','تنبيه':'Alert','تأكيد الحذف':'Confirm deletion',
  'شكوى':'Complaint','بلاغ':'Report',
+ 'خرائط قوقل،':'Google Maps,',
+ 'تم نسخ رابط المحل':'Store link copied',
+ 'تم نسخ رابط الملف':'Profile link copied',
+ 'تعذّرت المشاركة':'Sharing failed',
+ 'رمز QR لصفحة':'QR code for the page of',
+ 'خرائط قوقل':'Google Maps',
  'الأرباح بعد عمولة المنصة':'Earnings after platform commission',
  'مديونيتك للمنصة':'Your balance owed to the platform',
  'عمولات لم تُسدَّد':'Unpaid commissions',
@@ -167,11 +173,12 @@ window.EN_DICT = {
  });
  var hasAr = /[؀-ۿ]/;
  function fix(s){ for (var i=0;i<pairs.length;i++) s = s.replace(pairs[i][0], function(m,p){ return p + pairs[i][1]; }); return s; }
+ function pu(s){return s.replace(/؟/g,"?").replace(/،/g,",").replace(/؛/g,";");}
  function tr(n){
-   if (n.nodeType === 3) { if (hasAr.test(n.nodeValue)) { var o = fix(n.nodeValue); if (o !== n.nodeValue) n.nodeValue = o; } return; }
+   if (n.nodeType === 3) { if (hasAr.test(n.nodeValue)) { var o = pu(fix(n.nodeValue)); if (o !== n.nodeValue) n.nodeValue = o; } return; }
    if (n.nodeType === 1 && n.getAttribute) {
      var de = n.getAttribute('data-en'); if (de !== null) { if (n.getAttribute('data-en-done') !== de) { n.setAttribute('data-en-done', de); n.innerHTML = de; } return; }
-     ['placeholder','aria-label','title'].forEach(function(a){ var v = n.getAttribute(a); if (v && hasAr.test(v)) { var o = fix(v); if (o !== v) n.setAttribute(a, o); } });
+     ['placeholder','aria-label','title'].forEach(function(a){ var v = n.getAttribute(a); if (v && hasAr.test(v)) { var o = pu(fix(v)); if (o !== v) n.setAttribute(a, o); } });
    }
  }
  function walk(root){ if (!root || !root.nodeType) return; tr(root); var w = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT); var c = w.nextNode(); while (c) { tr(c); c = w.nextNode(); } }
