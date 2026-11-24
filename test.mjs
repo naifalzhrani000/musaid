@@ -1131,6 +1131,21 @@ assert.equal((await h2(`/direct/${oid}/payment-link`,'POST',{amount:100,material
 assert.equal((await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'NOPE1'})).s,400,'الكود غير الموجود يُرفض');
 });
 
+test('كود الخصم: إلغاء رابط دفع غير مدفوع يُرجع العداد، فيُستخدم الكود مرة أخرى',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
+const o=cl();await o('/register','POST',{name:'عميل إلغاء خصم',email:'dc5@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل إلغاء خصم',phone:'0500009805'});
+const oid=(await o('/me')).j.user.id;
+const h=cl();await h('/register','POST',{name:'مساعد إلغاء خصم',email:'dc6@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد إلغاء خصم',phone:'0500009806'});
+const adm=cl();await adm('/login','POST',{email:'admin@t.sa',password:'12345678'});
+assert.equal((await adm('/admin/discounts','POST',{code:'cncl1x',percent:10,max_uses:1})).s,200);
+const s1=await h(`/direct/${oid}/task`,'POST');assert.equal((await o(`/tasks/${s1.j.id}/accept`,'POST')).s,200);
+const r1=await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'CNCL1X'});assert.equal(r1.s,200,'الكود يُقبل في المرة الأولى');
+assert.equal((await adm('/admin/discounts')).j.find(x=>x.code==='CNCL1X').used,1,'العداد يزيد عند إنشاء الرابط');
+assert.equal((await h(`/agreements/${r1.j.id}/cancel`,'POST',{reason:'تغيّر الطلب'})).s,200,'الإلغاء قبل الدفع مسموح');
+assert.equal((await adm('/admin/discounts')).j.find(x=>x.code==='CNCL1X').used,0,'الإلغاء يُرجع العداد');
+assert.equal((await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'CNCL1X'})).s,200,'بعد الإلغاء تُحرَّر المهمة ويُرسل رابط جديد بالكود نفسه');
+});
+
 test('الرسائل الصوتية: تُقبل الصيغة الصحيحة وتُرفض غير الصحيحة',async()=>{
 const c=cl();await c('/register','POST',{name:'صوت تجريبي',email:'voice1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
 const good=Buffer.concat([Buffer.from([0x1a,0x45,0xdf,0xa3]),Buffer.alloc(400,1)]).toString('base64');
