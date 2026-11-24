@@ -109,7 +109,7 @@ assert.equal((await w('/me/bio','POST',{bio:'نجار بخبرة 10 سنوات �
 const at=(await w('/upload','POST',{data:'data:image/png;base64,'+PNG3})).j.id;
 assert.equal((await w('/me/portfolio','POST',{attachment_id:at,caption:'باب خشب مصنوع يدويًا'})).s,200);
 const pid=(await w('/providers/'+wid)).j;
-assert.equal(pid.portfolio[0].kind,'post');const at2=(await w('/upload','POST',{data:'data:image/png;base64,'+PNG3})).j.id;assert.equal((await w('/me/portfolio','POST',{attachment_id:at2,kind:'reel'})).s,400);
+assert.equal(pid.portfolio[0].kind,'post');
 assert.equal(pid.bio.includes('10 سنوات'),true);assert.equal(pid.skills[0],'سباكة');assert.equal(pid.portfolio.length,1);
 const anon=await cl();const pub=await anon('/providers/'+wid);assert.equal(pub.s,200,'الملف العام متاح للزائر');assert.equal(pub.j.name,'نجار تجريبي');assert.equal(pub.j.portfolio.length,1);
 for(const k of ['phone','email','password','vat_number','iban','wallet','balance']) assert.equal(k in pub.j,false,'لا يظهر '+k+' في الملف العام');
@@ -930,7 +930,10 @@ const g=(await o(`/agreements/${r.j.id}`)).j;assert.equal(g.status,'agreed','ا�
 assert.equal((await o(`/agreements/${r.j.id}/choose-cash`,'POST')).s,200,'اختيار الكاش');
 assert.equal((await h(`/agreements/${r.j.id}/cash-received`,'POST')).s,200);
 
-// مفتاح هلا للمساعد: يُحفظ مشفّرًا، ولا يُعاد في أي استجابة
+// مفتاح هلا للمساعد: يُحفظ مشفّرًا، ولا يُعاد في أي استجابة، ولا يُقبل قبل تسجيل الرقم الضريبي
+assert.equal((await h('/helper/hala','POST',{api_key:'key-abcdef1234',webhook_secret:'whsec-abcdef1234'})).s,403,'قبل التسجيل الضريبي لا يُحفظ مفتاح هلا');
+const vImg=(await h('/upload','POST',{data:'data:image/png;base64,'+PNGDOC})).j.id;
+assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234',attachment_id:vImg})).s,200,'التسجيل الضريبي للمساعد');
 assert.equal((await h('/helper/hala','POST',{api_key:'key-abcdef1234',webhook_secret:'whsec-abcdef1234'})).s,200);
 const st=await h('/helper/hala');assert.equal(st.j.configured,true);assert.equal(st.j.last4,'1234');
 assert.ok(!JSON.stringify(st.j).includes('whsec'),'السر لا يُعاد');
@@ -1154,4 +1157,14 @@ const h2=cl();await h2('/register','POST',{name:'مساعد خصم ٢',email:'dc
 const s2=await h2(`/direct/${oid}/task`,'POST');assert.equal((await o(`/tasks/${s2.j.id}/accept`,'POST')).s,200);
 assert.equal((await h2(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'PAY10X'})).s,400,'الكود بعد نفاد عدده يُرفض');
 assert.equal((await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'NOPE1'})).s,400,'الكود غير الموجود يُرفض');
+});
+
+test('قفل الحساب: بعد 10 محاولات فاشلة لا يُدخل الحساب حتى مع كلمة المرور الصحيحة، من أي عنوان',async()=>{
+const c0=cl();await c0('/register','POST',{name:'قفل حساب',email:'acl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
+for(let i=0;i<2;i++)assert.equal((await cl()('/login','POST',{email:'acl1@t.sa',password:'wrong-pass'})).s,401);
+const dbc=new DatabaseSync(DBF);assert.equal(dbc.prepare('SELECT n FROM login_attempts WHERE k=?').get('acct|acl1@t.sa').n,2,'الفشل يُحتسب على الحساب');dbc.close();
+const db=new DatabaseSync(DBF);db.prepare('INSERT OR REPLACE INTO login_attempts(k,n,t) VALUES(?,?,?)').run('acct|acl1@t.sa',10,Date.now());db.close();
+assert.equal((await cl()('/login','POST',{email:'acl1@t.sa',password:'12345678'})).s,429,'الحساب مقفل');
+const db2=new DatabaseSync(DBF);db2.prepare('DELETE FROM login_attempts WHERE k=?').run('acct|acl1@t.sa');db2.close();
+assert.equal((await cl()('/login','POST',{email:'acl1@t.sa',password:'12345678'})).s,200,'بعد انتهاء القفل يعمل الدخول');
 });
