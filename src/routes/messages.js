@@ -69,9 +69,15 @@ generated_at:new Date().toISOString(),platform_note:'المنصة تسجّل ا�
 
 route('GET','/me/payment-config',c=>{const u=need(c);const hT=get('SELECT vat_status,vat_number FROM users WHERE id=?',u.id)||{};const hTaxed=hT.vat_status==='registered'&&!!hT.vat_number;const regP=SET().platform_vat_registered==='1';return{vat:hTaxed||regP}});
 route('POST','/direct/(\\d+)/payment-link',c=>tx(()=>{const u=verified(c),peer=+c.p[0];if(u.account_type!=='helper')throw err(403,'رابط الدفع للمساعد فقط');if(peer===u.id)throw err(400,'غير صالح');if(!get('SELECT 1 x FROM users WHERE id=? AND active=1',peer))throw err(404,'المستخدم غير موجود');if(needsVat(u))throw err(403,'رقمك الضريبي غير مُعتمد حاليًا، عدّله في ملفك الشخصي قبل إرسال روابط الدفع');if(blocked(u.id,peer))throw err(403,'لا يمكن التواصل مع هذا المستخدم');
-const work=Math.round(Number(c.b.amount)*100)/100,mat=Math.round(Number(c.b.materials||0)*100)/100;if(!Number.isFinite(work)||work<1||work>100000)throw err(400,'أدخل شغل اليد بين 1 و 100000 ريال');if(!Number.isFinite(mat)||mat<0||mat>100000)throw err(400,'قيمة القطع غير صالحة');
+let work=Math.round(Number(c.b.amount)*100)/100,mat=Math.round(Number(c.b.materials||0)*100)/100;if(!Number.isFinite(work)||work<1||work>100000)throw err(400,'أدخل شغل اليد بين 1 و 100000 ريال');if(!Number.isFinite(mat)||mat<0||mat>100000)throw err(400,'قيمة القطع غير صالحة');
 const description='شغل يد';
 const openTk=get("SELECT id FROM tasks WHERE helper_id=? AND client_id=? AND status='accepted' AND agreement_id IS NULL ORDER BY id DESC LIMIT 1",u.id,peer);if(!openTk)throw err(400,'لا يُرسل رابط الدفع إلا بعد قبول العميل للمهمة');
+// كود الخصم: يُطبَّق على شغل اليد والقطع قبل الضريبة، ويُحسب العداد عند إنشاء الرابط داخل المعاملة نفسها
+const dcCode=String(c.b.discount_code||'').trim().toUpperCase();let dc=null;
+if(dcCode){dc=get('SELECT id,percent,max_uses,used,active FROM discount_codes WHERE code=?',dcCode);if(!dc||!dc.active||dc.used>=dc.max_uses)throw err(400,'كود الخصم غير صالح أو انتهت صلاحيته')}
+const origTotal=Math.round((work+mat)*100)/100;
+if(dc&&Math.round((origTotal*(1-dc.percent/100)))<1)throw err(400,'الخصم يجعل الإجمالي أقل من ريال');if(dc){const keep=1-dc.percent/100;work=Math.round(work*keep*100)/100;mat=Math.round(mat*keep*100)/100;const upd=run('UPDATE discount_codes SET used=used+1 WHERE id=? AND active=1 AND used<max_uses',dc.id);if(!upd.changes)throw err(400,'كود الخصم انتهت صلاحيته للتو')}
+const discAmt=dc?Math.round((origTotal-(work+mat))*100)/100:0;
 const hT=get('SELECT vat_status,vat_number FROM users WHERE id=?',u.id)||{};const hTaxed=hT.vat_status==='registered'&&!!hT.vat_number;const regP=SET().platform_vat_registered==='1';
 const base=Math.round((work+mat)*100)/100;const vatA=(hTaxed||regP)?Math.round(base*0.15*100)/100:0;const totalA=Math.round((base+vatA)*100)/100;
 const commA=Math.round(work*COMMISSION_PCT)/100;
@@ -79,6 +85,7 @@ const netA=Math.round((totalA-commA)*100)/100;
 activateVatIfNeeded(commA);
 const id=Number(run("INSERT INTO agreements(a_id,b_id,amount,description,vat_amount,total_amount,helper_net,materials,status,source,updated_at) VALUES(?,?,?,?,?,?,?,?,'agreed','link',datetime('now'))",u.id,peer,work,description,vatA,totalA,netA,mat).lastInsertRowid);
 run("UPDATE tasks SET agreement_id=? WHERE id=?",id,openTk.id);
+if(dc)run('UPDATE agreements SET discount_code_id=?,discount_amount=? WHERE id=?',dc.id,discAmt,id);
 notify(peer,`${u.name} أرسل لك رابط دفع بقيمة ${totalA} ريال`,'#/direct/'+u.id,{mail:false});
 return{id,total:totalA,net:netA}}));
 

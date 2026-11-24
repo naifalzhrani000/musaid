@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS user_follows(follower_id INT NOT NULL REFERENCES user
 // متجر المساعد: منتجات بسعر تعريفي، وسلة لكل زوج (عميل، متجر). السعر النهائي يحدده رابط الدفع لا السلة.
 db.exec("CREATE TABLE IF NOT EXISTS shop_products(id INTEGER PRIMARY KEY,helper_id INT NOT NULL REFERENCES users(id),title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',price REAL NOT NULL CHECK(price>0),active INT NOT NULL DEFAULT 1,created_at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE INDEX IF NOT EXISTS ix_shop_products_helper ON shop_products(helper_id);CREATE TABLE IF NOT EXISTS shop_cart(user_id INT NOT NULL REFERENCES users(id),product_id INT NOT NULL REFERENCES shop_products(id),qty INT NOT NULL DEFAULT 1 CHECK(qty>0),PRIMARY KEY(user_id,product_id))");
 db.exec("CREATE TABLE IF NOT EXISTS discount_codes(id INTEGER PRIMARY KEY,code TEXT UNIQUE NOT NULL,percent INT NOT NULL CHECK(percent BETWEEN 1 AND 100),max_uses INT NOT NULL CHECK(max_uses>0),used INT NOT NULL DEFAULT 0,active INT NOT NULL DEFAULT 1,created_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+for(const [col,def] of [['discount_code_id','INT'],['discount_amount','REAL']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('shop_products') WHERE name='image_id'").get())db.exec('ALTER TABLE shop_products ADD COLUMN image_id INT REFERENCES attachments(id)');
 
 db.exec("DELETE FROM settings WHERE key='commission_percent'"); // تنظيف: حذف أي نسبة قديمة مخزّنة

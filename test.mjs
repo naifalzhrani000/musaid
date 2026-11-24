@@ -1137,3 +1137,21 @@ const pr=await h('/shop/products','POST',{title:'حنفية',description:'',pric
 const prod=(await cl()(`/shop/${hid}`)).j.products.find(x=>x.id===pr.j.id);assert.equal(prod.image_id,up.j.id,'الصورة تظهر مع المنتج');
 assert.equal((await cl()(`/files/${up.j.id}`)).s,200,'صورة المنتج متاحة للزوار');
 });
+
+test('كود الخصم على رابط الدفع: يُخصم من السعر قبل الضريبة، ويُستهلك العداد، ولا يُقبل بعد نفاده',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
+const o=cl();await o('/register','POST',{name:'عميل خصم',email:'dc1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل خصم',phone:'0500009801'});
+const oid=(await o('/me')).j.user.id;
+const h=cl();await h('/register','POST',{name:'مساعد خصم',email:'dc2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد خصم',phone:'0500009802'});
+const adm=cl();await adm('/login','POST',{email:'admin@t.sa',password:'12345678'});
+assert.equal((await adm('/admin/discounts','POST',{code:'pay10x',percent:10,max_uses:1})).s,200);
+const openTask=async()=>{const s=await h(`/direct/${oid}/task`,'POST');assert.equal(s.s,200);assert.equal((await o(`/tasks/${s.j.id}/accept`,'POST')).s,200)};
+await openTask();
+const r=await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'PAY10X'});assert.equal(r.s,200,'الكود الصحيح يُقبل');
+const g=(await o(`/agreements/${r.j.id}`)).j;assert.equal(g.amount,90,'الخصم 10% يُطبَّق على شغل اليد');
+const row=(await adm('/admin/discounts')).j.find(x=>x.code==='PAY10X');assert.equal(row.used,1,'العداد يزيد');
+const h2=cl();await h2('/register','POST',{name:'مساعد خصم ٢',email:'dc3@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h2);await h2('/profile','POST',{name:'مساعد خصم ٢',phone:'0500009803'});
+const s2=await h2(`/direct/${oid}/task`,'POST');assert.equal((await o(`/tasks/${s2.j.id}/accept`,'POST')).s,200);
+assert.equal((await h2(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'PAY10X'})).s,400,'الكود بعد نفاد عدده يُرفض');
+assert.equal((await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'NOPE1'})).s,400,'الكود غير الموجود يُرفض');
+});
