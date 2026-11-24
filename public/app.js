@@ -22,7 +22,7 @@ document.addEventListener('click',e=>{const pt=e.target.closest&&e.target.closes
 function nav(){const u=me.user,h=location.hash||'#/',a=(l,t)=>`<a href="${l}" class="${h===l?'on':''}">${t}</a>`;const isHome=h==='#/'||h==='#'||h==='';
 $('#nav').innerHTML=`<a class=logo href="#/"><span class=mark><img loading=lazy decoding=async src=/hand.png alt=""></span>المساعد</a>${isHome?(u?`<a class=home-av id=hav-profile href="#/profile" aria-label="ملفي الشخصي">${esc((me.user.name||'؟').trim().charAt(0))}</a>`:`<button class=home-av id=hav type=button aria-label="القائمة">؟</button>`):''}<div class=hact>${u?`<a class=bell href="#/notifs" aria-label="الإشعارات">${ic(I.bell)}${me.unread?`<i class=cnt>${me.unread>99?'99+':me.unread}</i>`:''}</a>`:'<a class=hlogin href="#/login">تسجيل الدخول</a>'}<button id=mb aria-label="القائمة">${ic(I.menu)}</button></div>`;
 $('#nav').prepend($('#mb'));
-$('#menu').innerHTML=a('#/','المساعد الذكي')+(u?a('#/profile/data','بيانات الحساب'):'')+(isStandalone()?'':'<a href="#" data-act=installApp>تثبيت التطبيق</a>')+(u&&u.account_type==='helper'?a('#/follow','متابعة'):'')+(u?a('#/chats','محادثاتي')+a('#/profile',u&&u.account_type==='helper'?'متجري':'ملفي الشخصي')+`<a href="#" data-act=toggleAllNotify>${allNotifyOn()?'إيقاف كل الإشعارات':'تفعيل كل الإشعارات'}</a>`+(['admin','staff'].includes(u.role)?a('#/manage','الإدارة'):''):'')+(u?'<a href="#/settings">الإعدادات</a>'+''+'<a href="#" data-act="logout">تسجيل الخروج</a>':'')+'<div class=menu-legal>'+(u&&u.account_type==='helper'?a('#/profile/bio','النبذة'):'')+a('#/faq','الأسئلة الشائعة')+a('#/complaints','سياسة الشكاوى')+a('#/about','من نحن')+a('#/contact','تواصل معنا')+a('#/terms','الشروط والأحكام')+a('#/privacy','سياسة الخصوصية')+'</div>';
+$('#menu').innerHTML=a('#/','المساعد الذكي')+(u?a('#/profile/data','بيانات الحساب'):'')+(isStandalone()?'':'<a href="#" data-act=installApp>تثبيت التطبيق</a>')+(u&&u.account_type==='helper'?a('#/follow','متابعة'):'')+(u?a('#/chats','محادثاتي')+a('#/profile',u&&u.account_type==='helper'?'متجري':'حسابي')+`<a href="#" data-act=toggleAllNotify>${allNotifyOn()?'إيقاف كل الإشعارات':'تفعيل كل الإشعارات'}</a>`+(['admin','staff'].includes(u.role)?a('#/manage','الإدارة'):''):'')+(u?'<a href="#/settings">الإعدادات</a>'+''+'<a href="#" data-act="logout">تسجيل الخروج</a>':'')+'<div class=menu-legal>'+(u&&u.account_type==='helper'?a('#/profile/bio','النبذة'):'')+a('#/faq','الأسئلة الشائعة')+a('#/complaints','سياسة الشكاوى')+a('#/about','من نحن')+a('#/contact','تواصل معنا')+a('#/terms','الشروط والأحكام')+a('#/privacy','سياسة الخصوصية')+'</div>';
 try{if(me.user&&navigator.setAppBadge){me.unread?navigator.setAppBadge(me.unread):navigator.clearAppBadge()}}catch{}
 renderBottom(h);$('#menu').onclick=e=>{if(e.target.tagName==='A')closeMenu()}}
 async function insights(){location.hash='#/manage/insights'}
@@ -137,7 +137,7 @@ const showBadge=own?me.user.email_verified!==0:isH;
 const showQrBtn=isH&&(own||['admin','staff'].includes(me.user.role))?`<button type=button class=pf2-ib id=pfQr aria-label="بطاقة QR للمحل">${g(IC.qr,24)}</button>`:'';
 const verified=showBadge?`<span class=pf2-ver aria-label="حساب موثّق">${g(IC.tick,14,'pf2-vt')}</span>`:'';
 const avatar=own?`<button class=pf2-av id=avEdit type=button aria-label="تغيير الصورة الشخصية">${avHtml(p.avatar,p.name)}</button>`:`<div class=pf2-av>${avHtml(p.avatar,p.name)}</div>`;
-const tabs=own?[['svc',isH?'منتجاتي':'خدماتي',IC.bag],['chats','محادثاتي',IC.chat],['set','الإعدادات',IC.gear]]:[['svc',isH?'المنتجات':'الخدمات',IC.bag],['wk','الأعمال',IC.img],['rev','التقييمات',IC.star]];
+const tabs=own?[...(isH?[['svc',isH?'منتجاتي':'خدماتي',IC.bag]]:[]),['chats','محادثاتي',IC.chat],['set','الإعدادات',IC.gear]]:[['svc',isH?'المنتجات':'الخدمات',IC.bag],['wk','الأعمال',IC.img],['rev','التقييمات',IC.star]];
 const sub=sk.length?sk.slice(0,3).map(esc).join(' • '):(isH?'مساعد':'عميل');
 const phone=own?(me.user.phone?esc(me.user.phone):'—'):'';
 const addr=esc(city||(own?'—':''));
@@ -147,21 +147,22 @@ const shopCards=(shop.products||[]).map(x=>`<article class=shop-card>${x.image_i
 const storeBlock=`<section class=shop-sec><div class=pf2-sechead><h3><span class=pf2-hi2>${g(IC.bag,18)}</span>${own?'منتجات متجري':'المنتجات'}</h3></div>${shopCards?`<div class=shop-grid>${shopCards}</div>`:`<div class=pf2-empty>${own?'لم تضف منتجات بعد.':'لا توجد منتجات بعد.'}</div>`}${own?'<button type=button class=shop-add id=addProd>+ إضافة منتج</button>':'<button type=button class=shop-cart-btn id=openCart>سلتي</button>'}</section>`;
 const heroBg=cv?` style="background-image:url('/api/files/${+cv}')"`:'';
 app.innerHTML=`<div class=pf2>
-<div class=pf2-top><h1>${own&&isH?'متجري':own?'ملفي الشخصي':'الملف الشخصي'}</h1><span class=pf2-sp></span>${showQrBtn}<button type=button class=pf2-ib id=pfShare aria-label="مشاركة">${g(IC.share,24)}</button><button type=button class=pf2-ib id=pfMenu aria-expanded=false aria-label="القائمة">${g(IC.menu,24)}</button></div>
+<div class=pf2-top><h1>${own&&isH?'متجري':own?'حسابي':'الملف الشخصي'}</h1><span class=pf2-sp></span>${showQrBtn}<button type=button class=pf2-ib id=pfShare aria-label="مشاركة">${g(IC.share,24)}</button><button type=button class=pf2-ib id=pfMenu aria-expanded=false aria-label="القائمة">${g(IC.menu,24)}</button></div>
 <section class=pf2-hero${heroBg}>${own?'<button type=button class=pf2-cov id=covEdit aria-label="تغيير صورة الغلاف"></button>':''}
 <div class=pf2-fade></div>
-<span class=pf2-avail><i></i>متاح لاستقبال الطلبات</span>
+${isH?'<span class=pf2-avail><i></i>متاح لاستقبال الطلبات</span>':''}
 <div class=pf2-avwrap>${avatar}${verified}</div>
 <div class=pf2-txt><h2>${name}</h2><p class=pf2-sub>${sub}</p><p class=pf2-rate><span class=pf2-cl><b>${kfmt(cl)}</b><small>عميل</small></span><i></i><span class=pf2-rt><b>${avg}</b>${g(IC.star,17,'pf2-gold')}</span></p><p class=pf2-loc>${g(IC.pin,16)}<span>${esc(loc)}</span></p></div>
 ${own?`<a class=pf2-edit href="#/profile/data">${g(IC.pen,16)}<span>تعديل الملف</span></a>`:`<a class=pf2-edit href="#/direct/${+p.id}">${g(IC.chat,16)}<span>محادثة</span></a>`}
 </section>
-<section class=pf2-stats><div><span class="pf2-si pf2-c1">${g(IC.bag,19)}</span><b>${sk.length}</b><small>خدمات</small></div><div><span class="pf2-si pf2-c2">${g(IC.check,19)}</span><b>${done}</b><small>طلب مكتمل</small></div><div><span class="pf2-si pf2-gold">${g(IC.star,19)}</span><b>${avg}</b><small>تقييم العملاء</small></div></section>
-<nav class=pf2-tabs role=tablist>${tabs.map(([k,t,d],i)=>`<button type=button role=tab class="${i?'':'on'}" data-pt="${k}">${g(d,18)}<span>${t}</span></button>`).join('')}</nav>
+${isH?`<section class=pf2-stats><div><span class="pf2-si pf2-c1">${g(IC.bag,19)}</span><b>${sk.length}</b><small>خدمات</small></div><div><span class="pf2-si pf2-c2">${g(IC.check,19)}</span><b>${done}</b><small>طلب مكتمل</small></div><div><span class="pf2-si pf2-gold">${g(IC.star,19)}</span><b>${avg}</b><small>تقييم العملاء</small></div></section>`:''}
+<nav class=pf2-tabs role=tablist>${tabs.map(([k,t,d],i)=>`<button type=button role=tab class="${(i||(own&&!isH))?'':'on'}" data-pt="${k}">${g(d,18)}<span>${t}</span></button>`).join('')}</nav>
+${own&&!isH?'':`
 <div class=pf2-panel data-pp=svc>
 <section class=pf2-card><h3><span class=pf2-hi>${g(IC.doc,15)}</span>${own&&me.user.helper_type==='individual'?'نبذة عني':'نبذة عن المحل'}</h3><p class=pf2-bio>${bio?esc(bio):(own?'لم تكتب نبذة بعد. <a href="#/profile/bio">أضفها من هنا ←</a>':'لم يكتب نبذة بعد.')}</p><div class=pf2-info>${own&&me.user.phone?`<a class=pf2-row href="tel:${esc(String(me.user.phone).replace(/\s/g,''))}" aria-label="اتصل بالجوال"><span class="pf2-hi pf2-hc">${g(IC.phone,16)}</span><div><small>الجوال · اضغط للاتصال</small><b dir=ltr>${phone}</b></div></a>`:own?`<div class=pf2-row><span class="pf2-hi pf2-hc">${g(IC.phone,16)}</span><div><small>الجوال</small><b>—</b></div></div>`:''}${p.map_url?`<a class=pf2-row href="${esc(p.map_url)}" target=_blank rel=noopener aria-label="فتح الموقع في الخرائط"><span class="pf2-hi pf2-hc">${g(IC.pin,16)}</span><div><small>العنوان · اضغط لفتح الموقع</small><b>${addr||'—'}</b></div></a>`:`<div class=pf2-row><span class="pf2-hi pf2-hc">${g(IC.pin,16)}</span><div><small>العنوان</small><b>${addr||'—'}</b></div></div>`}</div></section>
 ${isH?storeBlock:''}${isH?'':`<div class=pf2-sechead><h3><span class=pf2-hi2>${g(IC.img,18)}</span>${own?'أعمالنا السابقة':'الأعمال السابقة'}</h3><button type=button class=pf2-all data-pt="wk">${g(IC.chev,14)}<span>عرض الكل</span></button></div>
 ${works.trim()?`<div class=pf2-works>${works}</div>`:'<div class=pf2-empty>لا توجد أعمال بعد.</div>'}`}
-</div>
+</div>`}
 <div class=pf2-panel data-pp=wk hidden>${pics.length?`<div class=pf2-grid>${pics.map(x=>`<figure>${mediaTag(x)}${x.caption?`<figcaption>${esc(x.caption)}</figcaption>`:''}</figure>`).join('')}</div>`:`<div class=pf2-empty>${own?'لم تضف أعمالًا بعد.':'لا توجد أعمال بعد.'}</div>`}</div>
 ${!own?`<div class=pf2-panel data-pp=rev hidden>${revs}</div>`:''}
 
