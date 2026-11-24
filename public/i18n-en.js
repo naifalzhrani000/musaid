@@ -113,7 +113,47 @@ window.EN_DICT = {
  'الدفع':'Payment','بانتظار الدفع':'Awaiting payment','تم الدفع':'Paid','غير مدفوع':'Unpaid','إلغاء':'Cancel',
  'تأكيد':'Confirm','موافق':'Approve','رفض':'Reject','تعديل':'Edit','عودة':'Back','التالي':'Next','السابق':'Previous',
  'بحث':'Search','تصفية':'Filter','الكل':'All','نعم':'Yes','موافقة':'Approval','تنبيه':'Alert','تأكيد الحذف':'Confirm deletion',
- 'شكوى':'Complaint','بلاغ':'Report'
+ 'شكوى':'Complaint','بلاغ':'Report',
+ 'الأرباح بعد عمولة المنصة':'Earnings after platform commission',
+ 'مديونيتك للمنصة':'Your balance owed to the platform',
+ 'عمولات لم تُسدَّد':'Unpaid commissions',
+ 'من فواتيرك السارية':'From your active invoices',
+ 'الطلبات المنجزة':'Completed requests',
+ 'المنجزة':'Completed',
+ 'الفواتير الصادرة':'Issued invoices',
+ 'الفواتير الواردة':'Received invoices',
+ 'لا يوجد عملاء بعد':'No clients yet',
+ 'تصدير بياناتي':'Export my data',
+ 'ملف JSON يضم بيانات حسابك ونشاطك على المنصة':'JSON file with your account and platform activity',
+ 'آخر تعامل':'Last interaction',
+ 'بطاقة محل':'Store card',
+ 'امسح الرمز لفتح ملف':'Scan the code to open the profile of',
+ 'والتواصل معه عبر':'and contact them through',
+ 'طباعة البطاقة':'Print card',
+ 'مشاركة الرابط':'Share link',
+ 'مشاركة الملف':'Share file',
+ 'نسخ الرابط':'Copy link',
+ 'تم نسخ الرابط':'Link copied',
+ 'تنزيل':'Download',
+ 'شعار':'Logo',
+ 'ألوان':'Colors',
+ 'اختر قسمًا أو قسمين':'Choose one or two categories',
+ 'أكمل تسجيلك كمساعد من هنا':'Finish your provider sign-up here',
+ 'الرقم الضريبي (15 رقمًا يبدأ بـ 3)':'Tax number (15 digits starting with 3)',
+ 'أبي سباك يصلح تسريب مياه':'I need a plumber to fix a water leak',
+ 'أبي تركيب سخان مياه':'I need a water heater installed',
+ 'أبي كهربائي يصلح قاطع':'I need an electrician to fix a breaker',
+ 'أبي تمديد إنارة':'I need lighting installed',
+ 'أرسلنا رمزًا مكوّنًا من 6 أرقام إلى':'We sent a 6-digit code to',
+ 'أدخله لتفعيل حسابك':'Enter it to activate your account',
+ 'أدخل الرمز المكوّن من 6 أرقام الذي أرسلناه إلى بريدك':'Enter the 6-digit code we sent to your email',
+ 'تفعيل البريد الإلكتروني':'Activate email',
+ 'تفعيل البريد':'Verify email',
+ 'إعادة إرسال الرمز':'Resend code',
+ 'جاري التفعيل':'Activating…',
+ 'أرسلنا رمزًا جديدًا إن كان البريد مسجلًا':'If the email is registered, a new code was sent',
+ 'أدخل الرمز الذي وصل إلى بريدك':'Enter the code sent to your email',
+ 'صالح 10 دقائق':'valid for 10 minutes'
 };
 (function(){
  var EN = localStorage.getItem('lang') === 'en';
@@ -130,6 +170,7 @@ window.EN_DICT = {
  function tr(n){
    if (n.nodeType === 3) { if (hasAr.test(n.nodeValue)) { var o = fix(n.nodeValue); if (o !== n.nodeValue) n.nodeValue = o; } return; }
    if (n.nodeType === 1 && n.getAttribute) {
+     var de = n.getAttribute('data-en'); if (de !== null) { if (n.getAttribute('data-en-done') !== de) { n.setAttribute('data-en-done', de); n.innerHTML = de; } return; }
      ['placeholder','aria-label','title'].forEach(function(a){ var v = n.getAttribute(a); if (v && hasAr.test(v)) { var o = fix(v); if (o !== v) n.setAttribute(a, o); } });
    }
  }
