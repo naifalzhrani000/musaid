@@ -264,7 +264,7 @@ header.mg-page-head,.mg-page-head{background:transparent;color:#2a1a72;box-shado
 .mg-page-head h2{color:#2a1a72}
 
 /* لوحة الإدارة: توزيع الشريط العلوي والصفحة الرئيسية حسب المرجع */
-.mg-shell{grid-template-columns:164px minmax(0,1fr);grid-template-rows:82px minmax(0,1fr);min-height:100vh;direction:rtl;background:#f4f1fc}
+.mg-shell{grid-template-columns:164px minmax(0,1fr);grid-template-rows:82px minmax(0,1fr);min-height:100vh;direction:inherit;background:#f4f1fc}
 .mg-shell .mg-topbar{grid-column:1/-1;grid-row:1;margin:0;border-radius:0 0 16px 16px;padding:12px 28px;z-index:2;border-bottom:1px solid #e3ddf6}
 .mg-shell .mg-tabs{grid-column:1;grid-row:2;position:sticky;top:0;height:calc(100vh - 82px);min-height:520px;border-radius:0 0 0 14px;padding:24px 10px 18px}
 .mg-shell .mg-main{grid-column:2;grid-row:2;padding:24px 28px;min-width:0}
@@ -1330,3 +1330,7 @@ html[dir=ltr] .pf2-rate,html[dir=ltr] .pf2-loc{justify-content:flex-end}
 html[dir=ltr] .cat-card b{flex:1}
 html[dir=ltr] .cat-card{gap:4px;padding-inline:8px}
 html[dir=ltr] .cat-card b{font-size:15px;min-width:0}
+/* English admin: follow the page direction (LTR) and give the wider English labels room. */
+html[lang=en] .mg-shell{grid-template-columns:200px minmax(0,1fr)}
+html[lang=en] .mg-tab{white-space:normal}
+@media (max-width:900px){html[lang=en] .mg-shell{grid-template-columns:1fr}}
