@@ -1144,3 +1144,9 @@ const c=cl();await c('/register','POST',{name:'بلا فيديو',email:'nov1@t.
 assert.equal((await c('/upload-video/init','POST',{mime:'video/mp4',size:1000})).s,404,'لا تسجيل فيديو');
 assert.equal((await c('/upload-raw','POST',{})).s,404,'لا رفع خام للفيديو');
 });
+
+test('الترجمة الإنجليزية: ملف الترجمة يُقدَّم للمتصفح',async()=>{
+const r=await fetch('http://localhost:3999/i18n-en.js');
+assert.equal(r.status,200,'i18n-en.js يجب أن يُقدَّم');
+assert.ok(/javascript/.test(r.headers.get('content-type')||''),'نوع المحتوى JavaScript');
+});
