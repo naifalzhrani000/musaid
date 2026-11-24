@@ -1150,3 +1150,23 @@ const r=await fetch('http://localhost:3999/i18n-en.js');
 assert.equal(r.status,200,'i18n-en.js يجب أن يُقدَّم');
 assert.ok(/javascript/.test(r.headers.get('content-type')||''),'نوع المحتوى JavaScript');
 });
+
+test('خصم الدفع: يطبّقه العميل على رابط الدفع بعد وصوله، ويعاد حساب الإجمالي مرة واحدة فقط',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
+const o=cl();await o('/register','POST',{name:'عميل خصم',email:'dscclient@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل خصم',phone:'0500020202'});
+const oid=(await o('/me')).j.user.id;
+const other=await reg('dcOther');
+const h=cl();await h('/register','POST',{name:'مساعد خصم',email:'dschelper@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد خصم',phone:'0500030303',city:'جدة',vat_number:''});
+const hid=(await h('/me')).j.user.id;
+{const d=new DatabaseSync(DBF);d.prepare("INSERT INTO discount_codes(code,percent,max_uses) VALUES('DSC10',10,2)").run();d.close();}
+const t=await h(`/direct/${oid}/task`,'POST');assert.equal(t.s,200);assert.equal((await o(`/tasks/${t.j.id}/accept`,'POST')).s,200);
+const pl=await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب',amount:200});assert.equal(pl.s,200);
+assert.equal(pl.j.total,230,'الرابط يُصدر بالسعر الذي يحدده المتجر مع الضريبة 15%');
+assert.equal((await h(`/agreements/${pl.j.id}/discount`,'POST',{discount_code:'DSC10'})).s,403,'المتجر لا يطبّق الخصم');
+assert.equal((await other(`/agreements/${pl.j.id}/discount`,'POST',{discount_code:'DSC10'})).s,403,'عميل آخر لا يطبّق الخصم');
+assert.equal((await o(`/agreements/${pl.j.id}/discount`,'POST',{discount_code:'NOPE'})).s,400,'كود غير موجود');
+const ok=await o(`/agreements/${pl.j.id}/discount`,'POST',{discount_code:'dsc10'});assert.equal(ok.s,200);assert.equal(ok.j.total,207,'10% من 200 = 180 ثم الضريبة 15% = 207');
+assert.equal((await o(`/agreements/${pl.j.id}/discount`,'POST',{discount_code:'DSC10'})).s,400,'لا يُطبَّق الخصم مرتين على الرابط نفسه');
+const list=(await o(`/direct/${hid}/agreements`)).j.find(g=>g.id===pl.j.id);
+assert.equal(list.total_amount,207);assert.equal(list.discount_amount,20);assert.ok(list.discount_code_id);
+});

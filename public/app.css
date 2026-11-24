@@ -1334,3 +1334,5 @@ html[dir=ltr] .cat-card b{font-size:15px;min-width:0}
 html[lang=en] .mg-shell{grid-template-columns:200px minmax(0,1fr)}
 html[lang=en] .mg-tab{white-space:normal}
 @media (max-width:900px){html[lang=en] .mg-shell{grid-template-columns:1fr}}
+
+.dc-disc{display:flex;gap:6px;margin-top:8px}.dc-disc input{flex:1;min-width:0;padding:8px 10px;border:1px solid #d9d5e8;border-radius:10px;font:inherit}.dc-disc-ok{display:block;margin-top:8px;color:#2e7d32;font-weight:600}
