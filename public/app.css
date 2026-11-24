@@ -1336,3 +1336,63 @@ html[lang=en] .mg-tab{white-space:normal}
 @media (max-width:900px){html[lang=en] .mg-shell{grid-template-columns:1fr}}
 
 .dc-disc{display:flex;gap:6px;margin-top:8px}.dc-disc input{flex:1;min-width:0;padding:8px 10px;border:1px solid #d9d5e8;border-radius:10px;font:inherit}.dc-disc-ok{display:block;margin-top:8px;color:#2e7d32;font-weight:600}
+
+
+/* ==========================================================
+   طبقة نهائية لتخطيط لوحة الإدارة (عربي وإنجليزي، جوال وحاسب)
+   تحل محل القواعد المتراكمة السابقة للقائمة والشبكة.
+   - الحاسب والآيباد: القائمة ثابتة بجانب المحتوى ولا تتحرك مع التمرير،
+     وتتبع الاتجاه تلقائيًا (يمين في العربي، يسار في الإنجليزي).
+   - الجوال: القائمة درج مخفي افتراضيًا يُفتح بزر ☰ ويُغلق بالخلفية أو Esc.
+   ========================================================== */
+body .mg-shell{display:grid !important;grid-template-columns:clamp(190px,16vw,250px) minmax(0,1fr) !important;grid-template-rows:auto minmax(0,1fr) !important;grid-template-areas:"side top" "side main" !important;align-items:start !important;align-content:start !important;min-height:100vh !important;min-width:0}
+body .mg-shell .mg-tabs{grid-area:side !important;position:sticky !important;top:0 !important;inset:auto !important;transform:none !important;transition:none !important;width:auto !important;max-width:none !important;min-width:0 !important;height:100vh !important;height:100dvh !important;min-height:0 !important;margin:0 !important;align-self:start !important;overflow-y:auto !important;overflow-x:hidden !important;overscroll-behavior:contain;z-index:30 !important;box-shadow:none !important;border-radius:0 !important;padding:18px 12px 20px !important;display:flex !important;flex-direction:column !important;gap:4px !important}
+body .mg-shell .mg-tab{min-width:0}
+body .mg-shell .mg-tab span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+body .mg-shell .mg-topbar{grid-area:top !important;grid-column:auto !important;grid-row:auto !important;position:sticky !important;top:0 !important;z-index:20 !important;align-self:start !important;margin:0 !important;min-width:0 !important;height:auto !important;min-height:64px !important;padding:10px 24px !important;border-radius:0 !important;display:flex !important;align-items:center !important;justify-content:space-between !important;gap:10px !important;flex-wrap:nowrap !important}
+body .mg-shell .mg-main{grid-area:main !important;grid-column:auto !important;grid-row:auto !important;display:block !important;min-width:0 !important;max-width:none !important;width:auto !important;margin:0 !important;padding:24px 28px 48px !important;box-sizing:border-box !important;justify-self:stretch !important}
+body .mg-shell #mgBody{min-width:0;max-width:100%}
+body .mg-shell .mg-burger{display:none !important}
+body .mg-shell .mg-scrim{display:none !important}
+body .mg-shell .mg-tb-end{display:flex;align-items:center;gap:10px;flex:none}
+
+@media (min-width:901px) and (max-width:1180px){
+  body .mg-shell{grid-template-columns:184px minmax(0,1fr) !important}
+  body .mg-shell .mg-tab{font-size:13px !important;padding:10px 10px !important}
+  body .mg-shell .mg-main{padding:20px 22px 40px !important}
+  body .mg-shell .mg-topbar{padding:10px 18px !important}
+}
+
+@media (min-width:1600px){
+  body .mg-shell .mg-main{padding:28px 40px 56px !important}
+  body .mg-shell .mg-topbar{padding:12px 40px !important}
+}
+
+@media (max-width:900px){
+  body .mg-shell{grid-template-columns:minmax(0,1fr) !important;grid-template-areas:"top" "main" !important;grid-template-rows:auto minmax(0,1fr) !important}
+  body .mg-shell .mg-topbar{position:sticky !important;top:0 !important;padding:10px 14px !important;min-height:58px !important;border-radius:0 !important;grid-area:top !important}
+  body .mg-shell .mg-burger{display:inline-flex !important;flex:none;width:40px !important;height:40px !important;margin:0 !important}
+  body .mg-shell .mg-tabs{position:fixed !important;top:0 !important;bottom:0 !important;inset-inline-end:auto !important;inset-inline-start:-110% !important;width:min(300px,84vw) !important;height:100vh !important;height:100dvh !important;z-index:60 !important;transition:inset-inline-start .22s ease !important;padding:calc(16px + env(safe-area-inset-top,0px)) 12px calc(20px + env(safe-area-inset-bottom,0px)) !important;box-shadow:0 0 28px rgba(0,0,0,.28) !important;align-self:auto !important}
+  body .mg-shell .mg-tabs.open{inset-inline-start:0 !important}
+  body .mg-shell .mg-scrim.on{display:block !important;position:fixed !important;inset:0 !important;z-index:55 !important;background:rgba(14,8,40,.45) !important;border:0 !important;margin:0 !important;padding:0 !important;cursor:pointer}
+  body .mg-shell .mg-main{padding:14px 14px 40px !important}
+}
+
+@media (max-width:520px){
+  body .mg-shell .mg-topbar{padding:8px 10px !important;gap:6px !important}
+  body .mg-shell .mg-brand b{font-size:15px !important}
+  body .mg-shell .mg-brand img{width:28px !important;height:28px !important}
+  body .mg-shell .mg-bell,body .mg-shell .mg-avatar{display:none !important}
+  body .mg-shell .mg-theme,body .mg-shell .mg-tb-end button{padding:6px 9px !important;font-size:12px !important;white-space:nowrap}
+  body .mg-shell .mg-main{padding:12px 10px 40px !important}
+  body .mg-shell .mg-page-head h2{font-size:19px !important}
+  body .mg-shell .mg-stats{grid-template-columns:1fr 1fr !important}
+  body .mg-shell .mg-row{flex-wrap:wrap !important}
+  body .mg-shell #mgBody .btn{padding:8px 12px !important}
+}
+
+@media (max-width:360px){
+  body .mg-shell .mg-stats{grid-template-columns:1fr !important}
+  body .mg-shell .mg-tabs{width:86vw !important}
+  body .mg-shell .mg-brand b{font-size:14px !important}
+}
