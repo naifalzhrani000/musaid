@@ -338,7 +338,7 @@ assert.equal((await adm('/admin/restore/cancel','POST')).s,200);
 assert.equal((await adm('/admin/restore/apply','POST',{confirm:'استعادة'})).s,400,'لا تطبيق بعد الإلغاء');
 });
 
-test('استعادة بالرمز: 6 أرقام، محدودة المحاولات، ثم كلمة مرور جديدة',async()=>{
+test('استعادة بالرمز: 4 أرقام، محدودة المحاولات، ثم كلمة مرور جديدة',async()=>{
 const c=await cl();await c('/register','POST',{name:'رمز استعادة',email:'otp1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
 const uid=(await c('/me')).j.user.id;
 await c('/logout','POST');
@@ -346,32 +346,32 @@ await cl()('/forgot','POST',{email:'otp1@t.sa'});
 const db=new DatabaseSync(DBF);const row=db.prepare('SELECT code_hash FROM reset_codes WHERE user_id=?').get(uid);db.close();
 assert.ok(row,'الرمز محفوظ');
 const sh=s=>createHash('sha256').update(s).digest('hex');
-const code='482193';
+const code='4821';
 const db2=new DatabaseSync(DBF);db2.prepare('UPDATE reset_codes SET code_hash=?,attempts=0 WHERE user_id=?').run(macFor(DBF,code+':'+uid),uid);db2.close();
 const x=cl();
-assert.equal((await x('/reset-code','POST',{email:'otp1@t.sa',code:'000000'})).s,400);
+assert.equal((await x('/reset-code','POST',{email:'otp1@t.sa',code:'0000'})).s,400);
 assert.equal((await x('/reset-code','POST',{email:'otp1@t.sa',code})).s,200,'الرمز الصحيح يعمل');
 const t=(await x('/reset-code','POST',{email:'otp1@t.sa',code})).j;assert.equal(t.s,undefined);
 });
 
-test('الرمز المكوّن من 6 أرقام يُقفل بعد 5 محاولات خاطئة',async()=>{
+test('الرمز المكوّن من 4 أرقام يُقفل بعد 5 محاولات خاطئة',async()=>{
 const c=await cl();await c('/register','POST',{name:'قفل الرمز',email:'lock1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
 const uid=(await c('/me')).j.user.id;const sh=s=>createHash('sha256').update(s).digest('hex');
-const db=new DatabaseSync(DBF);db.prepare("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,macFor(DBF,'777777:'+uid));db.close();
+const db=new DatabaseSync(DBF);db.prepare("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,macFor(DBF,'7777:'+uid));db.close();
 const x=cl();
-for(let i=0;i<5;i++)assert.equal((await x('/reset-code','POST',{email:'lock1@t.sa',code:'000000'})).s,400);
-assert.equal((await x('/reset-code','POST',{email:'lock1@t.sa',code:'777777'})).s,400,'بعد 5 محاولات حتى الرمز الصحيح لا يعمل');
+for(let i=0;i<5;i++)assert.equal((await x('/reset-code','POST',{email:'lock1@t.sa',code:'0000'})).s,400);
+assert.equal((await x('/reset-code','POST',{email:'lock1@t.sa',code:'7777'})).s,400,'بعد 5 محاولات حتى الرمز الصحيح لا يعمل');
 });
 
 test('تفعيل البريد بالرمز: الرمز الصحيح يفعّل، والخاطئ يُقفل بعد 5 محاولات',async()=>{
 const c=await cl();await c('/register','POST',{name:'تفعيل بالرمز',email:'vc1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
 const uid=(await c('/me')).j.user.id;const sh=s=>createHash('sha256').update(s).digest('hex');
 const db=new DatabaseSync(DBF);db.prepare('UPDATE users SET email_verified=0 WHERE id=?').run(uid);
-db.prepare("INSERT OR REPLACE INTO verify_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,macFor(DBF,'314159:'+uid));db.close();
-for(let i=0;i<5;i++)assert.equal((await c('/verify-code','POST',{code:'000000'})).s,400);
-assert.equal((await c('/verify-code','POST',{code:'314159'})).s,400,'بعد 5 محاولات يُقفل');
+db.prepare("INSERT OR REPLACE INTO verify_codes(user_id,code_hash,expires_at,attempts) VALUES(?,?,datetime('now','+10 minutes'),0)").run(uid,macFor(DBF,'3141:'+uid));db.close();
+for(let i=0;i<5;i++)assert.equal((await c('/verify-code','POST',{code:'0000'})).s,400);
+assert.equal((await c('/verify-code','POST',{code:'3141'})).s,400,'بعد 5 محاولات يُقفل');
 const db2=new DatabaseSync(DBF);db2.prepare("UPDATE verify_codes SET attempts=0 WHERE user_id=?").run(uid);db2.close();
-assert.equal((await c('/verify-code','POST',{code:'314159'})).s,200,'الرمز الصحيح يفعّل');
+assert.equal((await c('/verify-code','POST',{code:'3141'})).s,200,'الرمز الصحيح يفعّل');
 assert.equal((await c('/me')).j.user.email_verified,1);
 });
 

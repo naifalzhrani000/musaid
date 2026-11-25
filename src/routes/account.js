@@ -77,7 +77,7 @@ audit(u.id,'account_delete',`user:${u.id}`);return{ok:1}}));
 route('POST','/forgot',async c=>{const email=String(c.b.email||'').trim().toLowerCase();const u=email?get('SELECT id,name,email FROM users WHERE email=? AND active=1',email):null;
 try{hitOr429('fgip|'+(c.ip||'x'),10)}catch{throw err(429,'محاولات كثيرة، حاول بعد قليل')}
 let allowed=false;if(u){try{hitOr429('fg|'+u.id,3);allowed=true}catch{}}
-if(allowed){const code=String(crypto.randomInt(0,1000000)).padStart(6,'0');run("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts,created_at) VALUES(?,?,datetime('now','+10 minutes'),0,datetime('now'))",u.id,macOf(code+':'+u.id));
+if(allowed){const code=String(crypto.randomInt(0,10000)).padStart(4,'0');run("INSERT OR REPLACE INTO reset_codes(user_id,code_hash,expires_at,attempts,created_at) VALUES(?,?,datetime('now','+10 minutes'),0,datetime('now'))",u.id,macOf(code+':'+u.id));
 sendMail(u.email,'رمز استعادة كلمة المرور - المساعد',`<div dir="rtl"><p>أهلًا ${hx(u.name)}،</p><p>رمز استعادة كلمة المرور:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>الرمز صالح لمدة 10 دقائق، ويُستخدم مرة واحدة. إذا لم تطلب ذلك فتجاهل هذه الرسالة.</p></div>`).catch(()=>{})}
 return{ok:1}});
 route('POST','/reset-code',c=>{const email=String(c.b.email||'').trim().toLowerCase(),code=String(c.b.code||'').trim();const bad=()=>{throw err(400,'الرمز غير صحيح أو منتهي، اطلب رمزًا جديدًا')};
