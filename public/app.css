@@ -1396,3 +1396,20 @@ body .mg-shell .mg-tb-end{display:flex;align-items:center;gap:10px;flex:none}
   body .mg-shell .mg-tabs{width:86vw !important}
   body .mg-shell .mg-brand b{font-size:14px !important}
 }
+
+/* فاتورة المتجر في الشات: كرت بجدول المنتجات المختارة بصورها وأسعارها ومجموعها */
+body.dchat-mode .dc-col:has(.inv-card){max-width:94%}
+body.dchat-mode .dc-bub:has(.inv-card){padding:10px;border-radius:20px;font-size:14px}
+.inv-card{display:flex;flex-direction:column;gap:10px;width:min(73vw,330px);max-width:100%;font-size:14px;line-height:1.5}
+.inv-title{font-size:15px;font-weight:700;color:#4326a0;padding-inline:2px}
+.inv-wrap{overflow-x:auto;border:1px solid #e3def5;border-radius:12px;background:#fff}
+.inv-t{width:100%;border-collapse:collapse;font-size:12.5px}
+.inv-t th{background:#f3f0fd;color:#4326a0;font-weight:700;padding:7px 6px;text-align:start;white-space:nowrap}
+.inv-t td{padding:7px 6px;border-top:1px solid #efebfa;vertical-align:middle;color:#0d0a2c;line-height:1.4}
+.inv-t td:not(.inv-prod){white-space:nowrap;text-align:start}
+.inv-prod{display:flex;align-items:center;gap:7px;min-width:0}
+.inv-prod span:last-child{word-break:break-word}
+.inv-img{flex:0 0 auto;width:36px;height:36px;border-radius:8px;object-fit:cover;background:#ece9f6;display:block}
+.inv-total{display:flex;justify-content:space-between;align-items:center;background:#4326a0;color:#fff;border-radius:12px;padding:10px 12px;font-size:15px}
+.inv-total b{font-size:16px}
+.inv-note{color:#625a76;font-size:12px;line-height:1.5;padding-inline:2px}

@@ -1087,7 +1087,7 @@ assert.equal((await buyer(`/shop/${hid}/cart/${pid}`,'POST')).s,200,'العمي�
 assert.equal((await h(`/shop/${hid}/cart/${pid}`,'POST')).s,400,'لا يشتري المساعد من متجره');
 const cart=(await buyer(`/shop/${hid}/cart`)).j;assert.equal(cart.length,1);assert.equal(cart[0].qty,1);
 const co=await buyer(`/shop/${hid}/checkout`,'POST');assert.equal(co.s,200);assert.equal(co.j.total,45);
-const msgs=(await buyer(`/direct/${hid}`)).j.messages;assert.ok(msgs.some(m=>m.from_id===bid&&/فاتورة تعريفية/.test(m.body)&&/السعر النهائي يحدده رابط الدفع/.test(m.body)),'الفاتورة وصلت المحادثة');
+const msgs=(await buyer(`/direct/${hid}`)).j.messages;const inv=msgs.find(m=>m.from_id===bid&&m.body.startsWith('[فاتورة المتجر]\n'));assert.ok(inv,'الفاتورة وصلت المحادثة');const invD=JSON.parse(inv.body.slice('[فاتورة المتجر]\n'.length));assert.equal(invD.total,45);assert.equal(invD.items.length,1);assert.equal(invD.items[0].q,1);assert.equal(invD.items[0].p,45);assert.equal((await buyer(`/direct/${hid}`,'POST',{body:inv.body})).s,400,'لا تُزوَّر الفاتورة برسالة عادية');
 assert.equal((await buyer(`/shop/${hid}/cart`)).j.length,0,'السلة تُفرّغ بعد الإرسال');
 assert.equal((await buyer(`/shop/${hid}/checkout`,'POST')).s,400,'لا فاتورة من سلة فارغة');
 assert.equal((await h(`/shop/products/${pid}/delete`,'POST')).s,200);

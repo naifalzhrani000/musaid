@@ -2,6 +2,7 @@ import {route, all, get, run, err, tx, need, str, notify, blocked, hitOr429} fro
 
 // متجر المساعد: المنتجات والسلة والفاتورة التعريفية. لا يمس هذا الملف الدفع أو المبالغ المستلمة.
 const PRICE_MAX=100000,PRODUCTS_MAX=100;
+const INVOICE_TAG='[فاتورة المتجر]\n';
 const isHelper=u=>!!u&&u.account_type==='helper';
 const helperExists=id=>!!get("SELECT 1 x FROM users WHERE id=? AND active=1 AND account_type='helper'",id);
 const money=n=>Math.round(Number(n)*100)/100;
@@ -35,11 +36,11 @@ route('POST','/shop/(\\d+)/cart/(\\d+)/remove',c=>{const u=need(c),pid=+c.p[1];r
 route('POST','/shop/(\\d+)/checkout',c=>tx(()=>{const u=need(c),hid=+c.p[0];
 if(hid===u.id)throw err(400,'غير صالح');if(!helperExists(hid))throw err(404,'المتجر غير موجود');if(blocked(u.id,hid))throw err(403,'لا يمكن التواصل مع هذا المساعد');
 hitOr429('shopco|'+u.id,20);
-const items=all('SELECT p.title,p.price,sc.qty FROM shop_cart sc JOIN shop_products p ON p.id=sc.product_id WHERE sc.user_id=? AND p.helper_id=? AND p.active=1',u.id,hid);
+const items=all('SELECT p.title,p.price,sc.qty,p.image_id FROM shop_cart sc JOIN shop_products p ON p.id=sc.product_id WHERE sc.user_id=? AND p.helper_id=? AND p.active=1',u.id,hid);
 if(!items.length)throw err(400,'السلة فارغة');
-const lines=items.map(i=>`- ${i.title} × ${i.qty} = ${money(i.price*i.qty)} ريال`);
 const total=money(items.reduce((s,i)=>s+i.price*i.qty,0));
-const body=`طلب من المتجر (فاتورة تعريفية غير رسمية):\n${lines.join('\n')}\nالإجمالي التقديري: ${total} ريال\nالسعر النهائي يحدده رابط الدفع الذي يرسله المساعد.`;
+// يعرضها الشات كرت بجدول: علامة ثم JSON من الخادم فقط (t الاسم، p السعر، q الكمية، i رقم الصورة)
+const body=INVOICE_TAG+JSON.stringify({items:items.map(i=>({t:i.title,p:money(i.price),q:i.qty,i:i.image_id||null})),total});
 run('INSERT INTO direct_messages(from_id,to_id,body) VALUES(?,?,?)',u.id,hid,body);
 run('DELETE FROM shop_cart WHERE user_id=? AND product_id IN (SELECT id FROM shop_products WHERE helper_id=?)',u.id,hid);
 notify(hid,`طلب جديد من متجرك بقيمة تقديرية ${total} ريال`,`#/direct/${u.id}`);

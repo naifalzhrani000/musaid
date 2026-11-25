@@ -146,6 +146,8 @@ window.EN_DICT = {
  'اختر قسمًا أو قسمين':'Choose one or two categories',
  'أكمل تسجيلك كمساعد من هنا':'Finish your provider sign-up here',
  'الرقم الضريبي (15 رقمًا يبدأ بـ 3)':'Tax number (15 digits starting with 3)',
+ 'فاتورة المنتجات المختارة':'Selected products invoice','المنتج':'Product','السعر الأساسي':'Base price',
+ 'السعر النهائي يحدده رابط الدفع الذي يصدره المساعد':'The final price is set by the payment link the provider issues',
  'أبي سباك يصلح تسريب مياه':'Plumber for a water leak',
  'أبي تركيب سخان مياه':'Water heater installation',
  'أبي كهربائي يصلح قاطع':'Electrician for a breaker',
@@ -846,7 +848,7 @@ window.EN_ADMIN = {
 };
 
 (function(){
- var EN = localStorage.getItem('lang') === 'en';
+ var EN = sessionStorage.getItem('lang') === 'en';
  document.documentElement.lang = EN ? 'en' : 'ar';
  document.documentElement.dir = EN ? 'ltr' : 'rtl';
  if (!EN) return;
@@ -865,7 +867,7 @@ window.EN_ADMIN = {
  // Admin console text uses the admin keys; everything else uses the main dictionary.
  function listFor(n){ var el = n.nodeType === 3 ? n.parentNode : n; return (el && el.closest && el.closest('.mg-shell')) ? ADMIN : MAIN; }
  function tr(n){
-   if (n.nodeType === 3) { if (hasAr.test(n.nodeValue)) { var o = pu(fix(n.nodeValue, listFor(n))); if (o !== n.nodeValue) n.nodeValue = o; } return; }
+   if (n.nodeType === 3) { if (n.parentNode && n.parentNode.closest && n.parentNode.closest('[data-noen]')) return; if (hasAr.test(n.nodeValue)) { var o = pu(fix(n.nodeValue, listFor(n))); if (o !== n.nodeValue) n.nodeValue = o; } return; }
    if (n.nodeType === 1 && n.getAttribute) {
      var de = n.getAttribute('data-en'); if (de !== null) { if (n.getAttribute('data-en-done') !== de) { n.setAttribute('data-en-done', de); n.innerHTML = de; } return; }
      ['placeholder','aria-label','title'].forEach(function(a){ var v = n.getAttribute(a); if (v && hasAr.test(v)) { var o = pu(fix(v, listFor(n))); if (o !== v) n.setAttribute(a, o); } });
