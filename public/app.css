@@ -1072,7 +1072,7 @@ body.acct main,body.acct #app{max-width:none;padding:0!important;margin:0}
 .pf2-top h1{margin:0 6px 0 0;font-size:20px;font-weight:700;color:var(--t)}
 .pf2-sp{flex:1}
 .pf2 .pf2-ib{width:40px;height:40px;display:grid;place-items:center;color:var(--t);text-decoration:none;border-radius:50%}
-.pf2-hero{position:relative;margin-top:4px;height:196px;border:1px solid var(--bd);border-radius:20px;background:linear-gradient(160deg,#e7e3f9,#f6f5fc) center/cover no-repeat;overflow:hidden}
+.pf2-hero{position:relative;margin-top:4px;height:auto;min-height:196px;padding:100px 43px 16px 128px;box-sizing:border-box;border:1px solid var(--bd);border-radius:20px;background:linear-gradient(160deg,#e7e3f9,#f6f5fc) center/cover no-repeat;overflow:hidden}
 .pf2 .pf2-cov{position:absolute;inset:0 55% 0 0;z-index:0;background:none}
 .pf2-fade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(246,245,252,0) 0%,rgba(246,245,252,.05) 32%,rgba(250,249,255,.8) 64%,rgba(252,251,255,.97) 100%);pointer-events:none}
 .pf2-avail{position:absolute;top:16px;left:13px;z-index:2;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 11px;border-radius:999px;background:#e7e1fc;color:#6341c8;font-size:12.5px;font-weight:500}
@@ -1082,7 +1082,7 @@ body.acct main,body.acct #app{max-width:none;padding:0!important;margin:0}
 .pf2-av img{width:100%;height:100%;object-fit:cover}
 .pf2-ver{position:absolute;bottom:2px;left:0;width:26px;height:26px;border-radius:50%;background:#2f7cf6;border:2px solid #fff;display:grid;place-items:center;color:#fff}
 .pf2-vt{stroke-width:3.2}
-.pf2-txt{position:absolute;top:100px;right:43px;left:128px;z-index:1;text-align:start}
+.pf2-txt{position:relative;z-index:1;text-align:start;min-width:0}
 .pf2-txt h2{margin:0;font-size:18px;line-height:22px;font-weight:700;color:var(--t)}
 .pf2-txt p{margin:0}
 .pf2-sub{font-size:14px;line-height:21px;color:var(--t)}
@@ -1503,3 +1503,9 @@ body .mg-shell.mg-dark .tbl td{border-color:var(--ad-border) !important;color:va
 body .mg-shell.mg-dark .tbl tr.stuck td{background:var(--ad-warn-bg) !important}
 body .mg-shell.mg-dark a.lnk,body .mg-shell.mg-dark .lnk{color:#b9a6ff !important}
 body .mg-shell.mg-dark .mg-scrim{background:rgba(0,0,0,.6) !important}
+
+/* إصلاح قص النص أسفل بطاقة الملف الشخصي: البطاقة تتمدد مع محتواها */
+.pf2-hero{overflow:visible}
+
+/* إشعار صغير بجوار الرقم المطموس في الشات حتى تُقبل المهمة */
+.ph-note{display:inline-block;margin-inline-start:6px;padding:1px 7px;border-radius:999px;background:#ece8fc;color:#5331b6;font-size:11px;line-height:1.6;white-space:nowrap;vertical-align:middle}

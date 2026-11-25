@@ -1205,10 +1205,20 @@ const hid=(await h('/me')).j.user.id;const cid=(await o('/me')).j.user.id;
 await h(`/direct/${cid}`,'POST',{body:'تواصل على 0500009002 الآن'});
 const before=(await o(`/direct/${hid}`)).j.messages.find(m=>m.body.includes('تواصل'));
 assert.ok(before,'الرسالة موجودة');assert.ok(!before.body.includes('0500009002'),'الرقم مطموس في الشات قبل القبول');assert.ok(before.body.includes('••'),'يظهر الطمس');
+assert.equal(before.phone_hidden,true,'يظهر إشعار الرقم المطموس');
 const started=await h(`/direct/${cid}/task`,'POST');assert.equal(started.s,200,'بدء المهمة');
 const accepted=await o(`/tasks/${started.j.id}/accept`,'POST');assert.equal(accepted.s,200,'قبول العميل');
 const after=(await o(`/direct/${hid}`)).j.messages.find(m=>m.body.includes('تواصل'));
 assert.ok(after.body.includes('0500009002'),'يظهر الرقم كاملًا بعد قبول المهمة');
+assert.ok(!after.phone_hidden,'يختفي الإشعار بعد قبول المهمة');
 const hv=(await h(`/direct/${cid}`)).j.messages.find(m=>m.body.includes('تواصل'));
 assert.ok(hv.body.includes('0500009002'),'يظهر للمساعد أيضًا بعد القبول');
+});
+
+test('رقم الجوال: 10 أرقام بالضبط تبدأ بـ 05 عند التسجيل',async()=>{
+const base={name:'اختبار رقم',password:'12345678',terms:1,age:1,city:'جدة'};
+const bad=['055555555','05555555555','+966555555555','0555 555 55','05555555a'];
+for(const [i,v] of bad.entries()){const r=await cl()('/register','POST',{...base,email:`phv${i}@t.sa`,phone:v});assert.equal(r.s,400,'يرفض: '+v)}
+const ok=await cl()('/register','POST',{...base,email:'phok@t.sa',phone:'٠٥٥٥٥٥٥٥٥٥'});
+assert.equal(ok.s,200,'يقبل 10 أرقام عربية');
 });
