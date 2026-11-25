@@ -148,6 +148,8 @@ window.EN_DICT = {
  'الرقم الضريبي (15 رقمًا يبدأ بـ 3)':'Tax number (15 digits starting with 3)',
  'فاتورة المنتجات المختارة':'Selected products invoice','المنتج':'Product','السعر الأساسي':'Base price',
  'السعر النهائي يحدده رابط الدفع الذي يصدره المساعد':'The final price is set by the payment link the provider issues',
+ 'للقطعة':'each','تقليل':'Decrease','زيادة':'Increase','إرسال للمساعد':'Send to provider',
+ 'حذف المنتج من السلة؟':'Remove product from cart?',
  'أبي سباك يصلح تسريب مياه':'Plumber for a water leak',
  'أبي تركيب سخان مياه':'Water heater installation',
  'أبي كهربائي يصلح قاطع':'Electrician for a breaker',
@@ -161,7 +163,22 @@ window.EN_DICT = {
  'جاري التفعيل':'Activating…',
  'أرسلنا رمزًا جديدًا إن كان البريد مسجلًا':'If the email is registered, a new code was sent',
  'أدخل الرمز الذي وصل إلى بريدك':'Enter the code sent to your email',
- 'صالح 10 دقائق':'valid for 10 minutes'
+ 'صالح 10 دقائق':'valid for 10 minutes',
+'القطع':'Parts','ضريبة القيمة المضافة 15%:':'VAT 15%:','ضريبة القيمة المضافة':'VAT (15%)','بدون تقييم بعد':'Not rated yet',
+'ادفع أونلاين':'Pay online','الدفع كاش':'Pay cash','كاش':'Cash','كود الخصم (اختياري)':'Discount code (optional)',
+'كود الخصم':'Discount code','أدخل كود الخصم':'Enter discount code','تطبيق':'Apply','تم تطبيق خصم بقيمة':'Discount applied:',
+'تم استلام المبلغ كاش':'Cash received','تقييمات العملاء':'Client reviews','تقييمات':'Ratings',
+'بدأ المساعد المهمة':'Provider started the task','المهمة يبدأها المساعد':'Task started by the provider','قبل العميل المهمة':'Client accepted the task',
+'تمت المهمة بنجاح، يرجى تقييم المساعد':'Task completed successfully, please rate the provider','تمت المهمة بنجاح، قيّم المساعد':'Task completed successfully, rate the provider',
+'اقتراح اتفاق جديد':'New agreement proposal','اقتراح اتفاق رقم':'Agreement proposal no.','الخدمة:':'Service:','قيمة الخدمة:':'Service amount:','الإجمالي:':'Total:',
+'للدفع أونلاين عبر بوابة الدفع من تفاصيل الاتفاق.':'To pay online, use the payment gateway from the agreement details.',
+'تمت الموافقة على الاتفاق بمبلغ':'Agreement approved for amount','تم دفع الاتفاق رقم':'Agreement no. paid',
+'اختار العميل الدفع كاش لاتفاق رقم':'The client chose cash payment for agreement no.','بعد استلام المبلغ اضغط':'After receiving the amount, press','من رابط الدفع.':'from the payment link.',
+'تم تأكيد استلام المبلغ كاش لاتفاق رقم':'Cash receipt confirmed for agreement no.','رابط الدفع للمساعد فقط':'Payment link for the provider only',
+'طلب المساعد تأكيد إنجاز المهمة. أكّد الإنجاز أو اعترض من الاتفاق.':'The provider requested task completion confirmation. Confirm or object from the agreement.',
+'تم تأكيد إنجاز المهمة.':'Task completion confirmed.','اعترض العميل على إنجاز المهمة، وأُحيل الاتفاق إلى المراجعة.':'The client objected to task completion; the agreement was referred for review.',
+'تقدم العميل بشكوى على الإنجاز، وأُوقفت العمولة إلى حين المراجعة.':'The client filed a complaint about completion; commission is paused pending review.',
+'طلب جديد من عميل':'New request from a client','رسالة جديدة من':'New message from',
 };
 /* Admin console (#/manage). Applied only inside .mg-shell, so these keys never change the main app. */
 window.EN_ADMIN = {

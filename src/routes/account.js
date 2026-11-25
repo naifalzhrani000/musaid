@@ -5,7 +5,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {pushTest, pushCfg, pushKeyProblem, macOf, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, hitOr429, hx} from '../core.js';
+import {pushTest, pushCfg, pushKeyProblem, macOf, route, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, chatUnreadOf, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, PV, TERMS_VERSION, VERIFY_REQUIRED, cleanSections, hesc, issueVerify, own, pledgeBody, resolveSkills, saveSections, saveSpecialties, sendMail, sha, hitOr429, hx} from '../core.js';
 
 route('POST','/register',c=>{hitOr429('reg|'+c.ip,+(process.env.REGISTER_PER_HOUR)||20);const b=c.b,name=str(b.name,2,60,'الاسم'),email=str(b.email,5,120,'البريد').toLowerCase(),city=str(b.city||'',0,60,'المدينة');
 if(!/^\S+@\S+\.\S+$/.test(email))throw err(400,'البريد غير صالح');str(b.password,8,100,'كلمة المرور');if(!/^[^\s@<>\"'`]+@[^\s@<>\"'`]+\.[^\s@<>\"'`]+$/.test(email))throw err(400,'البريد الإلكتروني غير صالح');if(!b.terms)throw err(400,'يجب قبول الشروط وسياسة الخصوصية');if(!b.age)throw err(400,'التسجيل متاح لمن عمره 18 سنة فأكثر');
@@ -22,7 +22,7 @@ if(f.n>=8)throw err(429,'محاولات كثيرة، حاول بعد قليل');
 if(!u||!check(String(c.b.password||''),u.pass)){run('INSERT INTO login_attempts(k,n,t) VALUES(?,?,?) ON CONFLICT(k) DO UPDATE SET n=excluded.n,t=excluded.t',k,f.n+1,f.t);const fi2=fi&&Date.now()-fi.t<9e5?fi:{n:0,t:Date.now()};run('INSERT INTO login_attempts(k,n,t) VALUES(?,?,?) ON CONFLICT(k) DO UPDATE SET n=excluded.n,t=excluded.t',ipK,fi2.n+1,fi2.t);throw err(401,'البريد أو كلمة المرور غير صحيحة')}
 if(!u.active)throw err(403,'الحساب معطّل');run('DELETE FROM login_attempts WHERE k=?',k);startSession(c.res,u.id);return{ok:1}});
 route('POST','/logout',c=>{run('DELETE FROM sessions WHERE token=?',sha(c.tok||''));return{ok:1}});
-route('GET','/me',c=>c.u?{user:c.u,unread:get('SELECT COUNT(*) n FROM notifications WHERE user_id=? AND read=0',c.u.id).n}:{user:null});
+route('GET','/me',c=>c.u?{user:c.u,unread:get('SELECT COUNT(*) n FROM notifications WHERE user_id=? AND read=0',c.u.id).n,chatUnread:chatUnreadOf(c.u.id)}:{user:null});
 route('POST','/profile',c=>{const u=need(c),ph=String(c.b.phone||'').replace(/[\s-]/g,'');
 let phone=null;if(ph){const m=/^(?:\+?966|0)(5\d{8})$/.exec(ph);if(!m)throw err(400,'رقم الجوال غير صالح (مثال: 05XXXXXXXX)');phone='0'+m[1]}
 const ad=str(c.b.address||'',0,200,'العنوان');

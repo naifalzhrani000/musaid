@@ -599,7 +599,7 @@ const gr=await o(`/direct/${hid}/agreements`);assert.ok(Array.isArray(gr.j),'ق�
 assert.ok(!before.peer_phone,'لا تظهر وسيلة التواصل قبل الاعتماد');
 await h(`/agreements/${aid}/approve`,'POST');
 const afterApprove=(await o(`/direct/${hid}/agreements`)).j.find(x=>x.id===aid);
-assert.equal(afterApprove.peer_phone,'0500008002','تظهر وسيلة التواصل بعد الاعتماد');
+assert.equal(afterApprove.peer_phone,'05••••••02','يبقى الرقم مطموسًا بعد الاعتماد وقبل قبول المهمة');
 await h(`/agreements/${aid}/request-completion`,'POST');await o(`/agreements/${aid}/confirm-completion`,'POST');await payHala(aid);
 const st=()=>{const d=new DatabaseSync(DBF);const r=d.prepare('SELECT status,amount FROM agreement_commissions WHERE agreement_id=?').get(aid);d.close();return r};
 assert.equal(st().status,'paid','العمولة تُخصم تلقائيًا عند الدفع');
@@ -1085,10 +1085,19 @@ assert.equal((await buyer('/shop/products','POST',{title:'مرفوض',price:9}))
 assert.equal((await h('/shop/products','POST',{title:'س',price:0})).s,400,'السعر غير الصحيح مرفوض');
 assert.equal((await buyer(`/shop/${hid}/cart/${pid}`,'POST')).s,200,'العميل يضيف للسلة');
 assert.equal((await h(`/shop/${hid}/cart/${pid}`,'POST')).s,400,'لا يشتري المساعد من متجره');
-const cart=(await buyer(`/shop/${hid}/cart`)).j;assert.equal(cart.length,1);assert.equal(cart[0].qty,1);
+const cart=(await buyer(`/shop/${hid}/cart`)).j;assert.equal(cart.length,1);assert.equal(cart[0].qty,1);assert.ok('image_id' in cart[0]);
+assert.equal((await buyer(`/shop/${hid}/cart/${pid}/qty`,'POST',{qty:3})).s,200,'تعديل الكمية');
+assert.equal((await buyer(`/shop/${hid}/cart`)).j[0].qty,3,'الكمية تحدّثت');
+assert.equal((await buyer(`/shop/${hid}/cart/${pid}/qty`,'POST',{qty:0})).s,400,'الكمية صفر مرفوضة');
+assert.equal((await buyer(`/shop/${hid}/cart/${pid}/qty`,'POST',{qty:100})).s,400,'الكمية فوق 99 مرفوضة');
+assert.equal((await buyer(`/shop/${hid}/cart/${pid}/qty`,'POST',{qty:1})).s,200);
 const co=await buyer(`/shop/${hid}/checkout`,'POST');assert.equal(co.s,200);assert.equal(co.j.total,45);
 const msgs=(await buyer(`/direct/${hid}`)).j.messages;const inv=msgs.find(m=>m.from_id===bid&&m.body.startsWith('[فاتورة المتجر]\n'));assert.ok(inv,'الفاتورة وصلت المحادثة');const invD=JSON.parse(inv.body.slice('[فاتورة المتجر]\n'.length));assert.equal(invD.total,45);assert.equal(invD.items.length,1);assert.equal(invD.items[0].q,1);assert.equal(invD.items[0].p,45);assert.equal((await buyer(`/direct/${hid}`,'POST',{body:inv.body})).s,400,'لا تُزوَّر الفاتورة برسالة عادية');
 assert.equal((await buyer(`/shop/${hid}/cart`)).j.length,0,'السلة تُفرّغ بعد الإرسال');
+{const before=(await h('/me')).j.chatUnread;assert.ok(before>=1,'المساعد يرى رسالة غير مقروءة');
+await h(`/direct/${bid}`);const after=(await h('/me')).j.chatUnread;assert.ok(after<before,'فتح المحادثة يقرأ رسائلها');
+await new Promise(r=>setTimeout(r,1100));assert.equal((await buyer(`/direct/${hid}`,'POST',{body:'مرحبًا'})).s,200);
+assert.equal((await h('/me')).j.chatUnread,after+1,'رسالة جديدة ترفع العداد');}
 assert.equal((await buyer(`/shop/${hid}/checkout`,'POST')).s,400,'لا فاتورة من سلة فارغة');
 assert.equal((await h(`/shop/products/${pid}/delete`,'POST')).s,200);
 assert.equal((await buyer(`/shop/${hid}`)).j.products.length,0,'المنتج المحذوف يختفي من المتجر');
@@ -1184,4 +1193,22 @@ const ok=await o(`/agreements/${pl.j.id}/discount`,'POST',{discount_code:'dsc10'
 assert.equal((await o(`/agreements/${pl.j.id}/discount`,'POST',{discount_code:'DSC10'})).s,400,'لا يُطبَّق الخصم مرتين على الرابط نفسه');
 const list=(await o(`/direct/${hid}/agreements`)).j.find(g=>g.id===pl.j.id);
 assert.equal(list.total_amount,207);assert.equal(list.discount_amount,20);assert.ok(list.discount_code_id);
+});
+
+test('إخفاء الأرقام: تُطمس في الشات والاتفاقات حتى تُقبل المهمة من الطرفين',async()=>{
+const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
+const o=cl();await o('/register','POST',{name:'عميل طمس',email:'ztm1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
+await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل طمس',phone:'0500009001'});await vfy(o);
+const h=cl();await h('/register','POST',{name:'مساعد طمس',email:'ztm2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد طمس',phone:'0500009002'});await vfy(h);
+const hid=(await h('/me')).j.user.id;const cid=(await o('/me')).j.user.id;
+await h(`/direct/${cid}`,'POST',{body:'تواصل على 0500009002 الآن'});
+const before=(await o(`/direct/${hid}`)).j.messages.find(m=>m.body.includes('تواصل'));
+assert.ok(before,'الرسالة موجودة');assert.ok(!before.body.includes('0500009002'),'الرقم مطموس في الشات قبل القبول');assert.ok(before.body.includes('••'),'يظهر الطمس');
+const started=await h(`/direct/${cid}/task`,'POST');assert.equal(started.s,200,'بدء المهمة');
+const accepted=await o(`/tasks/${started.j.id}/accept`,'POST');assert.equal(accepted.s,200,'قبول العميل');
+const after=(await o(`/direct/${hid}`)).j.messages.find(m=>m.body.includes('تواصل'));
+assert.ok(after.body.includes('0500009002'),'يظهر الرقم كاملًا بعد قبول المهمة');
+const hv=(await h(`/direct/${cid}`)).j.messages.find(m=>m.body.includes('تواصل'));
+assert.ok(hv.body.includes('0500009002'),'يظهر للمساعد أيضًا بعد القبول');
 });

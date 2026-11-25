@@ -1413,3 +1413,93 @@ body.dchat-mode .dc-bub:has(.inv-card){padding:10px;border-radius:20px;font-size
 .inv-total{display:flex;justify-content:space-between;align-items:center;background:#4326a0;color:#fff;border-radius:12px;padding:10px 12px;font-size:15px}
 .inv-total b{font-size:16px}
 .inv-note{color:#625a76;font-size:12px;line-height:1.5;padding-inline:2px}
+
+/* سلة المتجر: كرت بالمنتجات، تعديل الكمية، حذف، أسعار ومجموع */
+.cart-box{width:min(92vw,420px);max-height:86vh;display:flex;flex-direction:column;gap:0;padding:16px}
+.cart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.cart-head h3{margin:0;font-size:18px;color:#0d0a2c}
+.cart-x{width:36px;height:36px;border:0;border-radius:10px;background:#f1eefb;font-size:22px;line-height:1;color:#4326a0;cursor:pointer}
+.cart-list{overflow-y:auto;flex:1 1 auto;min-height:0}
+.cart-row{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid #ece8f8}
+.cart-main{display:flex;align-items:center;gap:10px;min-width:0}
+.cart-img{flex:0 0 auto;width:52px;height:52px;border-radius:12px;object-fit:cover;background:#ece9f6;display:block}
+.cart-info{display:flex;flex-direction:column;min-width:0}
+.cart-info b{color:#0d0a2c;word-break:break-word;font-size:15px}
+.cart-info small{color:#625a76;font-size:12px}
+.cart-ctl{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cart-qty{display:inline-flex;align-items:center;border:1px solid #d9d5e8;border-radius:12px;overflow:hidden;background:#faf9ff}
+.cart-qty button{width:38px;height:38px;border:0;background:transparent;font-size:18px;color:#4326a0;cursor:pointer}
+.cart-qty button:disabled{color:#b8b2c9;cursor:default}
+.cart-qty input{width:52px;height:38px;border:0;border-radius:0;box-shadow:none;outline:none;border-inline:1px solid #e3def5;background:#fff;text-align:center;font:inherit;font-weight:600;color:#0d0a2c;-moz-appearance:textfield}
+.cart-qty input::-webkit-outer-spin-button,.cart-qty input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.cart-sum{color:#0d0a2c;white-space:nowrap;margin-inline-start:auto}
+.cart-del{border:0;background:none;color:#b3261e;font:inherit;font-size:13px;cursor:pointer;padding:6px 4px}
+.cart-foot{display:flex;flex-direction:column;gap:8px;border-top:1px solid #ece8f8;padding-top:12px}
+.cart-foot .btn{width:100%}
+.cart-total{display:flex;justify-content:space-between;align-items:center;font-size:15px;color:#0d0a2c}
+.cart-total b{font-size:18px;color:#4326a0}
+.cart-note{color:#625a76;font-size:12px;line-height:1.5}
+
+/* شارة الرسائل غير المقروءة على تبويب محادثاتي في صفحة المتجر */
+.pf2 .pf2-tabs .tab-cnt{position:absolute;top:-7px;inset-inline-start:auto;inset-inline-end:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#e5484d;color:#fff;font:700 11px/18px system-ui,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff}
+
+/* بطاقات التقييمات أسفل المتجر */
+.rv-list{display:grid;gap:10px}
+.rv-card{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:12px 14px;font-size:14px}
+.rv-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rv-st{color:#c98a1b;letter-spacing:1px}
+.rv-card p{margin:6px 0 0;color:#4b3d6f}
+.rv-card small{display:block;margin-top:6px;color:var(--m)}
+
+/* ===== لوحة الوضع الداكن للإدارة: ألوان موحّدة لكل العناصر، والشريط العلوي جزء منها ===== */
+body .mg-shell.mg-dark{
+  --ad-bg:#0f0c17; --ad-surface:#181424; --ad-surface-2:#1f1a2e; --ad-side:#120e1f;
+  --ad-border:#2a2440; --ad-text:#e6e1fc; --ad-muted:#a299bb; --ad-accent:#7c5ce0; --ad-accent-2:#5f3fc4;
+  --ad-ok:#b9a6ff; --ad-warn-bg:#33281a; --ad-warn-tx:#f2c46b; --ad-bad-bg:#3a1f25; --ad-bad-tx:#ff9b9b;
+  background:var(--ad-bg) !important; color:var(--ad-text) !important;
+}
+body .mg-shell.mg-dark .mg-topbar{background:var(--ad-surface) !important;border-color:var(--ad-border) !important;border-radius:0 0 16px 16px;box-shadow:none !important}
+body .mg-shell.mg-dark .mg-brand b{color:var(--ad-text) !important}
+body .mg-shell.mg-dark .mg-theme,
+body .mg-shell.mg-dark .mg-burger{background:var(--ad-surface-2) !important;color:var(--ad-text) !important;border:1px solid var(--ad-border) !important}
+body .mg-shell.mg-dark .mg-theme:hover,
+body .mg-shell.mg-dark .mg-burger:hover{background:#2a2440 !important}
+body .mg-shell.mg-dark .mg-avatar{background:var(--ad-accent-2) !important;color:#fff !important}
+body .mg-shell.mg-dark .mg-bell{color:var(--ad-text) !important}
+body .mg-shell.mg-dark .mg-tabs{background:var(--ad-side) !important;border-inline-end:1px solid var(--ad-border)}
+body .mg-shell.mg-dark .mg-tab{color:var(--ad-muted) !important}
+body .mg-shell.mg-dark .mg-tab:hover{background:var(--ad-surface) !important;color:var(--ad-text) !important}
+body .mg-shell.mg-dark .mg-tab.on,body .mg-shell.mg-dark .mg-tab[aria-current]{background:var(--ad-accent-2) !important;color:#fff !important}
+body .mg-shell.mg-dark .mg-sep{color:var(--ad-muted) !important;border-color:var(--ad-border) !important}
+body .mg-shell.mg-dark .mg-main{background:var(--ad-bg) !important}
+body .mg-shell.mg-dark .mg-page-head{border-color:var(--ad-border) !important;background:transparent !important}
+body .mg-shell.mg-dark .mg-page-head h1,body .mg-shell.mg-dark .mg-page-head h2,body .mg-shell.mg-dark .mg-h,body .mg-shell.mg-dark #mgBody>h2,body .mg-shell.mg-dark #mgBody>h3{color:var(--ad-text) !important}
+body .mg-shell.mg-dark small,body .mg-shell.mg-dark .mg-page-head small,body .mg-shell.mg-dark .mg-page-head p{color:var(--ad-muted) !important}
+body .mg-shell.mg-dark .card,
+body .mg-shell.mg-dark .panel,
+body .mg-shell.mg-dark .act,
+body .mg-shell.mg-dark .kpi,
+body .mg-shell.mg-dark .mon-k,
+body .mg-shell.mg-dark .chart-card,
+body .mg-shell.mg-dark .tbl-wrap,
+body .mg-shell.mg-dark .mg-stats,
+body .mg-shell.mg-dark .extra-stats>div,
+body .mg-shell.mg-dark .dash-extra{background:var(--ad-surface) !important;border-color:var(--ad-border) !important;color:var(--ad-text) !important;box-shadow:none !important}
+body .mg-shell.mg-dark .mon-k.warn,body .mg-shell.mg-dark .kpi.warn{background:var(--ad-warn-bg) !important;border-color:#5a4520 !important}
+body .mg-shell.mg-dark .mon-k.crit{background:var(--ad-bad-bg) !important;border-color:#6a2c35 !important}
+body .mg-shell.mg-dark .mon-k b,body .mg-shell.mg-dark .kpi b,body .mg-shell.mg-dark .act-t b,body .mg-shell.mg-dark .ch-head h3,body .mg-shell.mg-dark .extra-stats b{color:var(--ad-text) !important}
+body .mg-shell.mg-dark .mon-k em,body .mg-shell.mg-dark .kpi span{color:var(--ad-muted) !important}
+body .mg-shell.mg-dark .mon-al,body .mg-shell.mg-dark .mon-ev,body .mg-shell.mg-dark .mg-row,body .mg-shell.mg-dark .feed-row{border-color:var(--ad-border) !important;color:var(--ad-text) !important}
+body .mg-shell.mg-dark .mon-al:hover,body .mg-shell.mg-dark .mon-ev:hover,body .mg-shell.mg-dark .mg-row:hover{background:var(--ad-surface-2) !important}
+body .mg-shell.mg-dark .mon-al i{color:var(--ad-muted) !important}
+body .mg-shell.mg-dark .pill,body .mg-shell.mg-dark .pill-btn,body .mg-shell.mg-dark .pill-select{background:var(--ad-surface-2) !important;color:var(--ad-text) !important;border-color:var(--ad-border) !important}
+body .mg-shell.mg-dark .pill.warn,body .mg-shell.mg-dark .pill-warn{background:var(--ad-warn-bg) !important;color:var(--ad-warn-tx) !important}
+body .mg-shell.mg-dark .st.ok{background:#2a2148 !important;color:var(--ad-ok) !important}
+body .mg-shell.mg-dark .btn{background:var(--ad-accent-2) !important;border-color:var(--ad-accent-2) !important;color:#fff !important}
+body .mg-shell.mg-dark .btn.alt,body .mg-shell.mg-dark .chip-btn{background:var(--ad-surface-2) !important;color:var(--ad-text) !important;border-color:var(--ad-border) !important}
+body .mg-shell.mg-dark input,body .mg-shell.mg-dark select,body .mg-shell.mg-dark textarea{background:var(--ad-surface-2) !important;color:var(--ad-text) !important;border-color:var(--ad-border) !important}
+body .mg-shell.mg-dark .tbl th{background:var(--ad-surface-2) !important;color:var(--ad-muted) !important;border-color:var(--ad-border) !important}
+body .mg-shell.mg-dark .tbl td{border-color:var(--ad-border) !important;color:var(--ad-text) !important}
+body .mg-shell.mg-dark .tbl tr.stuck td{background:var(--ad-warn-bg) !important}
+body .mg-shell.mg-dark a.lnk,body .mg-shell.mg-dark .lnk{color:#b9a6ff !important}
+body .mg-shell.mg-dark .mg-scrim{background:rgba(0,0,0,.6) !important}

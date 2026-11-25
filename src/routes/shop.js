@@ -23,13 +23,18 @@ if(!p)throw err(404,'المنتج غير موجود');if(p.helper_id!==u.id)thro
 run('UPDATE shop_products SET active=0 WHERE id=?',id);return{ok:1}});
 
 route('GET','/shop/(\\d+)/cart',c=>{const u=need(c),hid=+c.p[0];
-return all('SELECT sc.product_id id,sc.qty,p.title,p.price FROM shop_cart sc JOIN shop_products p ON p.id=sc.product_id WHERE sc.user_id=? AND p.helper_id=? AND p.active=1 ORDER BY sc.product_id',u.id,hid)});
+return all('SELECT sc.product_id id,sc.qty,p.title,p.price,p.image_id FROM shop_cart sc JOIN shop_products p ON p.id=sc.product_id WHERE sc.user_id=? AND p.helper_id=? AND p.active=1 ORDER BY sc.product_id',u.id,hid)});
 
 route('POST','/shop/(\\d+)/cart/(\\d+)',c=>{const u=need(c),hid=+c.p[0],pid=+c.p[1];
 const p=get('SELECT helper_id FROM shop_products WHERE id=? AND active=1',pid);if(!p||p.helper_id!==hid)throw err(404,'المنتج غير موجود');
 if(hid===u.id)throw err(400,'لا يمكنك الشراء من متجرك');if(blocked(u.id,hid))throw err(403,'لا يمكن التواصل مع هذا المساعد');
 run('INSERT INTO shop_cart(user_id,product_id,qty) VALUES(?,?,1) ON CONFLICT(user_id,product_id) DO UPDATE SET qty=MIN(qty+1,99)',u.id,pid);
 return{ok:1}});
+
+route('POST','/shop/(\\d+)/cart/(\\d+)/qty',c=>{const u=need(c),hid=+c.p[0],pid=+c.p[1];
+const q=Number(c.b.qty);if(!Number.isInteger(q)||q<1||q>99)throw err(400,'الكمية من 1 إلى 99');
+const r=run('UPDATE shop_cart SET qty=? WHERE user_id=? AND product_id=? AND product_id IN (SELECT id FROM shop_products WHERE helper_id=? AND active=1)',q,u.id,pid,hid);
+if(!r.changes)throw err(404,'المنتج غير موجود في السلة');return{ok:1,qty:q}});
 
 route('POST','/shop/(\\d+)/cart/(\\d+)/remove',c=>{const u=need(c),pid=+c.p[1];run('DELETE FROM shop_cart WHERE user_id=? AND product_id=?',u.id,pid);return{ok:1}});
 
