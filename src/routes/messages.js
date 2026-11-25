@@ -117,8 +117,8 @@ route('POST','/helper/hala',c=>tx(()=>{const u=need(c);if(get('SELECT account_ty
 
 route('GET','/helper/platform-invoices',c=>{const u=need(c);if(get('SELECT account_type FROM users WHERE id=?',u.id)?.account_type!=='helper')throw err(403,'للمساعدين فقط');return all('SELECT id,number,amount,vat_amount,status,issued_at,paid_at FROM platform_invoices WHERE helper_id=? ORDER BY id DESC',u.id)});
 route('GET','/direct/(\\d+)/task',c=>{const u=need(c),peer=+c.p[0];const t=get("SELECT id,client_id,helper_id,status FROM tasks WHERE ((client_id=? AND helper_id=?) OR (client_id=? AND helper_id=?)) AND status IN ('requested','accepted') ORDER BY id DESC LIMIT 1",u.id,peer,peer,u.id);const rt=get("SELECT id FROM tasks WHERE client_id=? AND helper_id=? AND status='completed' AND rated=0 ORDER BY id DESC LIMIT 1",u.id,peer);
-// زر «بدء المهمة» للمساعد: لا يظهر مباشرة بعد إنهاء مهمة، ويعود عند كتابة العميل رسالة جديدة بعد الإنهاء (الخادم يسمح بالبدء دائمًا)
-const done=get("SELECT updated_at FROM tasks WHERE ((client_id=? AND helper_id=?) OR (client_id=? AND helper_id=?)) AND status='completed' ORDER BY id DESC LIMIT 1",u.id,peer,peer,u.id);const can_start=!done||!!get('SELECT 1 x FROM direct_messages WHERE from_id=? AND to_id=? AND created_at>?',peer,u.id,done.updated_at);
+// زر «بدء المهمة» متاح دائمًا، ومنه بعد الدفع نقدًا أو عبر الإنترنت (الدفع ينهي المهمة السابقة)
+const can_start=true;
 return{task:t||null,rate:rt?{id:rt.id}:null,can_start}});
 route('POST','/direct/(\\d+)/task',c=>tx(()=>{const u=verified(c),peer=+c.p[0];if(u.account_type!=='helper')throw err(403,'المهمة يبدأها المساعد');if(!get("SELECT 1 x FROM users WHERE id=? AND account_type!='helper' AND active=1",peer))throw err(404,'العميل غير موجود');if(blocked(u.id,peer))throw err(403,'لا يمكن التواصل مع هذا المستخدم');
 if(get("SELECT 1 x FROM tasks WHERE client_id=? AND helper_id=? AND status IN ('requested','accepted')",peer,u.id))throw err(400,'توجد مهمة مفتوحة مع هذا العميل');

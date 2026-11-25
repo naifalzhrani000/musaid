@@ -1509,3 +1509,5 @@ body .mg-shell.mg-dark .mg-scrim{background:rgba(0,0,0,.6) !important}
 
 /* إشعار صغير بجوار الرقم المطموس في الشات حتى تُقبل المهمة */
 .ph-note{display:inline-block;margin-inline-start:6px;padding:1px 7px;border-radius:999px;background:#ece8fc;color:#5331b6;font-size:11px;line-height:1.6;white-space:nowrap;vertical-align:middle}
+
+body.dchat-mode .menu-panel{top:70px}

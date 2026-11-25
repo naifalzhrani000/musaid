@@ -963,10 +963,10 @@ assert.equal((await o(`/agreements/${pl.j.id}/choose-cash`,'POST')).s,200);
 assert.equal((await h(`/agreements/${pl.j.id}/cash-received`,'POST')).s,200);
 const after=(await h(`/direct/${oid}/task`)).j;
 assert.equal(after.task,null,'الكاش أنهى المهمة');
-assert.equal(after.can_start,false,'بعد الإنهاء لا يظهر زر بدء المهمة');
+assert.equal(after.can_start,true,'بعد الدفع والإنهاء يظهر زر بدء مهمة جديدة');
 await new Promise(r=>setTimeout(r,1100));
 assert.equal((await o(`/direct/${(await h('/me')).j.user.id}`,'POST',{body:'محتاج خدمة ثانية'})).s,200);
-assert.equal((await h(`/direct/${oid}/task`)).j.can_start,true,'رسالة جديدة من العميل بعد الإنهاء تعيد الزر');
+assert.equal((await h(`/direct/${oid}/task`)).j.can_start,true,'الزر يبقى متاحًا بعد الإنهاء');
 });
 
 test('التقييم بعد المهمة: يظهر للعميل بعد السداد، ويظهر في حساب المساعد والبطاقة',async()=>{
