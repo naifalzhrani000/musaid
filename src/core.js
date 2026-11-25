@@ -67,6 +67,7 @@ for(const [col,def] of [['helper_type',"TEXT NOT NULL DEFAULT ''"],['vat_verifie
 for(const [col,def] of [['cash_hold','INT NOT NULL DEFAULT 0']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
 // إحالة المحلات: العميل المسجّل عبر بطاقة QR محل (مؤسسة/شركة) يُنسب إليه، ويُحفظ أول تسجيل فقط
 for(const [col,def] of [['referred_by','INT'],['referred_at','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
+for(const s of ["ALTER TABLE contact_messages ADD COLUMN status TEXT NOT NULL DEFAULT 'new'","ALTER TABLE contact_messages ADD COLUMN reply TEXT","ALTER TABLE contact_messages ADD COLUMN replied_at TEXT","ALTER TABLE contact_messages ADD COLUMN replied_by INT"])try{db.exec(s)}catch{}
 for(const [col,def] of [['vat_amount','REAL'],['total_amount','REAL'],['helper_net','REAL'],['payment_ref','TEXT'],['paid_via','TEXT'],['materials','REAL']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 // vat_verified: 0 = قيد المراجعة (يعمل)، 1 = معتمد، 2 = مرفوض (موقوف حتى يعدّل الرقم)
 // تشفير مفاتيح المساعد (AES-256-GCM)، والمفتاح من متغير البيئة SECRETS_KEY (32 بايت بصيغة base64)

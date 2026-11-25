@@ -115,6 +115,7 @@ route('POST','/contact',async c=>{try{hitOr429('ct|'+c.ip,5)}catch{throw err(429
 const name=str(c.b.name,2,60,'الاسم'),email=str(c.b.email,5,120,'البريد').toLowerCase(),body=str(c.b.body,10,2000,'الرسالة');
 if(!/^[^\s@<>"'`]+@[^\s@<>"'`]+\.[^\s@<>"'`]+$/.test(email))throw err(400,'البريد الإلكتروني غير صالح');
 run('INSERT INTO contact_messages(name,email,body) VALUES(?,?,?)',name,email,body);
+for(const a of all("SELECT id FROM users WHERE role='admin' AND active=1"))notify(a.id,`رسالة جديدة في «تواصل معنا» من ${name}`,'#/manage/contact',{mail:false});
 const s=SET();if(s.support_email)sendMail(s.support_email,'رسالة جديدة من نموذج التواصل - المساعد',`<div dir="rtl"><p>من: ${hx(name)} (${hx(email)})</p><p>${hx(body)}</p></div>`).catch(()=>{});
 return{ok:1}});
 

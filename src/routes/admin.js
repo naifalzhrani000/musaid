@@ -4,14 +4,15 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {route, supplyOf, syncCashHold, matchSections, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen, safeLink, vacuumTo} from '../core.js';
+import {route, supplyOf, syncCashHold, matchSections, PORT, db, all, normAr, seedSkills, seedSections, err, tx, hash, check, notify, bal, award, audit, startSession, userOf, need, adm, str, num, R, ADMIN, get, run, SET, restricted, hitOr429, DB_PATH, RESTORE_PENDING, can, helperOf, ensureCommission, cityCoverage, cityOpen, safeLink, vacuumTo, sendMail, hx} from '../core.js';
 import {ASSIST_CITIES} from '../../data.js';
 import {snapshot as perfSnapshot} from '../metrics.js';
 route('GET','/admin/reports',c=>{can(c,'support');const Q={user:'SELECT name t FROM users WHERE id=?'};
 return all("SELECT rp.*,u.name reporter FROM reports rp JOIN users u ON u.id=rp.reporter_id ORDER BY (rp.status='open') DESC,rp.id DESC LIMIT 100").map(r=>({...r,info:get(Q[r.type],r.target_id)?.t}))});
 route('POST','/admin/reports/(\\d+)/resolve',c=>{const a=can(c,'support'),r=get('SELECT * FROM reports WHERE id=?',c.p[0]);if(!r)throw err(404,'غير موجود');const note=str(c.b.note,3,300,'الملاحظة');if(c.b.hide&&r.type==='user'&&a.role!=='admin')throw err(403,'إيقاف الحسابات للمدير فقط');
 if(c.b.hide){if(r.type==='rating')run('UPDATE ratings SET hidden=1 WHERE id=?',r.target_id);if(r.type==='user'&&r.target_id!==a.id){run('UPDATE users SET active=0 WHERE id=?',r.target_id);run('DELETE FROM sessions WHERE user_id=?',r.target_id)}}
-run("UPDATE reports SET status='resolved',note=? WHERE id=?",note,r.id);audit(a.id,'report',`${r.id}:${r.type}:${c.b.hide?'hide':'keep'}:${note}`);return{ok:1}});
+run("UPDATE reports SET status='resolved',note=? WHERE id=?",note,r.id);
+const pub=String(c.b.reply||'').trim().slice(0,500);notify(r.reporter_id,`تم النظر في بلاغك رقم ${r.id}`+(pub?`: ${pub}`:'.'),null);audit(a.id,'report',`${r.id}:${r.type}:${c.b.hide?'hide':'keep'}:${note}`);return{ok:1}});
 route('GET','/admin/stats',c=>{adm(c);const n=s=>get(s).n;return{users:n('SELECT COUNT(*) n FROM users'),points_issued:n('SELECT COALESCE(SUM(delta),0) n FROM points_ledger WHERE delta>0'),rules:all('SELECT * FROM reward_rules'),users_list:all('SELECT id,name,email,role,active,phone,flagged,suspended_until,(flagged=1 OR suspended_until>datetime(\'now\')) restricted,(SELECT COUNT(*) FROM pledges WHERE user_id=users.id) pledged,(SELECT COUNT(*) FROM agreement_cancellations c WHERE c.by_id=users.id AND c.created_at>datetime(\'now\',\'-30 days\')) cancels FROM users ORDER BY id DESC LIMIT 100')}});
 route('POST','/admin/rules',c=>{const a=adm(c),p=+c.b.points;if(!Number.isInteger(p)||p<0||!get('SELECT 1 x FROM reward_rules WHERE key=?',c.b.key))throw err(400,'قيمة غير صالحة');
 run('UPDATE reward_rules SET points=? WHERE key=?',p,c.b.key);audit(a.id,'rule',`${c.b.key}=${p}`);return{ok:1}});
@@ -60,7 +61,10 @@ route('POST','/admin/restore/apply',c=>{const a=adm(c);if(String(c.b.confirm||''
 fs.mkdirSync(restoreBackupDir,{recursive:true,mode:0o700});const safety=path.join(restoreBackupDir,`pre-restore-${new Date().toISOString().replace(/[:.]/g,'-')}.db`);vacuumTo(safety);
 fs.renameSync(RESTORE_PREVIEW,RESTORE_PENDING);audit(a.id,'restore_apply',path.basename(safety));
 setTimeout(()=>process.exit(0),800);return{ok:1,restarting:true,safety:path.basename(safety)}});
-route('GET','/admin/contact-messages',c=>{can(c,'support');return all('SELECT id,name,email,body,created_at FROM contact_messages ORDER BY id DESC LIMIT 100')});
+route('GET','/admin/contact-messages',c=>{can(c,'support');return all('SELECT id,name,email,body,created_at,status,reply,replied_at FROM contact_messages ORDER BY (status=\'new\') DESC,id DESC LIMIT 100')});
+route('POST','/admin/contact-messages/(\\d+)/reply',async c=>{const a=can(c,'support');const m=get('SELECT * FROM contact_messages WHERE id=?',+c.p[0]);if(!m)throw err(404,'غير موجودة');const text=str(c.b.body,2,2000,'الرد');
+const ok=await sendMail(m.email,'رد من فريق المساعد',`<div dir="rtl"><p>${hx(text).replace(/\n/g,'<br>')}</p></div>`);if(!ok)throw err(503,'تعذّر إرسال البريد، تحقق من إعداد البريد على الخادم');
+run("UPDATE contact_messages SET status='replied',reply=?,replied_at=datetime('now'),replied_by=? WHERE id=?",text,a.id,m.id);audit(a.id,'contact_reply',String(m.id));return{ok:1}});
 route('POST','/admin/contact-messages/(\\d+)/delete',c=>{const a=can(c,'support');const m=get('SELECT id FROM contact_messages WHERE id=?',+c.p[0]);if(!m)throw err(404,'غير موجودة');run('DELETE FROM contact_messages WHERE id=?',m.id);audit(a.id,'contact_message_deleted',String(m.id));return{ok:1}});
 
 route('GET','/admin/users',c=>{can(c,'support');const q=String(c.q.q||'').trim().slice(0,80);const like=q?`%${q.replace(/[%_\\]/g,m=>'\\'+m)}%`:'%';return all("SELECT id,name,email,role,account_type,active,flagged,created_at FROM users WHERE (name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\') ORDER BY id DESC LIMIT 200",like,like)});
@@ -203,7 +207,7 @@ route('GET','/admin/monitor',c=>{
   if(A.failed_week)add('info','عمليات بحث بلا نتيجة خلال 7 أيام: '+A.failed_week,'cats');
   if(!process.env.RESEND_API_KEY)add('info','البريد الإلكتروني غير مفعّل','sys');
   if(!process.env.VAPID_PUBLIC_KEY)add('info','إشعارات الدفع غير مفعّلة','sys');
-  if(!process.env.HALA_WEBHOOK_SECRET)add('info','بوابة الدفع غير مفعّلة','sys');
+  if(!get('SELECT 1 x FROM helper_hala LIMIT 1'))add('info','لم يربط أي متجر بوابة دفع بعد','sys');
   const status=L.some(x=>x.level==='critical')?'critical':L.some(x=>x.level==='warn')?'warn':'ok';
   return{
     status,alerts_list:L,performance:perf,activity,notifications,events,
@@ -216,7 +220,7 @@ route('GET','/admin/monitor',c=>{
       last_backup:lastBackup,
       mail:!!process.env.RESEND_API_KEY,
       push:!!process.env.VAPID_PUBLIC_KEY,
-      payments:!!process.env.HALA_WEBHOOK_SECRET
+      payments:!!get('SELECT 1 x FROM helper_hala LIMIT 1')
     },
     platform:{
       active_users:one("SELECT COUNT(*) n FROM users WHERE active=1"),

@@ -6,6 +6,11 @@ const ageDays=ts=>ts?(Date.now()-new Date(String(ts).replace(' ','T')+'Z').getTi
 const remindersSent=(c,refs)=>c.get("SELECT COUNT(*) n FROM ai_audit WHERE refs=? AND mode='auto' AND result LIKE 'ok:%'",refs).n;
 
 export const rules={
+  unanswered_chats:{title:'تذكير بالرسائل التي لم تُرد عليها',interval:60,params:{hours:24,gap_days:2},run(c){
+    const P=c.params;
+    for(const m of c.all("SELECT l.id mid,l.to_id who,l.from_id peer FROM direct_messages l WHERE l.id=(SELECT MAX(x.id) FROM direct_messages x WHERE (x.from_id=l.from_id AND x.to_id=l.to_id) OR (x.from_id=l.to_id AND x.to_id=l.from_id)) AND l.created_at<datetime('now',?) AND NOT EXISTS(SELECT 1 FROM blocks b WHERE (b.blocker_id=l.from_id AND b.blocked_id=l.to_id) OR (b.blocker_id=l.to_id AND b.blocked_id=l.from_id)) ORDER BY l.id LIMIT 200",'-'+P.hours+' hours')){
+      c.act('send_notice',{user_id:m.who,text:`لديك رسالة لم تُرد عليها منذ ${P.hours} ساعة. افتح المحادثة للرد.`,link:'#/direct/'+m.peer},{key:'chatrem:'+m.mid,cooldownDays:P.gap_days,reason:'رسالة بلا رد',refs:'dm:'+m.mid});
+    }}},
   stuck_orders:{title:'متابعة الطلبات المتأخرة والتذكير',interval:60,params:{pending_days:3,completion_days:2,agreed_days:14,max_reminders:2,gap_days:2},run(c){
     const P=c.params;
     const stage=(g,st,who,days,text,sevWord)=>{
