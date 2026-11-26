@@ -159,6 +159,12 @@ if(cartTbl||tmpInv){const dir=process.env.BACKUP_DIR||path.join(path.dirname(pat
 const bak=path.join(dir,`backup-before-cart-removal-${Date.now()}.db`);vacuumTo(bak);
 db.exec("DELETE FROM direct_messages WHERE body LIKE '[فاتورة المتجر]%'");db.exec("DROP TABLE IF EXISTS shop_cart");
 console.log(`إزالة السلة: حذف ${tmpInv} فاتورة مؤقتة. النسخة الاحتياطية: ${bak}`)}}
+// تفريغ نصي الشروط والخصوصية المحفوظين من لوحة الإدارة مرة واحدة (بطلب المالك) ليظهر النص من الكود: نسخة احتياطية ثم تفريغ، مع علامة تمنع التكرار
+{const done=db.prepare("SELECT 1 x FROM settings WHERE key='legal_text_reset_v1'").get();
+const saved=db.prepare("SELECT key FROM settings WHERE key IN ('terms_text','privacy_text') AND TRIM(value)<>''").all();
+if(!done){const dir=process.env.BACKUP_DIR||path.join(path.dirname(path.resolve(DB_PATH)),'backups');fs.mkdirSync(dir,{recursive:true});
+if(saved.length){const bak=path.join(dir,`backup-before-legal-reset-${Date.now()}.db`);vacuumTo(bak);db.exec("DELETE FROM settings WHERE key IN ('terms_text','privacy_text')");console.log(`تفريغ نصوص الشروط والخصوصية المحفوظة (${saved.length}). النسخة الاحتياطية: ${bak}`)}
+db.exec("INSERT OR REPLACE INTO settings(key,value) VALUES('legal_text_reset_v1','1')")}}
 const startSession=(res,uid)=>{const t=crypto.randomBytes(32).toString('hex'),priv=['admin','staff'].includes(get('SELECT role FROM users WHERE id=?',uid)?.role),ttl=priv?432e5:6048e5;run('INSERT INTO sessions VALUES(?,?,?)',sha(t),uid,Date.now()+ttl);res.setHeader('Set-Cookie',`sid=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${ttl/1000}${((process.env.APP_URL||'').startsWith('https')||res.req.headers['x-forwarded-proto']==='https')?'; Secure':''}`)};
 // مالكو المنصة: كل حساب ببريد من ADMIN_EMAIL (أكثر من بريد مفصول بفاصلة) يصير مديرًا تلقائيًا، بشرط أن يكون البريد موثّقًا برمز التفعيل (ولا يعمل إذا عُطّل التحقق)
 const ownerPromote=u=>{if(u&&ADMINS.size&&VERIFY_REQUIRED&&u.email_verified===1&&u.role!=='admin'&&ADMINS.has(String(u.email).toLowerCase())){run("UPDATE users SET role='admin' WHERE id=?",u.id);audit(u.id,'owner_admin',`user:${u.id}`);u.role='admin'}return u};
