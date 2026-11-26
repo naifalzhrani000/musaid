@@ -48,7 +48,7 @@ if(url.pathname==='/manifest.webmanifest'){res.setHeader('Content-Type','applica
 if(url.pathname==='/robots.txt'){res.setHeader('Content-Type','text/plain; charset=utf-8');const base=(process.env.APP_URL||'').replace(/\/$/,'');return res.end(`User-agent: *\nAllow: /\nDisallow: /api/\n${base?`Sitemap: ${base}/sitemap.xml\n`:''}`)}
 if(url.pathname==='/sitemap.xml'){const base=(process.env.APP_URL||'').replace(/\/$/,'');if(!base){res.statusCode=404;return res.end('not found')}res.setHeader('Content-Type','application/xml; charset=utf-8');return res.end(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${base}/</loc></url></urlset>`)}
 if(!url.pathname.startsWith('/api')){res.setHeader('Content-Type','text/html;charset=utf-8');return res.end(INDEX_HTML())}
-let bytes=0;const chunks=[];const preTok=sidOf(req);const preAdmin=url.pathname==='/api/admin/restore/preview'&&userOf(preTok)?.role==='admin';for await(const ch of req){bytes+=ch.length;if(bytes>(url.pathname==='/api/upload'?7e6:preAdmin?3e7:1e5))throw err(413,'الطلب كبير');chunks.push(ch)}
+let bytes=0;const chunks=[];const preTok=sidOf(req);const preAdmin=url.pathname==='/api/admin/restore/preview'&&userOf(preTok)?.role==='admin';for await(const ch of req){bytes+=ch.length;const cap=url.pathname==='/api/upload'?7e6:url.pathname==='/api/upload-audio'?4e6:preAdmin?3e7:1e5;if(bytes>cap)throw err(413,'الطلب كبير');chunks.push(ch)}
 const bodyBuf=Buffer.concat(chunks),raw=bodyBuf.toString('utf8');
 if(req.method!=='GET'&&req.headers.origin){let oh='';try{oh=new URL(req.headers.origin).host}catch{}if(oh!==req.headers.host)throw err(403,'مرفوض')}
 const ipAddr=clientIp(req)||'?';
