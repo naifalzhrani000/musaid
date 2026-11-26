@@ -1301,7 +1301,12 @@ body.dchat-mode .dc-linkcard .dc-acts button:only-child{grid-column:1/-1}
 .shop-price small{font-size:12px;color:#9c94a8}
 .shop-btn{border:0;border-radius:12px;background:#5b3fd6;color:#fff;padding:9px 10px;font:inherit;font-size:13px;cursor:pointer}
 .shop-del{background:#fff;color:#b42318;border:1px solid #f0c8c4}
-.shop-add{width:100%;margin-top:12px;border:1px dashed #b9accf;border-radius:14px;background:#faf8ff;color:#5b3fd6;padding:12px;font:inherit;cursor:pointer}
+.shop-add{width:100%;margin-top:14px;min-height:56px;display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px dashed var(--m);border-radius:18px;background:linear-gradient(135deg,var(--ml) 0%,#fff 100%);color:var(--g);padding:12px 16px;font:inherit;font-size:16px;font-weight:700;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.shop-add:hover{border-color:var(--g);box-shadow:0 6px 18px rgba(83,49,182,.14);transform:translateY(-1px)}
+.shop-add:active{transform:translateY(0) scale(.98)}
+.shop-add:focus-visible{outline:3px solid var(--m);outline-offset:3px}
+.shop-add-ic{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--g);color:#fff;font-size:22px;font-weight:400;line-height:1;flex:0 0 auto;box-shadow:0 3px 8px rgba(83,49,182,.3)}
+@media (prefers-reduced-motion:reduce){.shop-add,.shop-add:hover{transition:none;transform:none}}
 @media (max-width:360px){.shop-grid{grid-template-columns:1fr}}
 .shop-img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#f3f0fb}
 
