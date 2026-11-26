@@ -1077,28 +1077,24 @@ test('إحالة المحلات: التسجيل عبر بطاقة المحل ي�
   assert.ok(QR.paths(url).dots.length>0&&QR.paths(url).finders.length>0);
 });
 
-test('متجر المساعد: منتجات وسلة وفاتورة تصل المحادثة، والسعر النهائي يبقى لرابط الدفع',async()=>{
+test('متجر المساعد: منتجات وإرسال بطاقة المنتج إلى الشات',async()=>{
 const h=await reg('shopH');await asHelper(h);await vfy(h);const hid=(await h('/me')).j.user.id;
 const buyer=await reg('shopB');const bid=(await buyer('/me')).j.user.id;
 const r=await h('/shop/products','POST',{title:'صنبور زاوية',description:'ستانلس عالي الجودة',price:45});assert.equal(r.s,200);const pid=r.j.id;
 assert.equal((await buyer('/shop/products','POST',{title:'مرفوض',price:9})).s,403,'العميل لا يضيف منتجات');
 assert.equal((await h('/shop/products','POST',{title:'س',price:0})).s,400,'السعر غير الصحيح مرفوض');
-assert.equal((await buyer(`/shop/${hid}/cart/${pid}`,'POST')).s,200,'العميل يضيف للسلة');
-assert.equal((await h(`/shop/${hid}/cart/${pid}`,'POST')).s,400,'لا يشتري المساعد من متجره');
-const cart=(await buyer(`/shop/${hid}/cart`)).j;assert.equal(cart.length,1);assert.equal(cart[0].qty,1);assert.ok('image_id' in cart[0]);
-assert.equal((await buyer(`/shop/${hid}/cart/${pid}/qty`,'POST',{qty:3})).s,200,'تعديل الكمية');
-assert.equal((await buyer(`/shop/${hid}/cart`)).j[0].qty,3,'الكمية تحدّثت');
-assert.equal((await buyer(`/shop/${hid}/cart/${pid}/qty`,'POST',{qty:0})).s,400,'الكمية صفر مرفوضة');
-assert.equal((await buyer(`/shop/${hid}/cart/${pid}/qty`,'POST',{qty:100})).s,400,'الكمية فوق 99 مرفوضة');
-assert.equal((await buyer(`/shop/${hid}/cart/${pid}/qty`,'POST',{qty:1})).s,200);
-const co=await buyer(`/shop/${hid}/checkout`,'POST');assert.equal(co.s,200);assert.equal(co.j.total,45);
-const msgs=(await buyer(`/direct/${hid}`)).j.messages;const inv=msgs.find(m=>m.from_id===bid&&m.body.startsWith('[فاتورة المتجر]\n'));assert.ok(inv,'الفاتورة وصلت المحادثة');const invD=JSON.parse(inv.body.slice('[فاتورة المتجر]\n'.length));assert.equal(invD.total,45);assert.equal(invD.items.length,1);assert.equal(invD.items[0].q,1);assert.equal(invD.items[0].p,45);assert.equal((await buyer(`/direct/${hid}`,'POST',{body:inv.body})).s,400,'لا تُزوَّر الفاتورة برسالة عادية');
-assert.equal((await buyer(`/shop/${hid}/cart`)).j.length,0,'السلة تُفرّغ بعد الإرسال');
+assert.equal((await buyer(`/shop/${hid}/send/${pid}`,'POST')).s,200,'العميل يرسل بطاقة المنتج للشات');
+assert.equal((await h(`/shop/${hid}/send/${pid}`,'POST')).s,400,'لا يرسل المساعد منتج متجره');
+assert.equal((await buyer(`/shop/${hid}/send/999999`,'POST')).s,404,'منتج غير موجود مرفوض');
+const cards=()=>(async()=>(await buyer(`/direct/${hid}`)).j.messages.filter(m=>m.from_id===bid&&m.body.startsWith('[منتج]\n')))();
+const first=await cards();assert.equal(first.length,1,'البطاقة وصلت المحادثة');
+const cd=JSON.parse(first[0].body.slice('[منتج]\n'.length));assert.equal(cd.t,'صنبور زاوية');assert.equal(cd.p,45);
+assert.equal((await buyer(`/shop/${hid}/send/${pid}`,'POST')).s,200,'بطاقة ثانية');
+assert.equal((await cards()).length,2,'البطاقات تتراكم تحت السابقة');
 {const before=(await h('/me')).j.chatUnread;assert.ok(before>=1,'المساعد يرى رسالة غير مقروءة');
 await h(`/direct/${bid}`);const after=(await h('/me')).j.chatUnread;assert.ok(after<before,'فتح المحادثة يقرأ رسائلها');
 await new Promise(r=>setTimeout(r,1100));assert.equal((await buyer(`/direct/${hid}`,'POST',{body:'مرحبًا'})).s,200);
 assert.equal((await h('/me')).j.chatUnread,after+1,'رسالة جديدة ترفع العداد');}
-assert.equal((await buyer(`/shop/${hid}/checkout`,'POST')).s,400,'لا فاتورة من سلة فارغة');
 assert.equal((await h(`/shop/products/${pid}/delete`,'POST')).s,200);
 assert.equal((await buyer(`/shop/${hid}`)).j.products.length,0,'المنتج المحذوف يختفي من المتجر');
 });

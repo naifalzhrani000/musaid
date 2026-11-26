@@ -1,8 +1,7 @@
-import {route, all, get, run, err, tx, need, str, notify, blocked, hitOr429} from '../core.js';
+import {route, all, get, run, err, need, str, blocked, hitOr429} from '../core.js';
 
-// متجر المساعد: المنتجات والسلة والفاتورة التعريفية. لا يمس هذا الملف الدفع أو المبالغ المستلمة.
+// متجر المساعد: المنتجات وإرسال بطاقة المنتج إلى الشات. لا سلة ولا فواتير ولا يمس هذا الملف الدفع أو المبالغ المستلمة.
 const PRICE_MAX=100000,PRODUCTS_MAX=100;
-const INVOICE_TAG='[فاتورة المتجر]\n';
 const isHelper=u=>!!u&&u.account_type==='helper';
 const helperExists=id=>!!get("SELECT 1 x FROM users WHERE id=? AND active=1 AND account_type='helper'",id);
 const money=n=>Math.round(Number(n)*100)/100;
@@ -22,31 +21,13 @@ route('POST','/shop/products/(\\d+)/delete',c=>{const u=need(c),id=+c.p[0];const
 if(!p)throw err(404,'المنتج غير موجود');if(p.helper_id!==u.id)throw err(403,'غير مسموح');
 run('UPDATE shop_products SET active=0 WHERE id=?',id);return{ok:1}});
 
-route('GET','/shop/(\\d+)/cart',c=>{const u=need(c),hid=+c.p[0];
-return all('SELECT sc.product_id id,sc.qty,p.title,p.price,p.image_id FROM shop_cart sc JOIN shop_products p ON p.id=sc.product_id WHERE sc.user_id=? AND p.helper_id=? AND p.active=1 ORDER BY sc.product_id',u.id,hid)});
-
-route('POST','/shop/(\\d+)/cart/(\\d+)',c=>{const u=need(c),hid=+c.p[0],pid=+c.p[1];
-const p=get('SELECT helper_id FROM shop_products WHERE id=? AND active=1',pid);if(!p||p.helper_id!==hid)throw err(404,'المنتج غير موجود');
-if(hid===u.id)throw err(400,'لا يمكنك الشراء من متجرك');if(blocked(u.id,hid))throw err(403,'لا يمكن التواصل مع هذا المساعد');
-run('INSERT INTO shop_cart(user_id,product_id,qty) VALUES(?,?,1) ON CONFLICT(user_id,product_id) DO UPDATE SET qty=MIN(qty+1,99)',u.id,pid);
+const CARD_TAG='[منتج]\n';
+// إرسال بطاقة منتج إلى الشات: رسالة عادية من العميل إلى المتجر، تعرضها الواجهة كبطاقة
+route('POST','/shop/(\\d+)/send/(\\d+)',c=>{const u=need(c),hid=+c.p[0],pid=+c.p[1];
+if(hid===u.id)throw err(400,'لا يمكنك إرسال منتج متجرك');if(!helperExists(hid))throw err(404,'المتجر غير موجود');
+if(blocked(u.id,hid))throw err(403,'لا يمكن التواصل مع هذا المساعد');
+const p=get('SELECT id,title,price,image_id FROM shop_products WHERE id=? AND helper_id=? AND active=1',pid,hid);
+if(!p)throw err(404,'المنتج غير موجود');
+hitOr429('shopcard|'+u.id,30);
+run('INSERT INTO direct_messages(from_id,to_id,body) VALUES(?,?,?)',u.id,hid,CARD_TAG+JSON.stringify({t:p.title,p:money(p.price),i:p.image_id||null}));
 return{ok:1}});
-
-route('POST','/shop/(\\d+)/cart/(\\d+)/qty',c=>{const u=need(c),hid=+c.p[0],pid=+c.p[1];
-const q=Number(c.b.qty);if(!Number.isInteger(q)||q<1||q>99)throw err(400,'الكمية من 1 إلى 99');
-const r=run('UPDATE shop_cart SET qty=? WHERE user_id=? AND product_id=? AND product_id IN (SELECT id FROM shop_products WHERE helper_id=? AND active=1)',q,u.id,pid,hid);
-if(!r.changes)throw err(404,'المنتج غير موجود في السلة');return{ok:1,qty:q}});
-
-route('POST','/shop/(\\d+)/cart/(\\d+)/remove',c=>{const u=need(c),pid=+c.p[1];run('DELETE FROM shop_cart WHERE user_id=? AND product_id=?',u.id,pid);return{ok:1}});
-
-route('POST','/shop/(\\d+)/checkout',c=>tx(()=>{const u=need(c),hid=+c.p[0];
-if(hid===u.id)throw err(400,'غير صالح');if(!helperExists(hid))throw err(404,'المتجر غير موجود');if(blocked(u.id,hid))throw err(403,'لا يمكن التواصل مع هذا المساعد');
-hitOr429('shopco|'+u.id,20);
-const items=all('SELECT p.title,p.price,sc.qty,p.image_id FROM shop_cart sc JOIN shop_products p ON p.id=sc.product_id WHERE sc.user_id=? AND p.helper_id=? AND p.active=1',u.id,hid);
-if(!items.length)throw err(400,'السلة فارغة');
-const total=money(items.reduce((s,i)=>s+i.price*i.qty,0));
-// يعرضها الشات كرت بجدول: علامة ثم JSON من الخادم فقط (t الاسم، p السعر، q الكمية، i رقم الصورة)
-const body=INVOICE_TAG+JSON.stringify({items:items.map(i=>({t:i.title,p:money(i.price),q:i.qty,i:i.image_id||null})),total});
-run('INSERT INTO direct_messages(from_id,to_id,body) VALUES(?,?,?)',u.id,hid,body);
-run('DELETE FROM shop_cart WHERE user_id=? AND product_id IN (SELECT id FROM shop_products WHERE helper_id=?)',u.id,hid);
-notify(hid,`طلب جديد من متجرك بقيمة تقديرية ${total} ريال`,`#/direct/${u.id}`);
-return{ok:1,total}}));

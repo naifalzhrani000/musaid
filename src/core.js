@@ -67,7 +67,7 @@ for(const [col,def] of [['helper_type',"TEXT NOT NULL DEFAULT ''"],['vat_verifie
 for(const [col,def] of [['cash_hold','INT NOT NULL DEFAULT 0']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
 // إحالة المحلات: العميل المسجّل عبر بطاقة QR محل (مؤسسة/شركة) يُنسب إليه، ويُحفظ أول تسجيل فقط
 for(const [col,def] of [['referred_by','INT'],['referred_at','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('users') WHERE name=?").get(col))db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)}
-for(const s of ["ALTER TABLE contact_messages ADD COLUMN status TEXT NOT NULL DEFAULT 'new'","ALTER TABLE contact_messages ADD COLUMN reply TEXT","ALTER TABLE contact_messages ADD COLUMN replied_at TEXT","ALTER TABLE contact_messages ADD COLUMN replied_by INT"])try{db.exec(s)}catch{}
+for(const s of ["ALTER TABLE users ADD COLUMN cr_number TEXT","ALTER TABLE users ADD COLUMN cr_verified INT NOT NULL DEFAULT 0","ALTER TABLE contact_messages ADD COLUMN status TEXT NOT NULL DEFAULT 'new'","ALTER TABLE contact_messages ADD COLUMN reply TEXT","ALTER TABLE contact_messages ADD COLUMN replied_at TEXT","ALTER TABLE contact_messages ADD COLUMN replied_by INT"])try{db.exec(s)}catch{}
 for(const [col,def] of [['vat_amount','REAL'],['total_amount','REAL'],['helper_net','REAL'],['payment_ref','TEXT'],['paid_via','TEXT'],['materials','REAL']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 // vat_verified: 0 = قيد المراجعة (يعمل)، 1 = معتمد، 2 = مرفوض (موقوف حتى يعدّل الرقم)
 // تشفير مفاتيح المساعد (AES-256-GCM)، والمفتاح من متغير البيئة SECRETS_KEY (32 بايت بصيغة base64)
@@ -91,7 +91,7 @@ db.exec("CREATE TABLE IF NOT EXISTS agreement_notes(agreement_id INTEGER PRIMARY
 // المتابعة
 db.exec(`CREATE TABLE IF NOT EXISTS user_follows(follower_id INT NOT NULL REFERENCES users(id),followed_id INT NOT NULL REFERENCES users(id),created_at TEXT DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(follower_id,followed_id));`);
 // متجر المساعد: منتجات بسعر تعريفي، وسلة لكل زوج (عميل، متجر). السعر النهائي يحدده رابط الدفع لا السلة.
-db.exec("CREATE TABLE IF NOT EXISTS shop_products(id INTEGER PRIMARY KEY,helper_id INT NOT NULL REFERENCES users(id),title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',price REAL NOT NULL CHECK(price>0),active INT NOT NULL DEFAULT 1,created_at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE INDEX IF NOT EXISTS ix_shop_products_helper ON shop_products(helper_id);CREATE TABLE IF NOT EXISTS shop_cart(user_id INT NOT NULL REFERENCES users(id),product_id INT NOT NULL REFERENCES shop_products(id),qty INT NOT NULL DEFAULT 1 CHECK(qty>0),PRIMARY KEY(user_id,product_id))");
+db.exec("CREATE TABLE IF NOT EXISTS shop_products(id INTEGER PRIMARY KEY,helper_id INT NOT NULL REFERENCES users(id),title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',price REAL NOT NULL CHECK(price>0),active INT NOT NULL DEFAULT 1,created_at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE INDEX IF NOT EXISTS ix_shop_products_helper ON shop_products(helper_id);");
 db.exec("CREATE TABLE IF NOT EXISTS discount_codes(id INTEGER PRIMARY KEY,code TEXT UNIQUE NOT NULL,percent INT NOT NULL CHECK(percent BETWEEN 1 AND 100),max_uses INT NOT NULL CHECK(max_uses>0),used INT NOT NULL DEFAULT 0,active INT NOT NULL DEFAULT 1,created_at TEXT DEFAULT CURRENT_TIMESTAMP)");
 for(const [col,def] of [['discount_code_id','INT'],['discount_amount','REAL']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('shop_products') WHERE name='image_id'").get())db.exec('ALTER TABLE shop_products ADD COLUMN image_id INT REFERENCES attachments(id)');
@@ -152,10 +152,17 @@ const audit=(a,act,d)=>run('INSERT INTO audit_log(admin_id,action,detail) VALUES
 const safeLink=l=>{const s=String(l??'');return s.length<=200&&/^#\/[A-Za-z0-9_\-\/.?=&%#]*$/.test(s)?s:null};
 // نسخة احتياطية بصلاحية 0600 من لحظة الإنشاء: يُنشأ ملف فارغ مقيّد أولًا ثم يُملأ بـ VACUUM INTO
 const vacuumTo=f=>{fs.writeFileSync(f,'',{mode:0o600,flag:'wx'});try{db.exec(`VACUUM INTO '${f.replace(/'/g,"''")}'`);fs.chmodSync(f,0o600)}catch(e){try{fs.unlinkSync(f)}catch{}throw e}};
+// إزالة السلة والفواتير المؤقتة مرة واحدة (بطلب المالك): نسخة احتياطية أولًا، ثم حذف الفواتير وجدول السلة
+{const cartTbl=db.prepare("SELECT 1 x FROM sqlite_master WHERE type='table' AND name='shop_cart'").get();
+const tmpInv=db.prepare("SELECT COUNT(*) n FROM direct_messages WHERE body LIKE '[فاتورة المتجر]%'").get().n;
+if(cartTbl||tmpInv){const dir=process.env.BACKUP_DIR||path.join(path.dirname(path.resolve(DB_PATH)),'backups');fs.mkdirSync(dir,{recursive:true});
+const bak=path.join(dir,`backup-before-cart-removal-${Date.now()}.db`);vacuumTo(bak);
+db.exec("DELETE FROM direct_messages WHERE body LIKE '[فاتورة المتجر]%'");db.exec("DROP TABLE IF EXISTS shop_cart");
+console.log(`إزالة السلة: حذف ${tmpInv} فاتورة مؤقتة. النسخة الاحتياطية: ${bak}`)}}
 const startSession=(res,uid)=>{const t=crypto.randomBytes(32).toString('hex'),priv=['admin','staff'].includes(get('SELECT role FROM users WHERE id=?',uid)?.role),ttl=priv?432e5:6048e5;run('INSERT INTO sessions VALUES(?,?,?)',sha(t),uid,Date.now()+ttl);res.setHeader('Set-Cookie',`sid=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${ttl/1000}${((process.env.APP_URL||'').startsWith('https')||res.req.headers['x-forwarded-proto']==='https')?'; Secure':''}`)};
 // مالكو المنصة: كل حساب ببريد من ADMIN_EMAIL (أكثر من بريد مفصول بفاصلة) يصير مديرًا تلقائيًا، بشرط أن يكون البريد موثّقًا برمز التفعيل (ولا يعمل إذا عُطّل التحقق)
 const ownerPromote=u=>{if(u&&ADMINS.size&&VERIFY_REQUIRED&&u.email_verified===1&&u.role!=='admin'&&ADMINS.has(String(u.email).toLowerCase())){run("UPDATE users SET role='admin' WHERE id=?",u.id);audit(u.id,'owner_admin',`user:${u.id}`);u.role='admin'}return u};
-const userOf=t=>ownerPromote(t?get('SELECT u.id,u.name,u.email,u.city,u.role,u.active,u.account_type,u.phone,u.address,u.short_address,u.map_url,u.email_verified,u.notify_email,u.push_enabled,u.perms,u.vat_status,u.vat_number,u.helper_type,u.vat_verified FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.exp>? AND u.active=1',sha(t),Date.now()):undefined);
+const userOf=t=>ownerPromote(t?get('SELECT u.id,u.name,u.email,u.city,u.role,u.active,u.account_type,u.phone,u.address,u.short_address,u.map_url,u.email_verified,u.notify_email,u.push_enabled,u.perms,u.vat_status,u.vat_number,u.helper_type,u.vat_verified,u.cr_number,u.cr_verified FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.exp>? AND u.active=1',sha(t),Date.now()):undefined);
 const need=c=>{if(!c.u)throw err(401,'سجّل الدخول أولًا');return c.u};
 const verified=c=>{const u=need(c);if(!u.email_verified&&VERIFY_REQUIRED)throw err(403,'فعّل بريدك الإلكتروني أولًا');return u};
 const adm=c=>{if(need(c).role!=='admin')throw err(403,'غير مصرح');return c.u};

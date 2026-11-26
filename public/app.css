@@ -686,17 +686,6 @@ label.switch.switch input:disabled + .slider{opacity:.5}
 .topic-card{display:flex;flex-direction:column;gap:4px}
 .topic-card small{color:#6445cc;font-weight:700}
 .topic-card p{margin:0;white-space:pre-wrap}
-.inv-card{background:#fff;border:1px solid #d9d5e8;border-radius:18px;padding:12px;max-width:440px;align-self:stretch;display:flex;flex-direction:column;gap:10px;text-align:start}
-.inv-head{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#f2eefd;border-radius:14px;padding:10px 12px}
-.inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f7f6fb;border-radius:14px;padding:10px;font-size:13px}
-.inv-parties>div>b,.inv-det>b{color:#5331b6;display:block;margin-bottom:4px}
-.inv-r{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0}
-.inv-r span{color:#625a76}
-.inv-det{background:#f7f6fb;border-radius:14px;padding:10px;font-size:13px;display:flex;flex-direction:column;gap:2px}
-.inv-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.inv-acts small{color:#625a76;font-size:12px}
-.inv-card.cancelled{opacity:.6}
-@media (max-width:480px){.inv-parties{grid-template-columns:1fr}}
 
 /* ===== المحادثة المباشرة: مطابقة للتصميم المعتمد (تُطبَّق فقط على body.dchat-mode) ===== */
 .dcs{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;display:block}
@@ -761,9 +750,6 @@ body.dchat-mode .dc-ticks{font-style:normal;color:#6e4cd3;font-size:12px;letter-
 /* بطاقة الفاتورة */
 body.dchat-mode .dc-invrow{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
 body.dchat-mode .dc-inv{width:min(88%,560px);background:#fff;border:1px solid #e1dcee;border-radius:22px;padding:0 0 10px;box-shadow:0 2px 10px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:10px}
-body.dchat-mode .dc-inv-head{position:relative;margin:26px 10px 0;background:#ebe7fc;border-radius:16px;padding:14px 12px 12px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
-body.dchat-mode .dc-inv-head b{font-size:18px;color:#0d0a2c}
-body.dchat-mode .dc-inv-head small{font-size:15px;color:#5f5678}
 body.dchat-mode .dc-check{position:absolute;top:-24px;left:50%;transform:translateX(-50%);width:50px;height:50px;border-radius:50%;background:#6340c8;border:4px solid #fff;display:grid;place-items:center}
 body.dchat-mode .dc-check .dcs{stroke:#fff;stroke-width:2.6;width:24px;height:24px}
 body.dchat-mode .dc-parties{display:grid;grid-template-columns:1fr 1fr;margin:0 10px;background:#f5f3fb;border-radius:16px;padding:12px 10px}
@@ -1315,9 +1301,7 @@ body.dchat-mode .dc-linkcard .dc-acts button:only-child{grid-column:1/-1}
 .shop-price small{font-size:12px;color:#9c94a8}
 .shop-btn{border:0;border-radius:12px;background:#5b3fd6;color:#fff;padding:9px 10px;font:inherit;font-size:13px;cursor:pointer}
 .shop-del{background:#fff;color:#b42318;border:1px solid #f0c8c4}
-.shop-add,.shop-cart-btn{width:100%;margin-top:12px;border:1px dashed #b9accf;border-radius:14px;background:#faf8ff;color:#5b3fd6;padding:12px;font:inherit;cursor:pointer}
-.shop-cart-btn{border-style:solid;background:#5b3fd6;color:#fff;border-color:#5b3fd6}
-.shop-cart-row{padding:8px 0;border-bottom:1px solid #ece8f8}
+.shop-add{width:100%;margin-top:12px;border:1px dashed #b9accf;border-radius:14px;background:#faf8ff;color:#5b3fd6;padding:12px;font:inherit;cursor:pointer}
 @media (max-width:360px){.shop-grid{grid-template-columns:1fr}}
 .shop-img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#f3f0fb}
 
@@ -1398,47 +1382,8 @@ body .mg-shell .mg-tb-end{display:flex;align-items:center;gap:10px;flex:none}
 }
 
 /* فاتورة المتجر في الشات: كرت بجدول المنتجات المختارة بصورها وأسعارها ومجموعها */
-body.dchat-mode .dc-col:has(.inv-card){max-width:94%}
-body.dchat-mode .dc-bub:has(.inv-card){padding:10px;border-radius:20px;font-size:14px}
-.inv-card{display:flex;flex-direction:column;gap:10px;width:min(73vw,330px);max-width:100%;font-size:14px;line-height:1.5}
-.inv-title{font-size:15px;font-weight:700;color:#4326a0;padding-inline:2px}
-.inv-wrap{overflow-x:auto;border:1px solid #e3def5;border-radius:12px;background:#fff}
-.inv-t{width:100%;border-collapse:collapse;font-size:12.5px}
-.inv-t th{background:#f3f0fd;color:#4326a0;font-weight:700;padding:7px 6px;text-align:start;white-space:nowrap}
-.inv-t td{padding:7px 6px;border-top:1px solid #efebfa;vertical-align:middle;color:#0d0a2c;line-height:1.4}
-.inv-t td:not(.inv-prod){white-space:nowrap;text-align:start}
-.inv-prod{display:flex;align-items:center;gap:7px;min-width:0}
-.inv-prod span:last-child{word-break:break-word}
-.inv-img{flex:0 0 auto;width:36px;height:36px;border-radius:8px;object-fit:cover;background:#ece9f6;display:block}
-.inv-total{display:flex;justify-content:space-between;align-items:center;background:#4326a0;color:#fff;border-radius:12px;padding:10px 12px;font-size:15px}
-.inv-total b{font-size:16px}
-.inv-note{color:#625a76;font-size:12px;line-height:1.5;padding-inline:2px}
 
 /* سلة المتجر: كرت بالمنتجات، تعديل الكمية، حذف، أسعار ومجموع */
-.cart-box{width:min(92vw,420px);max-height:86vh;display:flex;flex-direction:column;gap:0;padding:16px}
-.cart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.cart-head h3{margin:0;font-size:18px;color:#0d0a2c}
-.cart-x{width:36px;height:36px;border:0;border-radius:10px;background:#f1eefb;font-size:22px;line-height:1;color:#4326a0;cursor:pointer}
-.cart-list{overflow-y:auto;flex:1 1 auto;min-height:0}
-.cart-row{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid #ece8f8}
-.cart-main{display:flex;align-items:center;gap:10px;min-width:0}
-.cart-img{flex:0 0 auto;width:52px;height:52px;border-radius:12px;object-fit:cover;background:#ece9f6;display:block}
-.cart-info{display:flex;flex-direction:column;min-width:0}
-.cart-info b{color:#0d0a2c;word-break:break-word;font-size:15px}
-.cart-info small{color:#625a76;font-size:12px}
-.cart-ctl{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.cart-qty{display:inline-flex;align-items:center;border:1px solid #d9d5e8;border-radius:12px;overflow:hidden;background:#faf9ff}
-.cart-qty button{width:38px;height:38px;border:0;background:transparent;font-size:18px;color:#4326a0;cursor:pointer}
-.cart-qty button:disabled{color:#b8b2c9;cursor:default}
-.cart-qty input{width:52px;height:38px;border:0;border-radius:0;box-shadow:none;outline:none;border-inline:1px solid #e3def5;background:#fff;text-align:center;font:inherit;font-weight:600;color:#0d0a2c;-moz-appearance:textfield}
-.cart-qty input::-webkit-outer-spin-button,.cart-qty input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.cart-sum{color:#0d0a2c;white-space:nowrap;margin-inline-start:auto}
-.cart-del{border:0;background:none;color:#b3261e;font:inherit;font-size:13px;cursor:pointer;padding:6px 4px}
-.cart-foot{display:flex;flex-direction:column;gap:8px;border-top:1px solid #ece8f8;padding-top:12px}
-.cart-foot .btn{width:100%}
-.cart-total{display:flex;justify-content:space-between;align-items:center;font-size:15px;color:#0d0a2c}
-.cart-total b{font-size:18px;color:#4326a0}
-.cart-note{color:#625a76;font-size:12px;line-height:1.5}
 
 /* شارة الرسائل غير المقروءة على تبويب محادثاتي في صفحة المتجر */
 .pf2 .pf2-tabs .tab-cnt{position:absolute;top:-7px;inset-inline-start:auto;inset-inline-end:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#e5484d;color:#fff;font:700 11px/18px system-ui,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff}
@@ -1511,3 +1456,14 @@ body .mg-shell.mg-dark .mg-scrim{background:rgba(0,0,0,.6) !important}
 .ph-note{display:inline-block;margin-inline-start:6px;padding:1px 7px;border-radius:999px;background:#ece8fc;color:#5331b6;font-size:11px;line-height:1.6;white-space:nowrap;vertical-align:middle}
 
 body.dchat-mode .menu-panel{top:70px}
+
+.biz-ok{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#1d5fd1;background:#eaf2ff;border-radius:999px;padding:2px 8px;margin-inline-start:6px}
+
+.dc-blk{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid #e5def7;background:#fff;color:#b91c1c;margin-inline-start:6px;cursor:pointer}
+
+.pf2-disc{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px;font-size:14px}.pf2-disc li{padding:6px 0;border-bottom:1px solid #f0edf8}
+.prod-card{display:flex;align-items:center;gap:10px;width:min(70vw,300px);max-width:100%;background:#fff;border:1px solid #e3def5;border-radius:16px;padding:10px}
+.prod-img{flex:0 0 auto;width:56px;height:56px;border-radius:12px;object-fit:cover;background:#ece9f6;display:block}
+.prod-info{display:flex;flex-direction:column;min-width:0;gap:3px}
+.prod-info b{color:#0d0a2c;font-size:15px;word-break:break-word}
+.prod-price{color:#4326a0;font-size:14px;font-weight:700}
