@@ -8,7 +8,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 let DBF;
 let srv;const B='http://localhost:3999';
-before(async()=>{DBF=join(tmpdir(),'t'+Date.now()+'.db');srv=spawn('node',['server.js'],{env:{...process.env,SECRETS_KEY:Buffer.alloc(32,7).toString('base64'),RESEND_API_KEY:'',REGISTER_PER_HOUR:'1000',ASSISTANT_PER_HOUR:'5000',PORT:3999,DB_FILE:DBF,ADMIN_EMAIL:'admin@t.sa',ADMIN_SETUP_TOKEN:'test-token',HALA_WEBHOOK_SECRET:'test-hala'},stdio:'ignore'});await new Promise(r=>setTimeout(r,1200))});
+before(async()=>{DBF=join(tmpdir(),'t'+Date.now()+'.db');srv=spawn('node',['server.js'],{env:{...process.env,SECRETS_KEY:Buffer.alloc(32,7).toString('base64'),RESEND_API_KEY:'',REGISTER_PER_HOUR:'1000',ASSISTANT_PER_HOUR:'5000',PORT:3999,DB_FILE:DBF,ADMIN_EMAIL:'admin@t.sa',ADMIN_SETUP_TOKEN:'test-token'},stdio:'ignore'});await new Promise(r=>setTimeout(r,1200))});
 after(()=>srv.kill());
 const cl=()=>{let ck='';return async(p,m='GET',b)=>{const r=await fetch(B+'/api'+p,{method:m,headers:{'content-type':'application/json',cookie:ck},body:b?JSON.stringify(b):undefined});ck=r.headers.get('set-cookie')?.split(';')[0]||ck;return{s:r.status,j:await r.json().catch(()=>({}))}}};
 let phSeq=0;const ph=()=>'05'+String(70000000+(++phSeq));
@@ -103,7 +103,7 @@ test('صفحة المساعد: النبذة والأعمال والتقييما�
 const PNG3='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 const w=await cl();
 const cat=(await w('/skills')).j.categories.find(c=>c.name==='سباكة');
-await w('/register','POST',{name:'نجار تجريبي',email:'carp@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',helper_type:'establishment',category_ids:[cat.id]}); await w('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'نجار تجريبي',phone:ph()}); await vfy(w);
+await w('/register','POST',{name:'نجار تجريبي',email:'carp@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',helper_type:'establishment',category_ids:[cat.id]}); await w('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'}); await w('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'نجار تجريبي',phone:ph()}); await vfy(w);
 const wid=(await w('/me')).j.user.id;
 assert.equal((await w('/me/bio','POST',{bio:'نجار بخبرة 10 سنوات في تركيب الأبواب والخزائن'})).s,200);
 const at=(await w('/upload','POST',{data:'data:image/png;base64,'+PNG3})).j.id;
@@ -236,8 +236,8 @@ assert.equal(last.status,429);
 
 test('القسم: المساعد يختار قسمًا واحدًا، ويظهر في صفحته',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة');
-const c=await cl();await c('/register','POST',{name:'قسم واحد',email:'sp1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat.id,cat.id+1]}).then(()=>{});
-const r=await c('/register','POST',{name:'قسم واحد ب',email:'sp2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat.id]});assert.equal(r.s,200);
+const c=await cl();await c('/register','POST',{name:'قسم واحد',email:'sp1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat.id,cat.id+1]}).then(()=>{}); await c('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
+const r=await c('/register','POST',{name:'قسم واحد ب',email:'sp2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat.id]}); await c('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});assert.equal(r.s,200);
 assert.deepEqual([...(await c('/me/sections')).j],[cat.id]);
 {const d0=new DatabaseSync(DBF);if(!d0.prepare("SELECT 1 x FROM skill_categories WHERE name='قسم ثالث للاختبار'").get())d0.prepare("INSERT INTO skill_categories(name,sort) VALUES('قسم ثالث للاختبار',99)").run();d0.close()}
 const all3=(await cl()('/skills')).j.categories.slice(0,3).map(x=>x.id);assert.equal(all3.length,3);
@@ -255,7 +255,7 @@ test('الاتفاق في المحادثة: يقترحه طرف، ويعتمده
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=await cl();await o('/register','POST',{name:'عميل اتفاق',email:'ag1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل اتفاق',phone:'0500000991'}); await vfy(o);
-const h=await cl();await h('/register','POST',{name:'مساعد اتفاق',email:'ag2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=await cl();await h('/register','POST',{name:'مساعد اتفاق',email:'ag2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد اتفاق',phone:'0500000992'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;const oid=(await o('/me')).j.user.id;
 assert.equal((await o(`/direct/${hid}/agreements`,'POST',{amount:0,description:'تركيب باب'})).s,400);
@@ -272,7 +272,7 @@ test('عمولة الاتفاق: تظهر للمساعد فقط',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=await cl();await o('/register','POST',{name:'عميل عمولة',email:'cm1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل عمولة',phone:'0500000881'}); await vfy(o);
-const h=await cl();await h('/register','POST',{name:'مساعد عمولة',email:'cm2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=await cl();await h('/register','POST',{name:'مساعد عمولة',email:'cm2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 backdateHelper('cm2@t.sa');
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد عمولة',phone:'0500000882'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
@@ -288,7 +288,7 @@ test('محفظة المساعد: العمولة تُخصم تلقائيًا عن
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=await cl();await o('/register','POST',{name:'عميل محفظة',email:'wl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل محفظة',phone:'0500000771'}); await vfy(o);
-const h=await cl();await h('/register','POST',{name:'مساعد محفظة',email:'wl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=await cl();await h('/register','POST',{name:'مساعد محفظة',email:'wl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 backdateHelper('wl2@t.sa');
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد محفظة',phone:'0500000772'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
@@ -461,7 +461,7 @@ test('مختبر الطلبات: مساعد مناسب لا ينشئ سجلًا�
 const cats=(await cl()('/skills')).j.categories;const cat=cats.find(c=>c.name==='سباكة');
 const adm0=cl();await adm0('/login','POST',{email:'admin@t.sa',password:'12345678'});assert.equal((await adm0('/admin/cities/open','POST',{city:'جدة'})).s,200,'فتح المدينة يدويًا');
 const askc=cl();await askc('/register','POST',{name:'باحث مختبر ٢',email:'askl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
-const hp=cl();await hp('/register','POST',{name:'نجار مختبر',email:'lab1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat.id]});
+const hp=cl();await hp('/register','POST',{name:'نجار مختبر',email:'lab1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat.id]}); await hp('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await hp('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'نجار مختبر',phone:'0500007777'}); await vfy(hp);await hp('/pledge','POST',{accept:true,name:'نجار مختبر'});
 const dbx=new DatabaseSync(DBF);dbx.prepare("UPDATE users SET email_verified=1 WHERE email='lab1@t.sa'").run();dbx.close();
 const cnt=()=>{const d=new DatabaseSync(DBF);const n=d.prepare("SELECT COUNT(*) n FROM failed_searches WHERE text LIKE '%باب مختبر%'").get().n;d.close();return n};
@@ -490,7 +490,7 @@ test('الاستحقاق: العمولة بعد التأكيد فقط، والا
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل استحقاق',email:'es1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل استحقاق',phone:'0500005001'}); await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد استحقاق',email:'es2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد استحقاق',email:'es2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد استحقاق',phone:'0500005002'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
 const S={bank_name:'بنك',account_name:'مؤسسة المساعد',iban:'SA0380000000608010167519',commission_percent:2,commission_grace_days:3};
@@ -518,7 +518,7 @@ test('حل النزاع: قرار أولي من مسؤول غير طرف، ثم 
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل نزاع',email:'dsp1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل نزاع',phone:'0500006001'}); await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد نزاع',email:'dsp2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد نزاع',email:'dsp2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد نزاع',phone:'0500006002'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
 const d0=new DatabaseSync(DBF);d0.prepare("UPDATE users SET created_at=datetime('now','-40 days') WHERE id=?").run(hid);d0.close();
@@ -544,7 +544,7 @@ assert.equal(st,'closed_disputed');assert.equal(nc,0,'لا عمولة عند ع�
 
 test('الرقم الضريبي: للمؤسسات والشركات فقط، عبر قسم خدماتك، ولا يُقبل من الملف الشخصي',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
-const h=cl();await h('/register','POST',{name:'شركة ضريبية',email:'vat1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'company',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'شركة ضريبية',email:'vat1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'company',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 assert.equal((await h('/me/vat','POST',{vat_number:'123'})).s,400,'رقم قصير مرفوض');
 assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234'})).s,200,'الرقم الضريبي وحده يُحفظ بلا شهادة');
 assert.equal((await h('/me/vat','POST',{vat_number:'312345678901234'})).s,200,'رقم صحيح');
@@ -568,7 +568,7 @@ test('مهل النزاع التلقائية وتقرير التوريدات ا�
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل مهل',email:'dl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل مهل',phone:'0500007001'}); await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد مهل',email:'dl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد مهل',email:'dl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد مهل',phone:'0500007002'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
 const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
@@ -588,7 +588,7 @@ test('استحقاق متقدم: وسيلة التواصل بعد الاعتما
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();const rg=await o('/register','POST',{name:'عميل شكوى',email:'ztc1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});assert.equal(rg.s,200,'تسجيل العميل');
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل شكوى',phone:'0500008001'}); await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد شكوى',email:'ztc2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد شكوى',email:'ztc2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد شكوى',phone:'0500008002'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
 const d0=new DatabaseSync(DBF);d0.prepare("UPDATE users SET created_at=datetime('now','-40 days') WHERE id=?").run(hid);d0.close();
@@ -616,7 +616,7 @@ assert.equal(st().status,'refund_due','عمولة مدفوعة تنتظر الا
 
 test('توثيق المدير للرقم الضريبي، وتغيير نوع المساعد يُرفع للإدارة',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
-const h=cl();await h('/register','POST',{name:'مساعد توثيق',email:'vf1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد توثيق',email:'vf1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await h('/profile','POST',{name:'مساعد توثيق',phone:'0500009301'});
 const hid=(await h('/me')).j.user.id;
 assert.equal((await h('/me/helper-type-request','POST',{helper_type:'company'})).s,200,'طلب التغيير يُرسل');
@@ -632,7 +632,7 @@ const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id
 const o=cl();await o('/register','POST',{name:'عميل فوترة',email:'bl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await verifyEmail(o);
 await o('/profile','POST',{name:'عميل فوترة',phone:'0500009401'});
-const h=cl();await h('/register','POST',{name:'مساعد فوترة',email:'bl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد فوترة',email:'bl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await verifyEmail(h);
 await h('/profile','POST',{name:'مساعد فوترة',phone:'0500009402'});
 const hid=(await h('/me')).j.user.id;
@@ -711,7 +711,7 @@ const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id
 const o=cl();await o('/register','POST',{name:'عميل هلا',email:'hl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await verifyEmail(o);
 await o('/profile','POST',{name:'عميل هلا',phone:'0500009501'});
-const h=cl();await h('/register','POST',{name:'مساعد هلا',email:'hl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد هلا',email:'hl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await verifyEmail(h);
 await h('/profile','POST',{name:'مساعد هلا',phone:'0500009502'});await h('/pledge','POST',{accept:true,name:'مساعد هلا'});
 const hid=(await h('/me')).j.user.id;
@@ -739,7 +739,7 @@ test('الدفع: لا يُسجَّل سداد على اتفاق غير قائم
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل دفع',email:'pay1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل دفع',phone:'0500007001'}); await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد دفع',email:'pay2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد دفع',email:'pay2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد دفع',phone:'0500007002'}); await vfy(h);
 const hid=(await h('/me')).j.user.id;
 const pending=(await o(`/direct/${hid}/agreements`,'POST',{amount:120,description:'اتفاق معلّق للدفع'})).j.id;
@@ -780,7 +780,7 @@ test('إشعارات الدفع: الاشتراك والتشفير وفق RFC 82
 const PNGDOC='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 test('الأوراق الرسمية: الآيبان والشعار والمؤسسة والحذف، وحماية الرقم الضريبي',async()=>{
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='كهرباء').id;
-const h=cl();await h('/register','POST',{name:'مؤسسة الآيبان',email:'extra1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مؤسسة الآيبان',email:'extra1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'الرياض',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 const img=(await h('/upload','POST',{data:'data:image/png;base64,'+PNGDOC})).j.id;
 assert.equal((await h('/me/extra','POST',{kind:'iban',number:'SA0380000000608010167519'})).s,400,'الآيبان يحتاج صورة');
 assert.equal((await h('/me/extra','POST',{kind:'iban',number:'SA12',attachment_id:img})).s,400,'الآيبان القصير مرفوض');
@@ -867,7 +867,7 @@ const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id
 const mk=async(email,name,phoneN)=>{const c=cl();await c('/register','POST',{name,email,password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(c);await c('/profile','POST',{name,phone:phoneN});return c};
 const o=await mk('cx1@t.sa','عميل إلغاء','0500009601');const oid=(await o('/me')).j.user.id;
 const o2=await mk('cx3@t.sa','عميل كاش','0500009603');
-const h=cl();await h('/register','POST',{name:'مساعد إلغاء',email:'cx2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد إلغاء',email:'cx2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await verifyEmail(h);await h('/profile','POST',{name:'مساعد إلغاء',phone:'0500009602'});await h('/pledge','POST',{accept:true,name:'مساعد إلغاء'});
 const hid=(await h('/me')).j.user.id;
 const admin=cl();await admin('/login','POST',{email:'admin@t.sa',password:'12345678'});
@@ -895,7 +895,7 @@ test('رابط الدفع: المساعد يحدد السعر النهائي ف�
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل رابط',email:'pl1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل رابط',phone:'0500009701'});
 const oid=(await o('/me')).j.user.id;
-const h=cl();await h('/register','POST',{name:'مساعد رابط',email:'pl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد رابط',phone:'0500009702'});await h('/pledge','POST',{accept:true,name:'مساعد رابط'});
+const h=cl();await h('/register','POST',{name:'مساعد رابط',email:'pl2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});await verifyEmail(h);await h('/profile','POST',{name:'مساعد رابط',phone:'0500009702'});await h('/pledge','POST',{accept:true,name:'مساعد رابط'});
 const hid=(await h('/me')).j.user.id;
 const adm=cl();await adm('/login','POST',{email:'admin@t.sa',password:'12345678'});
 const openTask=async()=>{const s=await h(`/direct/${oid}/task`,'POST');assert.equal(s.s,200);assert.equal((await o(`/tasks/${s.j.id}/accept`,'POST')).s,200)};
@@ -935,7 +935,7 @@ test('المهمة: العميل يبدأ، والمساعد يقبل، وراب
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل مهمة',email:'tk1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل مهمة',phone:'0500009801'});
 const oid=(await o('/me')).j.user.id;
-const h=cl();await h('/register','POST',{name:'مساعد مهمة',email:'tk2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد مهمة',phone:'0500009802'});await h('/pledge','POST',{accept:true,name:'مساعد مهمة'});
+const h=cl();await h('/register','POST',{name:'مساعد مهمة',email:'tk2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});await verifyEmail(h);await h('/profile','POST',{name:'مساعد مهمة',phone:'0500009802'});await h('/pledge','POST',{accept:true,name:'مساعد مهمة'});
 const hid=(await h('/me')).j.user.id;
 assert.equal((await o(`/direct/${hid}/task`,'POST')).s,403,'العميل لا يبدأ المهمة');
 const st=await h(`/direct/${oid}/task`,'POST');assert.equal(st.s,200);
@@ -955,7 +955,7 @@ test('بعد تأكيد استلام الكاش تنتهي المهمة ولا �
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل كاش بدء',email:'cb1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل كاش بدء',phone:'0500010101'});
 const oid=(await o('/me')).j.user.id;
-const h=cl();await h('/register','POST',{name:'مساعد كاش بدء',email:'cb2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد كاش بدء',phone:'0500010102'});await h('/pledge','POST',{accept:true,name:'مساعد كاش بدء'});
+const h=cl();await h('/register','POST',{name:'مساعد كاش بدء',email:'cb2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});await verifyEmail(h);await h('/profile','POST',{name:'مساعد كاش بدء',phone:'0500010102'});await h('/pledge','POST',{accept:true,name:'مساعد كاش بدء'});
 assert.equal((await h(`/direct/${oid}/task`)).j.can_start,true,'لا مهمة سابقة: الزر متاح');
 const t=await h(`/direct/${oid}/task`,'POST');assert.equal(t.s,200);assert.equal((await o(`/tasks/${t.j.id}/accept`,'POST')).s,200);
 const pl=await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب',amount:120});assert.equal(pl.s,200);
@@ -973,7 +973,7 @@ test('التقييم بعد المهمة: يظهر للعميل بعد السد�
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل تقييم',email:'rv1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل تقييم',phone:'0500009901'});
 const oid=(await o('/me')).j.user.id;
-const h=cl();await h('/register','POST',{name:'مساعد تقييم',email:'rv2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد تقييم',phone:'0500009902'});await h('/pledge','POST',{accept:true,name:'مساعد تقييم'});
+const h=cl();await h('/register','POST',{name:'مساعد تقييم',email:'rv2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});await verifyEmail(h);await h('/profile','POST',{name:'مساعد تقييم',phone:'0500009902'});await h('/pledge','POST',{accept:true,name:'مساعد تقييم'});
 const hid=(await h('/me')).j.user.id;
 const t=await h(`/direct/${oid}/task`,'POST');assert.equal(t.s,200);
 await o(`/tasks/${t.j.id}/accept`,'POST');
@@ -995,7 +995,7 @@ test('رابط الدفع لا يُرسل قبل قبول العميل للمه�
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل بدء',email:'sb1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل بدء',phone:'0500010001'});
 const oid=(await o('/me')).j.user.id;
-const h=cl();await h('/register','POST',{name:'مساعد بدء',email:'sb2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد بدء',phone:'0500010002'});await h('/pledge','POST',{accept:true,name:'مساعد بدء'});
+const h=cl();await h('/register','POST',{name:'مساعد بدء',email:'sb2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});await verifyEmail(h);await h('/profile','POST',{name:'مساعد بدء',phone:'0500010002'});await h('/pledge','POST',{accept:true,name:'مساعد بدء'});
 const hid=(await h('/me')).j.user.id;
 const t=await h(`/direct/${oid}/task`,'POST');assert.equal(t.s,200);
 assert.equal((await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب',amount:120})).s,400,'لا رابط قبل قبول العميل');assert.equal((await o(`/tasks/${t.j.id}/accept`,'POST')).s,200);const pl=await h(`/direct/${oid}/payment-link`,'POST',{description:'تركيب',amount:120});assert.equal(pl.s,200,'الرابط بعد قبول العميل');
@@ -1122,7 +1122,7 @@ test('كود الخصم على رابط الدفع: يُخصم من السعر �
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل خصم',email:'dc1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل خصم',phone:'0500009801'});
 const oid=(await o('/me')).j.user.id;
-const h=cl();await h('/register','POST',{name:'مساعد خصم',email:'dc2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد خصم',phone:'0500009802'});
+const h=cl();await h('/register','POST',{name:'مساعد خصم',email:'dc2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});await verifyEmail(h);await h('/profile','POST',{name:'مساعد خصم',phone:'0500009802'});
 const adm=cl();await adm('/login','POST',{email:'admin@t.sa',password:'12345678'});
 assert.equal((await adm('/admin/discounts','POST',{code:'pay10x',percent:10,max_uses:1})).s,200);
 const openTask=async()=>{const s=await h(`/direct/${oid}/task`,'POST');assert.equal(s.s,200);assert.equal((await o(`/tasks/${s.j.id}/accept`,'POST')).s,200)};
@@ -1130,7 +1130,7 @@ await openTask();
 const r=await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'PAY10X'});assert.equal(r.s,200,'الكود الصحيح يُقبل');
 const g=(await o(`/agreements/${r.j.id}`)).j;assert.equal(g.amount,90,'الخصم 10% يُطبَّق على شغل اليد');
 const row=(await adm('/admin/discounts')).j.find(x=>x.code==='PAY10X');assert.equal(row.used,1,'العداد يزيد');
-const h2=cl();await h2('/register','POST',{name:'مساعد خصم ٢',email:'dc3@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h2);await h2('/profile','POST',{name:'مساعد خصم ٢',phone:'0500009803'});
+const h2=cl();await h2('/register','POST',{name:'مساعد خصم ٢',email:'dc3@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h2('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});await verifyEmail(h2);await h2('/profile','POST',{name:'مساعد خصم ٢',phone:'0500009803'});
 const s2=await h2(`/direct/${oid}/task`,'POST');assert.equal((await o(`/tasks/${s2.j.id}/accept`,'POST')).s,200);
 assert.equal((await h2(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'PAY10X'})).s,400,'الكود بعد نفاد عدده يُرفض');
 assert.equal((await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'NOPE1'})).s,400,'الكود غير الموجود يُرفض');
@@ -1140,7 +1140,7 @@ test('كود الخصم: إلغاء رابط دفع غير مدفوع يُرجع
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل إلغاء خصم',email:'dc5@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل إلغاء خصم',phone:'0500009805'});
 const oid=(await o('/me')).j.user.id;
-const h=cl();await h('/register','POST',{name:'مساعد إلغاء خصم',email:'dc6@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد إلغاء خصم',phone:'0500009806'});
+const h=cl();await h('/register','POST',{name:'مساعد إلغاء خصم',email:'dc6@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});await verifyEmail(h);await h('/profile','POST',{name:'مساعد إلغاء خصم',phone:'0500009806'});
 const adm=cl();await adm('/login','POST',{email:'admin@t.sa',password:'12345678'});
 assert.equal((await adm('/admin/discounts','POST',{code:'cncl1x',percent:10,max_uses:1})).s,200);
 const s1=await h(`/direct/${oid}/task`,'POST');assert.equal((await o(`/tasks/${s1.j.id}/accept`,'POST')).s,200);
@@ -1176,7 +1176,7 @@ const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id
 const o=cl();await o('/register','POST',{name:'عميل خصم',email:'dscclient@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});await verifyEmail(o);await o('/profile','POST',{name:'عميل خصم',phone:'0500020202'});
 const oid=(await o('/me')).j.user.id;
 const other=await reg('dcOther');
-const h=cl();await h('/register','POST',{name:'مساعد خصم',email:'dschelper@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});await verifyEmail(h);await h('/profile','POST',{name:'مساعد خصم',phone:'0500030303',city:'جدة',vat_number:''});
+const h=cl();await h('/register','POST',{name:'مساعد خصم',email:'dschelper@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});await verifyEmail(h);await h('/profile','POST',{name:'مساعد خصم',phone:'0500030303',city:'جدة',vat_number:''});
 const hid=(await h('/me')).j.user.id;
 {const d=new DatabaseSync(DBF);d.prepare("INSERT INTO discount_codes(code,percent,max_uses) VALUES('DSC10',10,2)").run();d.close();}
 const t=await h(`/direct/${oid}/task`,'POST');assert.equal(t.s,200);assert.equal((await o(`/tasks/${t.j.id}/accept`,'POST')).s,200);
@@ -1195,7 +1195,7 @@ test('إخفاء الأرقام: تُطمس في الشات والاتفاقات
 const cat=(await cl()('/skills')).j.categories.find(c=>c.name==='سباكة').id;
 const o=cl();await o('/register','POST',{name:'عميل طمس',email:'ztm1@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة'});
 await o('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل طمس',phone:'0500009001'});await vfy(o);
-const h=cl();await h('/register','POST',{name:'مساعد طمس',email:'ztm2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]});
+const h=cl();await h('/register','POST',{name:'مساعد طمس',email:'ztm2@t.sa',password:'12345678',terms:1,age:1,phone:ph(),city:'جدة',account_type:'helper',helper_type:'establishment',category_ids:[cat]}); await h('/helper/hala','POST',{api_key:'key-test-1234',webhook_secret:'test-hala'});
 await h('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد طمس',phone:'0500009002'});await vfy(h);
 const hid=(await h('/me')).j.user.id;const cid=(await o('/me')).j.user.id;
 await h(`/direct/${cid}`,'POST',{body:'تواصل على 0500009002 الآن'});
@@ -1217,4 +1217,18 @@ const bad=['055555555','05555555555','+966555555555','0555 555 55','05555555a'];
 for(const [i,v] of bad.entries()){const r=await cl()('/register','POST',{...base,email:`phv${i}@t.sa`,phone:v});assert.equal(r.s,400,'يرفض: '+v)}
 const ok=await cl()('/register','POST',{...base,email:'phok@t.sa',phone:'٠٥٥٥٥٥٥٥٥٥'});
 assert.equal(ok.s,200,'يقبل 10 أرقام عربية');
+});
+
+test('حذف الرسالة: صاحبها فقط، ويُحذف مرفقها من الخادم',async()=>{
+const PNG4='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+const a=await cl();await a('/register','POST',{name:'عميل حذف',email:'del1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});await a('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'عميل حذف',phone:ph()});
+const b=await cl();await b('/register','POST',{name:'مساعد حذف',email:'del2@t.sa',password:'12345678',terms:1,age:1,phone:ph()});await b('/profile','POST',{vat_status:'registered',vat_number:'312345678901234',name:'مساعد حذف',phone:ph()});
+const bid=(await b('/me')).j.user.id;
+const att=(await a('/upload','POST',{data:'data:image/png;base64,'+PNG4})).j.id;
+assert.equal((await a('/direct/'+bid,'POST',{body:'',attachment_id:att})).s,200);
+const before=(await a('/direct/'+bid)).j.messages;const mid=before[before.length-1].id;
+assert.equal((await b('/direct/message/'+mid,'DELETE')).s,404,'المستلم لا يحذف رسالة ليست له');
+assert.equal((await a('/direct/message/'+mid,'DELETE')).s,200,'صاحب الرسالة يحذفها');
+assert.equal((await a('/direct/'+bid)).j.messages.some(m=>m.id===mid),false,'الرسالة اختفت من المحادثة');
+assert.notEqual((await fetch(B+'/api/files/'+att)).status,200,'المرفق حُذف من الخادم');
 });

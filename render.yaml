@@ -25,4 +25,4 @@ services:
       - {key: VAPID_PRIVATE_KEY, sync: false}
       - {key: VAPID_SUBJECT, sync: false}
       - {key: HALA_PAYMENT_URL, sync: false}
-      - {key: HALA_WEBHOOK_SECRET, sync: false}
+      - {key: SECRETS_KEY, sync: false}
