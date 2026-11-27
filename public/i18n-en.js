@@ -37,7 +37,7 @@ window.EN_DICT = {
  'دخول الإدارة':'Admin login','كلمتا المرور غير متطابقتين':'Passwords do not match','المحادثات السابقة':'Previous chats',
  'إغلاق':'Close','جارٍ التحميل':'Loading','لا توجد محادثات بعد':'No chats yet',
  'لا توجد محادثات بعد. تبدأ المحادثة من صفحة المساعد':'No chats yet. Start a chat from a provider page',
- 'إرفاق صورة':'Attach photo','رسالة صوتية':'Voice note','المستخدم':'User','إضافة':'Add','رابط دفع':'Payment link',
+ 'إرفاق صورة':'Attach photo','المستخدم':'User','إضافة':'Add','رابط دفع':'Payment link',
  'صندوق الوارد':'Inbox','أين تريد نشر هذا المقطع؟':'Where do you want to post this clip?','ريلز':'Reels',
  'يظهر للجميع':'Visible to everyone','المنشورات':'Posts','إضافة صورة أو فيديو':'Add photo or video',
  'لا توجد أعمال بعد':'No work yet','لم تضف أعمالًا بعد. ابدأ بإضافة صورة لعملك':'You have not added work yet. Start by adding a photo of your work',

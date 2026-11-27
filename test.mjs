@@ -1151,12 +1151,9 @@ assert.equal((await adm('/admin/discounts')).j.find(x=>x.code==='CNCL1X').used,0
 assert.equal((await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'CNCL1X'})).s,200,'بعد الإلغاء تُحرَّر المهمة ويُرسل رابط جديد بالكود نفسه');
 });
 
-test('الرسائل الصوتية: تُقبل الصيغة الصحيحة وتُرفض غير الصحيحة',async()=>{
-const c=cl();await c('/register','POST',{name:'صوت تجريبي',email:'voice1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
-const good=Buffer.concat([Buffer.from([0x1a,0x45,0xdf,0xa3]),Buffer.alloc(400,1)]).toString('base64');
-assert.equal((await c('/upload-audio','POST',{data:'data:audio/webm;base64,'+good})).s,200,'webm صحيح');
-assert.equal((await c('/upload-audio','POST',{data:'data:audio/webm;base64,'+Buffer.alloc(400,2).toString('base64')})).s,400,'ملف بلا ترويسة صوتية مرفوض');
-assert.equal((await c('/upload-audio','POST',{data:'data:image/png;base64,'+good})).s,400,'صورة لا تُقبل كرسالة صوتية');
+test('الرسائل الصوتية محذوفة: لا مسار للرفع الصوتي ولا مقاطع صوتية في قاعدة البيانات',async()=>{
+const c=cl();await c('/register','POST',{name:'بلا صوت',email:'novoice1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
+assert.equal((await c('/upload-audio','POST',{data:'data:audio/webm;base64,'+Buffer.concat([Buffer.from([0x1a,0x45,0xdf,0xa3]),Buffer.alloc(400,1)]).toString('base64')})).s,404,'لا مسار للرسائل الصوتية');
 });
 
 test('لا رفع فيديو ولا منشورات عامة: المسارات محذوفة',async()=>{

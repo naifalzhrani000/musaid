@@ -82,7 +82,7 @@ catch(x){o.querySelector('.dc-dl').textContent=x.message}
 const SV=p=>`<svg viewBox="0 0 24 24" class=dcs aria-hidden="true">${p}</svg>`;
 const TOPIC_P='<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h4"/>',CARD_P='<rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19"/>',DOTS_P='<circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/>',PERSON_P='<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',RECEIPT_P='<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',MONEY_P='<rect x="2.5" y="6.5" width="19" height="11" rx="2"/><circle cx="12" cy="12" r="2.5"/>',LINK_P='<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',CHECK_P='<path d="M5 12.5l4.5 4.5L19 7.5"/>';
 const SEND_SVG='<svg viewBox="0 0 24 24" class=dcs-fill aria-hidden="true"><path d="M3.4 11.1 20.6 3.3c.8-.4 1.6.4 1.2 1.2l-7.8 17.2c-.4.8-1.5.8-1.8 0l-2.2-6.7-6.7-2.2c-.8-.3-.8-1.4 0-1.6z"/></svg>';
-function DCHAT_MARKUP(){return `<section id=dchat><div id=dagr class=agr></div><div id=dmsgs class=dmsgs></div></section><form id=dform autocomplete=off><button type=button class=dc-attach id=dpic aria-label="إرفاق صورة">${SV(I.clip)}</button><input name=body maxlength=1000 placeholder="اكتب رسالتك..." aria-label="اكتب رسالتك"><button type=button class=dc-attach id=dvoice aria-label="رسالة صوتية">${SV('<path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="2"/>')}</button><button type=button class=dc-task id=dtask hidden></button><button class=dc-send aria-label="إرسال">${SEND_SVG}</button></form>`}
+function DCHAT_MARKUP(){return `<section id=dchat><div id=dagr class=agr></div><div id=dmsgs class=dmsgs></div></section><form id=dform autocomplete=off><button type=button class=dc-attach id=dpic aria-label="إرفاق صورة">${SV(I.clip)}</button><input name=body maxlength=1000 placeholder="اكتب رسالتك..." aria-label="اكتب رسالتك"><button type=button class=dc-task id=dtask hidden></button><button class=dc-send aria-label="إرسال">${SEND_SVG}</button></form>`}
 async function directChat(id){if(!me.user){window.__postLogin=location.hash;location.hash='#/login';return}const peer=await api('/users/'+id).catch(()=>null);const name=(peer&&peer.name)||'المستخدم';document.body.classList.add('dchat-mode');app.innerHTML=`<div class=dc-top><span class=dc-logo><img src=/hand.png alt=""></span><div class=dc-title><b>${esc(name)}</b></div>${me.user.account_type==='helper'?`<div class=dc-plus-wrap><button type=button class=dc-plus id=plusBtn aria-haspopup=true aria-expanded=false aria-label="إضافة">+</button><div class=plus-menu id=plusMenu hidden><button type=button data-p=paylink id=plusPay hidden>رابط دفع${SV(CARD_P)}</button></div></div>`:''}<button type=button class=dc-dots id=dcMenu aria-label="المحادثات السابقة">${SV(DOTS_P)}</button><button type=button class=dc-dots id=dcBurger aria-label="القائمة" aria-haspopup=true aria-expanded=false>${ic(I.menu)}</button><button type=button class=dc-blk id=dcBlock>حظر</button></div>`+DCHAT_MARKUP();$('#dcMenu').onclick=dcOpenDrawer;$('#dcBurger').onclick=toggleMenu;$('#dcBlock').onclick=async()=>{try{const d=await api('/direct/'+id);const on=!d.blockedByMe;if(on&&!confirm('هل تريد حظر هذا المستخدم؟ لن يتمكن من مراسلتك أو بدء مهام معك. يمكنك إلغاء الحظر لاحقًا من هذه الصفحة.'))return;await api('/block','POST',{user_id:id,blocked:on});toast(on?'تم حظر المستخدم':'تم إلغاء الحظر');location.reload()}catch(x){toast(x.message,1)}};
 api('/direct/'+id).then(d=>{if(d.blockedByMe&&$('#dcBlock'))$('#dcBlock').textContent='إلغاء الحظر'}).catch(()=>{});dchatInit(id)}
 async function chats(){const l=await api('/chats');app.innerHTML=`<h2 style="margin:8px 0">صندوق الوارد</h2><div class=panel style="padding:0">${l.map(c=>{const href=c.request_id?`#/chat/${esc(c.request_id)}/${esc(c.peer)}`:`#/direct/${esc(c.peer)}`;const t=String(c.created_at||'');return `<a href="${href}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #ece8f8;text-decoration:none;color:inherit"><i style="width:52px;height:52px;border-radius:50%;background:#6445cc;color:#fff;display:grid;place-items:center;font-style:normal;font-weight:700;flex:0 0 auto">${esc((c.peer_name||'؟')[0])}</i><span style="flex:1;min-width:0"><b>${esc(c.peer_name)}</b><small style="display:block;color:#625a76;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.title||'')}${c.body?' · '+esc(prevBody(c.body).slice(0,50)):''}</small></span><small style="color:#9c94a8;flex:0 0 auto">${esc(t.slice(11,16))}</small></a>`}).join('')||'<div class=empty style="padding:20px">لا توجد محادثات بعد. تبدأ المحادثة من صفحة المساعد.</div>'}</div>`}
@@ -365,61 +365,7 @@ try{await load(true)}catch(x){toast(x.message,1)}
 box.addEventListener('click',e=>{const s=e.target.closest('[data-sug]');if(s&&form){form.elements.body.value=s.dataset.sug;form.elements.body.focus()}});
 box.addEventListener('click',async e=>{const b=e.target.closest('[data-cash]');if(!b)return;try{await api('/agreements/'+b.dataset.cashAgr+'/choose-cash','POST');toast('تم إبلاغ المساعد باختيارك الدفع كاش');await load(true)}catch(x){toast(x.message,1)}});
 form.onsubmit=sub(async(b,t)=>{try{await api('/direct/'+id,'POST',{body:b.body});t.elements.body.value='';await load(true)}catch(x){toast(x.message,1)}});
-$('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/direct/'+id,'POST',{body:'',attachment_id});await load(true)}catch(x){toast(x.message,1)}};$('#msgs').addEventListener('click',async e=>{const b=e.target.closest('[data-del]');if(!b)return;if(!confirm('حذف الرسالة نهائيًا من المحادثة؟'))return;try{await api('/direct/message/'+b.dataset.del,'DELETE');await load(true)}catch(x){toast(x.message,1)}});if($('#dvoice')){
- const btn=$('#dvoice'),form=$('#dform');
- let rec=null,chunks=[],pressing=false,cancelled=false,sx=0,ticker=null,autoStop=null,stream=null;
- btn.style.touchAction='none';btn.style.webkitTouchCallout='none';btn.style.userSelect='none';btn.style.webkitUserSelect='none';
- btn.addEventListener('contextmenu',e=>e.preventDefault());
- btn.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
- const hold=on=>document.body.classList.toggle('vn-hold',on);
- if(!window.__vnSel){window.__vnSel=1;document.addEventListener('selectstart',e=>{if(document.body.classList.contains('vn-hold'))e.preventDefault()});['pointerup','pointercancel'].forEach(t=>document.addEventListener(t,()=>document.body.classList.remove('vn-hold'),true))}
- const timer=document.createElement('span');timer.className='rec-time';timer.hidden=true;btn.after(timer);
- const fmt=n=>Math.floor(n/60)+':'+String(n%60).padStart(2,'0');
- const startT=()=>Date.now();let t0=0;
- const tick=()=>{timer.textContent=fmt(Math.floor((Date.now()-t0)/1000))};
- const cleanup=()=>{hold(false);clearInterval(ticker);clearTimeout(autoStop);ticker=null;autoStop=null;timer.hidden=true;btn.classList.remove('rec');if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}};
- const stopRec=discard=>{cancelled=discard;if(rec&&rec.state!=='inactive')rec.stop()};
-
- btn.addEventListener('pointerdown',async e=>{
-  if(pressing||rec)return;
-  e.preventDefault();
-  if(!window.MediaRecorder||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('التسجيل الصوتي غير مدعوم في هذا المتصفح',1);return}
-  const pd=Date.now();pressing=true;cancelled=false;sx=e.clientX;hold(true);try{getSelection().removeAllRanges()}catch{}
-  try{btn.setPointerCapture(e.pointerId)}catch{}
-  btn.classList.add('rec');t0=startT();tick();timer.hidden=false;ticker=setInterval(tick,500);
-  let st;
-  try{st=await navigator.mediaDevices.getUserMedia({audio:true})}catch(x){pressing=false;cleanup();toast('لم نتمكن من الوصول إلى الميكروفون',1);return}
-  if(!pressing){st.getTracks().forEach(t=>t.stop());cleanup();toast(Date.now()-pd>1500?'تم السماح بالمايك، اضغط مطولًا للتسجيل الآن':'اضغط مطولًا للتسجيل');return}
-  stream=st;chunks=[];
-  let r;try{r=new MediaRecorder(st,{audioBitsPerSecond:32000})}catch{r=new MediaRecorder(st)}rec=r;
-  r.ondataavailable=ev=>{if(ev.data&&ev.data.size)chunks.push(ev.data)};
-  r.onstop=async()=>{
-   const type=((r.mimeType)||'audio/webm').split(';')[0];
-   const parts=chunks;chunks=[];
-   cleanup();rec=null;
-   if(cancelled)return;
-   const blob=new Blob(parts,{type});
-   if(blob.size<2000){toast('التسجيل قصير جدًا',1);return}
-   if(blob.size>2200000){toast('التسجيل طويل، سجّل مقطعًا أقصر',1);return}
-   try{
-    const data=await new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=no;fr.readAsDataURL(blob)});
-    const up=await api('/upload-audio','POST',{data:String(data).replace(/^data:[^,]*,/,'data:'+type+';base64,')});
-    await api('/direct/'+id,'POST',{body:'',attachment_id:up.id});
-    await load(true);
-   }catch(x){toast(x.message,1)}
-  };
-  r.start();
-  autoStop=setTimeout(()=>stopRec(false),120000);
- });
-
- btn.addEventListener('pointermove',e=>{
-  if(!rec||cancelled)return;
-  if(Math.abs(e.clientX-sx)>90)stopRec(true);
- });
- btn.addEventListener('pointerup',()=>{pressing=false;if(rec)stopRec(false);else cleanup()});
- btn.addEventListener('pointercancel',()=>{pressing=false;if(rec)stopRec(true);else cleanup()});
-}
-plusSetup(id,load,proposeAgr);startPoll()}
+$('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/direct/'+id,'POST',{body:'',attachment_id});await load(true)}catch(x){toast(x.message,1)}};$('#msgs').addEventListener('click',async e=>{const b=e.target.closest('[data-del]');if(!b)return;if(!confirm('حذف الرسالة نهائيًا من المحادثة؟'))return;try{await api('/direct/message/'+b.dataset.del,'DELETE');await load(true)}catch(x){toast(x.message,1)}});plusSetup(id,load,proposeAgr);startPoll()}
 const money=n=>Number(n||0).toFixed(2)+' ريال';
 const TOPIC_TAG='[موضوع الطلب]\n',CARD_TAG='[منتج]\n';
 const prevBody=b=>String(b||'').startsWith(CARD_TAG)?'بطاقة منتج':String(b||'');
@@ -427,7 +373,7 @@ const prodCard=raw=>{let d;try{d=JSON.parse(raw)}catch{return null}if(!d||!d.t)r
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('prod-img'))t.style.visibility='hidden'},true);
 const fmt12=s=>{const x=String(s||'');const h=+x.slice(11,13),m=x.slice(14,16);if(isNaN(h)||!m)return '';return `${h%12||12}:${m} ${h<12?'ص':'م'}`};
 const bubHtml=m=>{const mine=m.from_id===me.user.id;let body;if(String(m.body).startsWith(TOPIC_TAG)){const[t1,...rest]=String(m.body).slice(TOPIC_TAG.length).split('\n');body=`<div class=topic-card><small>موضوع الطلب</small><b>${esc(t1)}</b>${rest.length?`<p>${esc(rest.join('\n'))}</p>`:''}</div>`}else if(String(m.body).startsWith(CARD_TAG)&&(body=prodCard(String(m.body).slice(CARD_TAG.length))))body=body;else body=esc(m.body)+(m.phone_hidden?' <small class=ph-note>🔒 يظهر الرقم بعد قبول المهمة</small>':'');
-const pic=m.attachment_id?(String(m.mime||'').startsWith('audio/')?`<audio class=vn controls preload=metadata src=/api/files/${m.attachment_id}></audio>`:`<img loading=lazy decoding=async class=pic src=/api/files/${m.attachment_id} alt="">`):'';
+const pic=m.attachment_id?`<img loading=lazy decoding=async class=pic src=/api/files/${m.attachment_id} alt="">`:'';
 const av=mine?`<span class=dc-av-me>${SV(PERSON_P)}</span>`:`<span class=dc-av><img src=/hand.png alt=""></span>`;
 const col=`<div class=dc-col><div class=dc-bub>${pic}${body}</div><small class=dc-time>${fmt12(m.created_at)}${mine?'<i class=dc-ticks>✓✓</i>':''}</small>${mine?`<button type=button class=msg-del data-del="${+m.id}">حذف</button>`:''}</div>`;
 return `<div class="dc-row ${mine?'me':'them'}">${mine?av+col:col+av}</div>`};

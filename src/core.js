@@ -159,6 +159,10 @@ if(cartTbl||tmpInv){const dir=process.env.BACKUP_DIR||path.join(path.dirname(pat
 const bak=path.join(dir,`backup-before-cart-removal-${Date.now()}.db`);vacuumTo(bak);
 db.exec("DELETE FROM direct_messages WHERE body LIKE '[فاتورة المتجر]%'");db.exec("DROP TABLE IF EXISTS shop_cart");
 console.log(`إزالة السلة: حذف ${tmpInv} فاتورة مؤقتة. النسخة الاحتياطية: ${bak}`)}}
+// إزالة الرسائل الصوتية نهائيًا (بموافقة المالك): نسخة احتياطية أولًا، ثم حذف الرسائل التي تحمل مقطعًا صوتيًا، ثم المقاطع الصوتية غير المستخدمة. آمن للتكرار
+if(get("SELECT COUNT(*) n FROM attachments WHERE mime LIKE 'audio/%'").n){const dir=process.env.BACKUP_DIR||path.join(path.dirname(path.resolve(DB_PATH)),'backups');fs.mkdirSync(dir,{recursive:true});vacuumTo(path.join(dir,`backup-before-voice-removal-${Date.now()}.db`));
+db.exec("DELETE FROM direct_messages WHERE attachment_id IN (SELECT id FROM attachments WHERE mime LIKE 'audio/%')");
+db.exec("DELETE FROM attachments WHERE mime LIKE 'audio/%' AND id NOT IN (SELECT attachment_id FROM portfolio WHERE attachment_id IS NOT NULL) AND id NOT IN (SELECT attachment_id FROM helper_extra WHERE attachment_id IS NOT NULL) AND id NOT IN (SELECT image_id FROM shop_products WHERE image_id IS NOT NULL)")}
 // تفريغ نصي الشروط والخصوصية المحفوظين من لوحة الإدارة مرة واحدة (بطلب المالك) ليظهر النص من الكود: نسخة احتياطية ثم تفريغ، مع علامة تمنع التكرار
 {const done=db.prepare("SELECT 1 x FROM settings WHERE key='legal_text_reset_v1'").get();
 const saved=db.prepare("SELECT key FROM settings WHERE key IN ('terms_text','privacy_text') AND TRIM(value)<>''").all();

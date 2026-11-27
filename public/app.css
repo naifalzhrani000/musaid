@@ -1310,9 +1310,6 @@ body.dchat-mode .dc-linkcard .dc-acts button:only-child{grid-column:1/-1}
 @media (max-width:360px){.shop-grid{grid-template-columns:1fr}}
 .shop-img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#f3f0fb}
 
-.vn{width:220px;max-width:100%;height:40px;display:block}
-.dc-attach.rec,body.dchat-mode .dc-attach.rec{color:#dc2626}
-body.dchat-mode #dform .rec-time{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;pointer-events:none;font-size:15px;font-weight:600;color:#dc2626;font-variant-numeric:tabular-nums;direction:ltr}
 
 /* English layout: mirror hero text to the right so it does not sit under the Edit button; let category names take the free width */
 html[dir=ltr] .pf2-txt{text-align:end}
@@ -1478,4 +1475,3 @@ body.dchat-mode .menu-panel{top:70px}
 /* منع تحديد النص أثناء الضغط المطول على زر التسجيل الصوتي (iOS) */
 body.dchat-mode #dform{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 body.dchat-mode #dform input{-webkit-user-select:text;user-select:text}
-body.vn-hold,body.vn-hold *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}
