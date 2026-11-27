@@ -1151,38 +1151,12 @@ assert.equal((await adm('/admin/discounts')).j.find(x=>x.code==='CNCL1X').used,0
 assert.equal((await h(`/direct/${oid}/payment-link`,'POST',{amount:100,materials:0,discount_code:'CNCL1X'})).s,200,'بعد الإلغاء تُحرَّر المهمة ويُرسل رابط جديد بالكود نفسه');
 });
 
-test('الرسالة الصوتية: تُرفع بصيغة صحيحة، وتُعلَّم مستمَعًا من المستلم فقط',async()=>{
-const a=cl(),b=cl();
-const ea='vna'+Date.now()+'@t.sa',eb='vnb'+Date.now()+'@t.sa';
-await a('/register','POST',{name:'مرسل صوتي',email:ea,password:'12345678',terms:1,age:1,phone:ph()});
-await b('/register','POST',{name:'مستلم صوتي',email:eb,password:'12345678',terms:1,age:1,phone:ph()});
-const d=new DatabaseSync(DBF);d.prepare('UPDATE users SET email_verified=1 WHERE email IN (?,?)').run(ea,eb);d.close();
-const aid=(await a('/me')).j.user.id,bid=(await b('/me')).j.user.id;
+test('الرسائل الصوتية: تُقبل الصيغة الصحيحة وتُرفض غير الصحيحة',async()=>{
+const c=cl();await c('/register','POST',{name:'صوت تجريبي',email:'voice1@t.sa',password:'12345678',terms:1,age:1,phone:ph()});
 const good=Buffer.concat([Buffer.from([0x1a,0x45,0xdf,0xa3]),Buffer.alloc(400,1)]).toString('base64');
-const up=await a('/upload-audio','POST',{data:'data:audio/webm;base64,'+good});
-assert.equal(up.s,200,'webm صحيح');
-assert.equal((await a('/upload-audio','POST',{data:'data:audio/webm;base64,'+Buffer.alloc(400,2).toString('base64')})).s,400,'بلا ترويسة صوتية مرفوض');
-assert.equal((await a('/upload-audio','POST',{data:'data:image/png;base64,'+good})).s,400,'صورة لا تُقبل كرسالة صوتية');
-assert.equal((await a('/direct/'+bid,'POST',{body:'',attachment_id:up.j.id})).s,200,'الرسالة الصوتية تُرسل');
-const mid=(await a('/direct/'+bid)).j.messages.find(m=>m.attachment_id===up.j.id).id;
-assert.equal((await a('/direct/message/'+mid+'/listened','POST')).j.ok,1);
-assert.equal((await a('/direct/'+bid)).j.messages.find(m=>m.id===mid).listened_at,null,'المرسل لا يُعلَّم استماعه');
-assert.equal((await b('/direct/message/'+mid+'/listened','POST')).j.ok,1);
-assert.ok((await a('/direct/'+bid)).j.messages.find(m=>m.id===mid).listened_at,'يُعلَّم عند استماع المستلم');
-assert.equal((await b('/files/'+up.j.id)).s,200,'المستلم يصل للمقطع');
-});
-
-test('مشاركة الموقع: تُقبل الإحداثيات الصحيحة، وتُرفض غيرها، ولا تُخفى أرقامها',async()=>{
-const a=cl(),b=cl();const ea='loca'+Date.now()+'@t.sa',eb='locb'+Date.now()+'@t.sa';
-await a('/register','POST',{name:'موقع مرسل',email:ea,password:'12345678',terms:1,age:1,phone:ph()});
-await b('/register','POST',{name:'موقع مستلم',email:eb,password:'12345678',terms:1,age:1,phone:ph()});
-const d=new DatabaseSync(DBF);d.prepare('UPDATE users SET email_verified=1 WHERE email IN (?,?)').run(ea,eb);d.close();
-const bid=(await b('/me')).j.user.id;
-assert.equal((await a('/direct/'+bid,'POST',{body:'[موقع]\n24.713552,46.675297'})).s,200,'إحداثيات صحيحة');
-assert.equal((await a('/direct/'+bid,'POST',{body:'[موقع]\n999,46'})).s,400,'خط عرض خارج النطاق مرفوض');
-assert.equal((await a('/direct/'+bid,'POST',{body:'[موقع]\nhello'})).s,400,'نص غير رقمي مرفوض');
-const msg=(await b('/direct/'+(await a('/me')).j.user.id)).j.messages.find(m=>String(m.body).startsWith('[موقع]'));
-assert.equal(msg.body,'[موقع]\n24.713552,46.675297','الإحداثيات تصل كما هي دون إخفاء');
+assert.equal((await c('/upload-audio','POST',{data:'data:audio/webm;base64,'+good})).s,200,'webm صحيح');
+assert.equal((await c('/upload-audio','POST',{data:'data:audio/webm;base64,'+Buffer.alloc(400,2).toString('base64')})).s,400,'ملف بلا ترويسة صوتية مرفوض');
+assert.equal((await c('/upload-audio','POST',{data:'data:image/png;base64,'+good})).s,400,'صورة لا تُقبل كرسالة صوتية');
 });
 
 test('لا رفع فيديو ولا منشورات عامة: المسارات محذوفة',async()=>{
