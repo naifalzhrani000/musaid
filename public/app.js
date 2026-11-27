@@ -377,6 +377,21 @@ $('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/di
  const cleanup=()=>{clearInterval(ticker);clearTimeout(autoStop);ticker=null;autoStop=null;timer.hidden=true;btn.classList.remove('rec');if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}};
  const stopRec=discard=>{cancelled=discard;if(rec&&rec.state!=='inactive')rec.stop()};
 
+ // طلب إذن الميكروفون مسبقًا عند فتح المحادثة (مرة واحدة في الجلسة) حتى لا يظهر الطلب عند أول ضغطة
+ const askMicOnce=async()=>{
+  try{
+   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
+   if(sessionStorage.getItem('micAsked'))return;
+   let state='prompt';
+   try{state=(await navigator.permissions.query({name:'microphone'})).state}catch{}
+   if(state!=='prompt')return;
+   sessionStorage.setItem('micAsked','1');
+   const st=await navigator.mediaDevices.getUserMedia({audio:true});
+   st.getTracks().forEach(t=>t.stop());
+  }catch{}
+ };
+ askMicOnce();
+
  btn.addEventListener('pointerdown',async e=>{
   if(pressing||rec)return;
   e.preventDefault();
