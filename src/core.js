@@ -84,6 +84,7 @@ db.exec("CREATE TABLE IF NOT EXISTS shop_scans(id INTEGER PRIMARY KEY,shop_id IN
 db.exec("CREATE TABLE IF NOT EXISTS helper_hala(user_id INTEGER PRIMARY KEY REFERENCES users(id),api_key_enc TEXT NOT NULL,webhook_secret_enc TEXT NOT NULL,last4 TEXT,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
 db.exec("CREATE TABLE IF NOT EXISTS platform_invoices(id INTEGER PRIMARY KEY,number TEXT UNIQUE NOT NULL,helper_id INT NOT NULL REFERENCES users(id),amount REAL NOT NULL,commission_ids TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'unpaid',issued_at TEXT DEFAULT CURRENT_TIMESTAMP,paid_at TEXT,paid_note TEXT)");
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('platform_invoices') WHERE name='vat_amount'").get())db.exec("ALTER TABLE platform_invoices ADD COLUMN vat_amount REAL NOT NULL DEFAULT 0");
+if(!db.prepare("SELECT 1 x FROM pragma_table_info('direct_messages') WHERE name='listened_at'").get())db.exec("ALTER TABLE direct_messages ADD COLUMN listened_at TEXT");
 db.exec("CREATE TABLE IF NOT EXISTS tasks(id INTEGER PRIMARY KEY,client_id INT NOT NULL REFERENCES users(id),helper_id INT NOT NULL REFERENCES users(id),status TEXT NOT NULL,agreement_id INT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
 if(!db.prepare("SELECT 1 x FROM pragma_table_info('tasks') WHERE name='rated'").get())db.exec("ALTER TABLE tasks ADD COLUMN rated INT NOT NULL DEFAULT 0");
 for(const [col,def] of [['source','TEXT']]){if(!db.prepare("SELECT 1 x FROM pragma_table_info('agreements') WHERE name=?").get(col))db.exec(`ALTER TABLE agreements ADD COLUMN ${col} ${def}`)}
@@ -159,10 +160,6 @@ if(cartTbl||tmpInv){const dir=process.env.BACKUP_DIR||path.join(path.dirname(pat
 const bak=path.join(dir,`backup-before-cart-removal-${Date.now()}.db`);vacuumTo(bak);
 db.exec("DELETE FROM direct_messages WHERE body LIKE '[فاتورة المتجر]%'");db.exec("DROP TABLE IF EXISTS shop_cart");
 console.log(`إزالة السلة: حذف ${tmpInv} فاتورة مؤقتة. النسخة الاحتياطية: ${bak}`)}}
-// إزالة الرسائل الصوتية نهائيًا (بموافقة المالك): نسخة احتياطية أولًا، ثم حذف الرسائل التي تحمل مقطعًا صوتيًا، ثم المقاطع الصوتية غير المستخدمة. آمن للتكرار
-if(get("SELECT COUNT(*) n FROM attachments WHERE mime LIKE 'audio/%'").n){const dir=process.env.BACKUP_DIR||path.join(path.dirname(path.resolve(DB_PATH)),'backups');fs.mkdirSync(dir,{recursive:true});vacuumTo(path.join(dir,`backup-before-voice-removal-${Date.now()}.db`));
-db.exec("DELETE FROM direct_messages WHERE attachment_id IN (SELECT id FROM attachments WHERE mime LIKE 'audio/%')");
-db.exec("DELETE FROM attachments WHERE mime LIKE 'audio/%' AND id NOT IN (SELECT attachment_id FROM portfolio WHERE attachment_id IS NOT NULL) AND id NOT IN (SELECT attachment_id FROM helper_extra WHERE attachment_id IS NOT NULL) AND id NOT IN (SELECT image_id FROM shop_products WHERE image_id IS NOT NULL)")}
 // تفريغ نصي الشروط والخصوصية المحفوظين من لوحة الإدارة مرة واحدة (بطلب المالك) ليظهر النص من الكود: نسخة احتياطية ثم تفريغ، مع علامة تمنع التكرار
 {const done=db.prepare("SELECT 1 x FROM settings WHERE key='legal_text_reset_v1'").get();
 const saved=db.prepare("SELECT key FROM settings WHERE key IN ('terms_text','privacy_text') AND TRIM(value)<>''").all();
