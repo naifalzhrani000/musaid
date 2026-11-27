@@ -367,7 +367,7 @@ box.addEventListener('click',async e=>{const b=e.target.closest('[data-cash]');i
 form.onsubmit=sub(async(b,t)=>{try{await api('/direct/'+id,'POST',{body:b.body});t.elements.body.value='';await load(true)}catch(x){toast(x.message,1)}});
 $('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/direct/'+id,'POST',{body:'',attachment_id});await load(true)}catch(x){toast(x.message,1)}};$('#msgs').addEventListener('click',async e=>{const b=e.target.closest('[data-del]');if(!b)return;if(!confirm('حذف الرسالة نهائيًا من المحادثة؟'))return;try{await api('/direct/message/'+b.dataset.del,'DELETE');await load(true)}catch(x){toast(x.message,1)}});if($('#dvoice')){
  const btn=$('#dvoice'),form=$('#dform');
- let rec=null,chunks=[],pressing=false,cancelled=false,sx=0,ticker=null,autoStop=null,stream=null;
+ let rec=null,chunks=[],starting=false,pressing=false,cancelled=false,sx=0,ticker=null,autoStop=null,stream=null,idleT=null,firstGrant=false;
  btn.style.touchAction='none';btn.style.webkitTouchCallout='none';btn.style.userSelect='none';btn.style.webkitUserSelect='none';
  btn.addEventListener('contextmenu',e=>e.preventDefault());
  // iOS Safari: الضغط المطول يفتح تحديد النص/قائمة النسخ ويلغي الضغطة، فنمنعه صراحةً
@@ -380,7 +380,10 @@ $('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/di
  const fmt=n=>Math.floor(n/60)+':'+String(n%60).padStart(2,'0');
  const startT=()=>Date.now();let t0=0;
  const tick=()=>{timer.textContent=fmt(Math.floor((Date.now()-t0)/1000))};
- const cleanup=()=>{lockSel(false);clearInterval(ticker);clearTimeout(autoStop);ticker=null;autoStop=null;timer.hidden=true;btn.classList.remove('rec');if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}};
+ const dropStream=()=>{clearTimeout(idleT);idleT=null;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}};
+ const cleanup=()=>{lockSel(false);clearInterval(ticker);clearTimeout(autoStop);ticker=null;autoStop=null;timer.hidden=true;btn.classList.remove('rec');clearTimeout(idleT);idleT=setTimeout(dropStream,20000)};
+ const liveStream=()=>stream&&stream.getAudioTracks().some(t=>t.readyState==='live')?stream:null;
+ const pickType=()=>{try{return ['audio/mp4','audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'].find(t=>MediaRecorder.isTypeSupported(t))||''}catch{return ''}};
  const stopRec=discard=>{cancelled=discard;if(rec&&rec.state!=='inactive')rec.stop()};
 
  // طلب إذن الميكروفون مسبقًا عند فتح المحادثة (مرة واحدة في الجلسة) حتى لا يظهر الطلب عند أول ضغطة
@@ -399,25 +402,33 @@ $('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/di
  askMicOnce();
 
  btn.addEventListener('pointerdown',async e=>{
-  if(pressing||rec)return;
+  if(pressing||rec||starting)return;
   e.preventDefault();
   if(!window.MediaRecorder||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('التسجيل الصوتي غير مدعوم في هذا المتصفح',1);return}
-  pressing=true;cancelled=false;sx=e.clientX;
+  pressing=true;starting=true;cancelled=false;sx=e.clientX;
   try{btn.setPointerCapture(e.pointerId)}catch{}
   lockSel(true);clearSel();btn.classList.add('rec');t0=startT();tick();timer.hidden=false;ticker=setInterval(tick,500);
-  let st;
-  try{st=await navigator.mediaDevices.getUserMedia({audio:true})}catch(x){pressing=false;cleanup();toast('لم نتمكن من الوصول إلى الميكروفون',1);return}
-  if(!pressing){st.getTracks().forEach(t=>t.stop());cleanup();return}
-  stream=st;chunks=[];
-  const r=new MediaRecorder(st);rec=r;
+  let st=liveStream(),fresh=false;
+  if(!st){
+   try{st=await navigator.mediaDevices.getUserMedia({audio:true});fresh=true}catch(x){starting=false;pressing=false;cleanup();toast('لم نتمكن من الوصول إلى الميكروفون. فعّل إذن الميكروفون من إعدادات المتصفح',1);return}
+   stream=st;
+  }
+  starting=false;
+  // رفع المستخدم إصبعه قبل جاهزية الميكروفون (أو ظهر طلب الإذن): لا نلغي بصمت
+  if(!pressing){cleanup();toast(fresh?'تم تفعيل الميكروفون، اضغط مطولًا وسجّل':'استمر بالضغط أثناء التسجيل',1);return}
+  clearTimeout(idleT);idleT=null;chunks=[];
+  let r;
+  try{const mt=pickType();r=mt?new MediaRecorder(st,{mimeType:mt}):new MediaRecorder(st)}catch(x){pressing=false;cleanup();dropStream();toast('تعذر بدء التسجيل على هذا المتصفح',1);return}
+  rec=r;
+  r.onerror=()=>{pressing=false;chunks=[];cancelled=true;try{if(r.state!=='inactive')r.stop()}catch{}cleanup();dropStream();rec=null;toast('حدث خطأ أثناء التسجيل',1)};
   r.ondataavailable=ev=>{if(ev.data&&ev.data.size)chunks.push(ev.data)};
   r.onstop=async()=>{
-   const type=((r.mimeType)||'audio/webm').split(';')[0];
+   const type=((r.mimeType)||pickType()||'audio/mp4').split(';')[0];
    const parts=chunks;chunks=[];
    cleanup();rec=null;
    if(cancelled)return;
    const blob=new Blob(parts,{type});
-   if(blob.size<2000){toast('التسجيل قصير جدًا',1);return}
+   if(blob.size<2000){toast('التسجيل قصير جدًا، اضغط مطولًا أثناء الكلام',1);return}
    if(blob.size>2200000){toast('التسجيل طويل، سجّل مقطعًا أقصر',1);return}
    try{
     const data=await new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=no;fr.readAsDataURL(blob)});
@@ -426,7 +437,7 @@ $('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/di
     await load(true);
    }catch(x){toast(x.message,1)}
   };
-  r.start();
+  try{r.start()}catch(x){pressing=false;rec=null;cleanup();dropStream();toast('تعذر بدء التسجيل',1);return}
   autoStop=setTimeout(()=>stopRec(false),180000);
  });
 
@@ -435,6 +446,7 @@ $('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/di
   if(Math.abs(e.clientX-sx)>90)stopRec(true);
  });
  btn.addEventListener('pointerup',()=>{pressing=false;if(rec)stopRec(false)});
+ // pointercancel في iOS يصدر أحيانًا عند ظهور طلب الإذن أو تدخل النظام: ننهي المحاولة برسالة بدل التجاهل
  btn.addEventListener('pointercancel',()=>{pressing=false;if(rec)stopRec(true)});
 }
 plusSetup(id,load,proposeAgr);startPoll()}
