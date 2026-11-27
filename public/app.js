@@ -370,33 +370,21 @@ $('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/di
  let rec=null,chunks=[],pressing=false,cancelled=false,sx=0,ticker=null,autoStop=null,stream=null;
  btn.style.touchAction='none';btn.style.webkitTouchCallout='none';btn.style.userSelect='none';btn.style.webkitUserSelect='none';
  btn.addEventListener('contextmenu',e=>e.preventDefault());
+ btn.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+ const hold=on=>document.body.classList.toggle('vn-hold',on);
+ if(!window.__vnSel){window.__vnSel=1;document.addEventListener('selectstart',e=>{if(document.body.classList.contains('vn-hold'))e.preventDefault()});['pointerup','pointercancel'].forEach(t=>document.addEventListener(t,()=>document.body.classList.remove('vn-hold'),true))}
  const timer=document.createElement('span');timer.className='rec-time';timer.hidden=true;btn.after(timer);
  const fmt=n=>Math.floor(n/60)+':'+String(n%60).padStart(2,'0');
  const startT=()=>Date.now();let t0=0;
  const tick=()=>{timer.textContent=fmt(Math.floor((Date.now()-t0)/1000))};
- const cleanup=()=>{clearInterval(ticker);clearTimeout(autoStop);ticker=null;autoStop=null;timer.hidden=true;btn.classList.remove('rec');if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}};
+ const cleanup=()=>{hold(false);clearInterval(ticker);clearTimeout(autoStop);ticker=null;autoStop=null;timer.hidden=true;btn.classList.remove('rec');if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}};
  const stopRec=discard=>{cancelled=discard;if(rec&&rec.state!=='inactive')rec.stop()};
-
- // طلب إذن الميكروفون مسبقًا عند فتح المحادثة (مرة واحدة في الجلسة) حتى لا يظهر الطلب عند أول ضغطة
- const askMicOnce=async()=>{
-  try{
-   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
-   if(sessionStorage.getItem('micAsked'))return;
-   let state='prompt';
-   try{state=(await navigator.permissions.query({name:'microphone'})).state}catch{}
-   if(state!=='prompt')return;
-   sessionStorage.setItem('micAsked','1');
-   const st=await navigator.mediaDevices.getUserMedia({audio:true});
-   st.getTracks().forEach(t=>t.stop());
-  }catch{}
- };
- askMicOnce();
 
  btn.addEventListener('pointerdown',async e=>{
   if(pressing||rec)return;
   e.preventDefault();
   if(!window.MediaRecorder||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('التسجيل الصوتي غير مدعوم في هذا المتصفح',1);return}
-  pressing=true;cancelled=false;sx=e.clientX;
+  pressing=true;cancelled=false;sx=e.clientX;hold(true);try{getSelection().removeAllRanges()}catch{}
   try{btn.setPointerCapture(e.pointerId)}catch{}
   btn.classList.add('rec');t0=startT();tick();timer.hidden=false;ticker=setInterval(tick,500);
   let st;
