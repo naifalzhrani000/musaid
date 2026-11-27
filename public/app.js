@@ -365,7 +365,7 @@ try{await load(true)}catch(x){toast(x.message,1)}
 box.addEventListener('click',e=>{const s=e.target.closest('[data-sug]');if(s&&form){form.elements.body.value=s.dataset.sug;form.elements.body.focus()}});
 box.addEventListener('click',async e=>{const b=e.target.closest('[data-cash]');if(!b)return;try{await api('/agreements/'+b.dataset.cashAgr+'/choose-cash','POST');toast('تم إبلاغ المساعد باختيارك الدفع كاش');await load(true)}catch(x){toast(x.message,1)}});
 form.onsubmit=sub(async(b,t)=>{try{await api('/direct/'+id,'POST',{body:b.body});t.elements.body.value='';await load(true)}catch(x){toast(x.message,1)}});
-$('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/direct/'+id,'POST',{body:'',attachment_id});await load(true)}catch(x){toast(x.message,1)}};$('#msgs').addEventListener('click',async e=>{const b=e.target.closest('[data-del]');if(!b)return;if(!confirm('حذف الرسالة نهائيًا من المحادثة؟'))return;try{await api('/direct/message/'+b.dataset.del,'DELETE');await load(true)}catch(x){toast(x.message,1)}});if($('#dvoice')){
+$('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/direct/'+id,'POST',{body:'',attachment_id});await load(true)}catch(x){toast(x.message,1)}};box.addEventListener('click',async e=>{const b=e.target.closest('[data-del]');if(!b)return;if(!confirm('حذف الرسالة نهائيًا من المحادثة؟'))return;try{await api('/direct/message/'+b.dataset.del,'DELETE');await load(true)}catch(x){toast(x.message,1)}});if($('#dvoice')){
  const btn=$('#dvoice');
  // تسجيل بالضغطة: ضغطة تبدأ، وضغطة ثانية ترسل. (الضغط المطول غير موثوق على iOS)
  let rec=null,chunks=[],stream=null,ticker=null,autoStop=null,t0=0,cancelled=false,busy=false;
@@ -386,7 +386,13 @@ $('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/di
   if(rec){finish(false);return}
   if(!window.MediaRecorder||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('التسجيل الصوتي غير مدعوم في هذا المتصفح. حدّث المتصفح أو افتح الموقع من سفاري/كروم',1);return}
   busy=true;
-  try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(x){busy=false;release();toast(micErr(x),1);return}
+  if(!window.isSecureContext){busy=false;toast('الميكروفون يحتاج اتصالًا آمنًا (https). افتح الموقع عبر الرابط الرسمي',1);return}
+  let perm='';try{perm=(await navigator.permissions.query({name:'microphone'})).state}catch{}
+  if(perm==='denied'){busy=false;toast('الميكروفون محظور لهذا الموقع. من إعدادات الجهاز > سفاري (أو التطبيق) > الميكروفون اختر «سماح» ثم أعد فتح الموقع',1);return}
+  toast('جاري طلب الميكروفون… اضغط «سماح» إذا ظهر الطلب');
+  const gum=navigator.mediaDevices.getUserMedia({audio:true});
+  let hang=setTimeout(()=>toast('لم يظهر طلب الإذن. جرّب فتح الموقع من متصفح سفاري مباشرة، أو احذف أيقونة التطبيق من الشاشة الرئيسية وأضفها من جديد',1),8000);
+  try{stream=await gum;clearTimeout(hang)}catch(x){clearTimeout(hang);busy=false;release();toast(micErr(x),1);return}
   let r;
   try{const mt=pickType();r=mt?new MediaRecorder(stream,{mimeType:mt}):new MediaRecorder(stream)}catch(x){busy=false;release();toast('تعذر بدء التسجيل على هذا المتصفح'+(x&&x.name?' ('+x.name+')':''),1);return}
   chunks=[];cancelled=false;rec=r;
