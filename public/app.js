@@ -384,14 +384,14 @@ $('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/di
   if(pressing||rec)return;
   e.preventDefault();
   if(!window.MediaRecorder||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('التسجيل الصوتي غير مدعوم في هذا المتصفح',1);return}
-  pressing=true;cancelled=false;sx=e.clientX;hold(true);try{getSelection().removeAllRanges()}catch{}
+  const pd=Date.now();pressing=true;cancelled=false;sx=e.clientX;hold(true);try{getSelection().removeAllRanges()}catch{}
   try{btn.setPointerCapture(e.pointerId)}catch{}
   btn.classList.add('rec');t0=startT();tick();timer.hidden=false;ticker=setInterval(tick,500);
   let st;
   try{st=await navigator.mediaDevices.getUserMedia({audio:true})}catch(x){pressing=false;cleanup();toast('لم نتمكن من الوصول إلى الميكروفون',1);return}
-  if(!pressing){st.getTracks().forEach(t=>t.stop());cleanup();return}
+  if(!pressing){st.getTracks().forEach(t=>t.stop());cleanup();toast(Date.now()-pd>1500?'تم السماح بالمايك، اضغط مطولًا للتسجيل الآن':'اضغط مطولًا للتسجيل');return}
   stream=st;chunks=[];
-  const r=new MediaRecorder(st);rec=r;
+  let r;try{r=new MediaRecorder(st,{audioBitsPerSecond:32000})}catch{r=new MediaRecorder(st)}rec=r;
   r.ondataavailable=ev=>{if(ev.data&&ev.data.size)chunks.push(ev.data)};
   r.onstop=async()=>{
    const type=((r.mimeType)||'audio/webm').split(';')[0];
@@ -409,15 +409,15 @@ $('#dpic').onclick=async()=>{try{const attachment_id=await pick();await api('/di
    }catch(x){toast(x.message,1)}
   };
   r.start();
-  autoStop=setTimeout(()=>stopRec(false),180000);
+  autoStop=setTimeout(()=>stopRec(false),120000);
  });
 
  btn.addEventListener('pointermove',e=>{
   if(!rec||cancelled)return;
   if(Math.abs(e.clientX-sx)>90)stopRec(true);
  });
- btn.addEventListener('pointerup',()=>{pressing=false;if(rec)stopRec(false)});
- btn.addEventListener('pointercancel',()=>{pressing=false;if(rec)stopRec(true)});
+ btn.addEventListener('pointerup',()=>{pressing=false;if(rec)stopRec(false);else cleanup()});
+ btn.addEventListener('pointercancel',()=>{pressing=false;if(rec)stopRec(true);else cleanup()});
 }
 plusSetup(id,load,proposeAgr);startPoll()}
 const money=n=>Number(n||0).toFixed(2)+' ريال';
